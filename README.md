@@ -1,21 +1,25 @@
 # Procon
 
-**TODO: Add description**
+A high level elixir library to produce and consume kafka messages with transactionnal mechanisms
 
 ## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `procon` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:procon, "~> 0.1.0"}
+    {:procon, , git: "https://github.com/alotela/procon.git"}
   ]
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/procon](https://hexdocs.pm/procon).
+Then run
+```elixir
+mix deps.get
+mix procon.init
+```
 
+All information will be written in the console to use the lib.
+
+## TODO
+
+improve this readme
