@@ -13,22 +13,22 @@ defmodule Mix.Tasks.Procon.Init do
 
     create_directory(migrations_path)
 
-    generate_migration(
+    procon_producer_messages_migration = generate_migration(
       "procon_producer_messages", 
       migrations_path, 
       host_app_main_repo,
       &procon_producer_messages_template/1
     )
 
-    generate_migration(
+    procon_consumer_indexes_migration = generate_migration(
       "procon_consumer_indexes", 
       migrations_path, 
       host_app_main_repo,
       &procon_consumer_indexes_template/1
     )
 
-    generate_migration(
-      "procon_producer_balancings_template", 
+    procon_producer_balancings_migration = generate_migration(
+      "procon_producer_balancings", 
       migrations_path, 
       host_app_main_repo,
       &procon_producer_balancings_template/1
@@ -37,11 +37,6 @@ defmodule Mix.Tasks.Procon.Init do
     default_enqueur_path = Path.join(["lib", "procon"])
     create_directory(default_enqueur_path)
 
-    unless file_exists?(default_enqueur_path, "*enqueur.ex") do
-      default_enqueur_path
-      |> Path.join("enqueur.ex")
-      |> create_file(procon_enqueur_template([app_module: app_module, app_name: app_name, repo: host_app_main_repo]))
-    end
     create_directory(Path.join ["lib", "events_serializers"] )
     create_directory(Path.join ["lib", "messages_controllers"] )
 
@@ -49,32 +44,29 @@ defmodule Mix.Tasks.Procon.Init do
 Procon initialized for your project.
 
 Generated files and directories:
-    priv/#{inspect host_app_main_repo}/migrations/procon_producer_messages: store messages to send to kafka (auto increment index for exactly once processing on consumer side)
-    priv/#{inspect host_app_main_repo}/migrations/procon_consumer_indexes: store topic/partition consumed indexes (for exactly once processing)
-    priv/#{inspect host_app_main_repo}/migrations/procon_producer_balancings: store which app/container produces which topic/partition
-    lib/procon/enqueur.ex: a default enqueur with helpers to produce messages
+    #{procon_producer_messages_migration}: store messages to send to kafka (auto increment index for exactly once processing on consumer side)
+    #{procon_consumer_indexes_migration}: store topic/partition consumed indexes (for exactly once processing)
+    #{procon_producer_balancings_migration}: store which app/container produces which topic/partition
     lib/events_serializers: directory where your events serializers will be generated
     lib/messages_controllers: directory where your messages controllers will be generated
 
 To finish setup, add these lines in ./config/config.exs:
       config :procon,
-      service_name: "#{app_name}", # use to build event name "service_name/resource/state"
+      service_name: "#{app_name}", # use to build messages events name "service_name/resource/state"
       default_realtime_topic: "refresh_events",
-      messages_producer: #{app_module}.Procon.MessagesProducer,
-      messages_limit: 1000,
       messages_repository: #{inspect host_app_main_repo}
 
 
-generate serializers for your resources (data your service is master and will generate events):
+generate serializers for your resources (data your service is master of and will generate events):
     mix procon.serializer --resource ResourceName
 
     
 Now you can produce message:
-    Procon.Enqueur.enqueue_message(data, event_status, ResourceNameSerializer)
+    Procon.MessagesEnqueuers.Ecto.enqueue_message(event_data, event_status, event_serializer)
 where:
-    - data: map of your data for your message
+    - event_data: map of your data for your message
     - event_status: :created or :updated or :deleted
-    - ResourceNameSerializer is the serializer you have generated and parameterized
+    - event_serializer: module serializer you have generated and parameterized
 
     
 generate messages controller to consume events from kafka:
@@ -85,9 +77,10 @@ generate messages controller to consume events from kafka:
   end
 
   defp generate_migration(filename, migrations_path, host_app_main_repo, template_function) do
-    unless file_exists?(migrations_path, "*#{filename}_#{filename}.es") do
+    unless file_exists?(migrations_path, "*#{filename}_#{filename}.exs") do
       file = Path.join(migrations_path, "#{timestamp()}_#{filename}.exs")
       create_file file, template_function.([host_app_main_repo: host_app_main_repo])
+      file
     end
   end
 

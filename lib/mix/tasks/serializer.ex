@@ -7,7 +7,7 @@ defmodule Mix.Tasks.Procon.Serializer do
   def run(args) do
     resource = OptionParser.parse(args) |> elem(0) |> Keyword.get(:resource)
     service_name = Application.get_env(:procon, :service_name)
-    app_module = service_name |> Macro.camelize
+    app_module = Mix.Project.config[:app] |> to_string() |> Macro.camelize()
 
     opts = [app_module: app_module, service_name: service_name, resource: resource]
 
