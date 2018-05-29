@@ -22,6 +22,7 @@ defmodule Procon.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:brod, "~> 3.4"},
       {:ecto, "~> 2.1"},
       {:erlkaf, git: "https://github.com/silviucpp/erlkaf.git", branch: :master},
       {:postgrex, ">= 0.0.0"}

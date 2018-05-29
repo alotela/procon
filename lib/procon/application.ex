@@ -6,6 +6,7 @@ defmodule Procon.Application do
   use Application
 
   def start(_type, _args) do
+    Procon.KafkaMetadata.cache_kafka_metadata()
     # List all child processes to be supervised
     children = [
       # Starts a worker by calling: Procon.Worker.start_link(arg)
@@ -15,7 +16,6 @@ defmodule Procon.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Procon.Supervisor]
-    :ok = start_erl_kaf()
     Supervisor.start_link(children, opts)
   end
 
@@ -35,4 +35,5 @@ defmodule Procon.Application do
     IO.inspect message
     :ok
   end
+
 end

@@ -1,8 +1,8 @@
-defmodule Mix.Tasks.Procon.CreateTables do
+defmodule Mix.Tasks.Procon.Init do
   use Mix.Task
   import Mix.Generator
 
-  @shortdoc "Create migration files for Ecto"
+  @shortdoc "Initialize Procon in your project"
 
   def run(_args) do
     app_name = Mix.Project.config[:app] |> to_string
@@ -42,25 +42,45 @@ defmodule Mix.Tasks.Procon.CreateTables do
       |> Path.join("enqueur.ex")
       |> create_file(procon_enqueur_template([app_module: app_module, app_name: app_name, repo: host_app_main_repo]))
     end
-    create_directory(Path.join ["lib", "message_serializers"] )
-    create_directory(Path.join ["lib", "message_controllers"] )
+    create_directory(Path.join ["lib", "events_serializers"] )
+    create_directory(Path.join ["lib", "messages_controllers"] )
 
-    msg = "
-Procon tables created.
+    msg = """
+Procon initialized for your project.
 
-All files generated. To finish setup, add this line to your config file:
-    config :procon, producer: [handler: #{app_module}.Procon.Enqueur, frequency: 100, number_of_messages: 1000]
-    config :procon, repository: #{inspect host_app_main_repo}
+Generated files and directories:
+    priv/#{inspect host_app_main_repo}/migrations/procon_producer_messages: store messages to send to kafka (auto increment index for exactly once processing on consumer side)
+    priv/#{inspect host_app_main_repo}/migrations/procon_consumer_indexes: store topic/partition consumed indexes (for exactly once processing)
+    priv/#{inspect host_app_main_repo}/migrations/procon_producer_balancings: store which app/container produces which topic/partition
+    lib/procon/enqueur.ex: a default enqueur with helpers to produce messages
+    lib/events_serializers: directory where your events serializers will be generated
+    lib/messages_controllers: directory where your messages controllers will be generated
 
-lib/procon/enqueur.ex is a default message enqueur generated for you (YOU NEED TO PARAMETER THIS!!!!! DON'T FORGET TO LOOK AT IT!)
-generate serializers for your ecto schema:
-    mix procon.serializer --schema MyAppEctoSchema
-and produce messages!
+To finish setup, add these lines in ./config/config.exs:
+      config :procon,
+      service_name: "#{app_name}", # use to build event name "service_name/resource/state"
+      default_realtime_topic: "refresh_events",
+      messages_producer: #{app_module}.Procon.MessagesProducer,
+      messages_limit: 1000,
+      messages_repository: #{inspect host_app_main_repo}
 
+
+generate serializers for your resources (data your service is master and will generate events):
+    mix procon.serializer --resource ResourceName
+
+    
+Now you can produce message:
+    Procon.Enqueur.enqueue_message(data, event_status, ResourceNameSerializer)
+where:
+    - data: map of your data for your message
+    - event_status: :created or :updated or :deleted
+    - ResourceNameSerializer is the serializer you have generated and parameterized
+
+    
 generate messages controller to consume events from kafka:
-    mix procon.controller --schema MyEctoSchemaForAnEvent
+    mix procon.controller --resource ResourceName
 
-"
+"""
     Mix.shell.info [msg]
   end
 
@@ -125,13 +145,9 @@ generate messages controller to consume events from kafka:
 
   embed_template :procon_enqueur, """
   defmodule <%= @app_module %>.Procon.Enqueur do
-    @application :<%= @app_name %> #should be your app name
-    @producer_name "<%= @app_name %>" #'from' field in messages
-    @realtime_topic "" #don't leave this blank!
-    @messages_topic "" #don't leave this blank!
-    @datastore <%= inspect @repo %> #store module for messages
-    @serializers <%= @app_module %>.MessageSerializers #your serializers module "namespace"
-    use Procon.MessagesEnqueuers.Ecto
+    # this module is just an 'alias' to the real module
+    # here we use Ecto, but you can use any other compatible strategy
+    import Procon.MessagesEnqueuers.Ecto
   end
 
   """
