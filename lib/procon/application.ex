@@ -18,22 +18,4 @@ defmodule Procon.Application do
     opts = [strategy: :one_for_one, name: Procon.Supervisor]
     Supervisor.start_link(children, opts)
   end
-
-  def start_erl_kaf() do
-    producer_config = [
-      {:bootstrap_servers, "localhost:9092"},
-      {:delivery_report_only_error, false},
-      {:delivery_report_callback, &delivery_report/2}
-    ]
-
-    :erlkaf.create_producer(:client_producer, producer_config)
-    :erlkaf.produce(:client_producer, "refresh_events", "azer", "coucou")
-  end
-
-  def delivery_report(delivery_status, message) do
-    IO.inspect delivery_status
-    IO.inspect message
-    :ok
-  end
-
 end
