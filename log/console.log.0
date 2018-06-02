@@ -1,0 +1,132 @@
+2018-06-01 08:53:16.082 [error] <0.180.0> Supervisor 'Elixir.Logger.Supervisor' had child 'Elixir.Logger.ErrorHandler' started with 'Elixir.Logger.Watcher':start_link({error_logger,'Elixir.Logger.ErrorHandler',{true,false,500}}) at <0.185.0> exit with reason normal in context child_terminated
+2018-06-01 08:53:16.115 [info] <0.33.0> Application lager started on node nonode@nohost
+2018-06-01 08:53:16.118 [info] <0.33.0> Application jsone started on node nonode@nohost
+2018-06-01 08:53:16.121 [info] <0.33.0> Application feta started on node nonode@nohost
+2018-06-01 08:53:16.121 [info] <0.33.0> Application datum started on node nonode@nohost
+2018-06-01 08:53:16.126 [info] <0.33.0> Application pipe started on node nonode@nohost
+2018-06-01 08:53:16.128 [info] <0.33.0> Application esq started on node nonode@nohost
+2018-06-01 08:53:16.150 [info] <0.33.0> Application erlkaf started on node nonode@nohost
+2018-06-01 08:53:16.242 [info] <0.273.0> client brod_client_1 connected to localhost:9092
+2018-06-01 08:53:16.331 [info] <0.33.0> Application procon started on node nonode@nohost
+2018-06-01 08:54:05.970 [error] <0.180.0> Supervisor 'Elixir.Logger.Supervisor' had child 'Elixir.Logger.ErrorHandler' started with 'Elixir.Logger.Watcher':start_link({error_logger,'Elixir.Logger.ErrorHandler',{true,false,500}}) at <0.185.0> exit with reason normal in context child_terminated
+2018-06-01 08:54:06.006 [info] <0.33.0> Application lager started on node nonode@nohost
+2018-06-01 08:54:06.009 [info] <0.33.0> Application jsone started on node nonode@nohost
+2018-06-01 08:54:06.012 [info] <0.33.0> Application feta started on node nonode@nohost
+2018-06-01 08:54:06.013 [info] <0.33.0> Application datum started on node nonode@nohost
+2018-06-01 08:54:06.017 [info] <0.33.0> Application pipe started on node nonode@nohost
+2018-06-01 08:54:06.019 [info] <0.33.0> Application esq started on node nonode@nohost
+2018-06-01 08:54:06.030 [info] <0.33.0> Application erlkaf started on node nonode@nohost
+2018-06-01 08:54:06.113 [info] <0.273.0> client brod_client_1 connected to localhost:9092
+2018-06-01 08:54:06.218 [info] <0.33.0> Application procon started on node nonode@nohost
+2018-06-01 08:57:15.907 [error] <0.180.0> Supervisor 'Elixir.Logger.Supervisor' had child 'Elixir.Logger.ErrorHandler' started with 'Elixir.Logger.Watcher':start_link({error_logger,'Elixir.Logger.ErrorHandler',{true,false,500}}) at <0.185.0> exit with reason normal in context child_terminated
+2018-06-01 08:57:15.952 [info] <0.33.0> Application lager started on node nonode@nohost
+2018-06-01 08:57:15.956 [info] <0.33.0> Application jsone started on node nonode@nohost
+2018-06-01 08:57:15.958 [info] <0.33.0> Application feta started on node nonode@nohost
+2018-06-01 08:57:15.959 [info] <0.33.0> Application datum started on node nonode@nohost
+2018-06-01 08:57:15.962 [info] <0.33.0> Application pipe started on node nonode@nohost
+2018-06-01 08:57:15.964 [info] <0.33.0> Application esq started on node nonode@nohost
+2018-06-01 08:57:15.976 [info] <0.33.0> Application erlkaf started on node nonode@nohost
+2018-06-01 08:57:16.057 [info] <0.273.0> client brod_client_1 connected to localhost:9092
+2018-06-01 08:57:16.160 [info] <0.33.0> Application procon started on node nonode@nohost
+2018-06-01 09:21:14.447 [info] <0.273.0> client brod_client_1 metadata socket down localhost:9092
+Reason:{shutdown,tcp_closed}
+2018-06-01 09:21:14.701 [info] <0.273.0> client brod_client_1: payload socket down localhost:9092
+reason:{shutdown,tcp_closed}
+2018-06-01 09:28:06.052 [error] <0.180.0> Supervisor 'Elixir.Logger.Supervisor' had child 'Elixir.Logger.ErrorHandler' started with 'Elixir.Logger.Watcher':start_link({error_logger,'Elixir.Logger.ErrorHandler',{true,false,500}}) at <0.185.0> exit with reason normal in context child_terminated
+2018-06-01 09:28:06.088 [info] <0.33.0> Application lager started on node nonode@nohost
+2018-06-01 09:28:06.091 [info] <0.33.0> Application jsone started on node nonode@nohost
+2018-06-01 09:28:06.094 [info] <0.33.0> Application feta started on node nonode@nohost
+2018-06-01 09:28:06.095 [info] <0.33.0> Application datum started on node nonode@nohost
+2018-06-01 09:28:06.099 [info] <0.33.0> Application pipe started on node nonode@nohost
+2018-06-01 09:28:06.100 [info] <0.33.0> Application esq started on node nonode@nohost
+2018-06-01 09:28:06.112 [info] <0.33.0> Application erlkaf started on node nonode@nohost
+2018-06-01 09:28:06.215 [info] <0.273.0> client brod_client_1 connected to localhost:9092
+2018-06-01 09:28:06.338 [info] <0.33.0> Application procon started on node nonode@nohost
+2018-06-01 09:31:44.583 [error] <0.180.0> Supervisor 'Elixir.Logger.Supervisor' had child 'Elixir.Logger.ErrorHandler' started with 'Elixir.Logger.Watcher':start_link({error_logger,'Elixir.Logger.ErrorHandler',{true,false,500}}) at <0.185.0> exit with reason normal in context child_terminated
+2018-06-01 09:31:44.623 [info] <0.33.0> Application lager started on node nonode@nohost
+2018-06-01 09:31:44.626 [info] <0.33.0> Application jsone started on node nonode@nohost
+2018-06-01 09:31:44.629 [info] <0.33.0> Application feta started on node nonode@nohost
+2018-06-01 09:31:44.629 [info] <0.33.0> Application datum started on node nonode@nohost
+2018-06-01 09:31:44.633 [info] <0.33.0> Application pipe started on node nonode@nohost
+2018-06-01 09:31:44.634 [info] <0.33.0> Application esq started on node nonode@nohost
+2018-06-01 09:31:44.647 [info] <0.33.0> Application erlkaf started on node nonode@nohost
+2018-06-01 09:31:44.737 [info] <0.273.0> client brod_client_1 connected to localhost:9092
+2018-06-01 09:31:44.852 [info] <0.33.0> Application procon started on node nonode@nohost
+2018-06-01 09:41:44.775 [info] <0.273.0> client brod_client_1 metadata socket down localhost:9092
+Reason:{shutdown,tcp_closed}
+2018-06-01 09:41:44.997 [info] <0.273.0> client brod_client_1: payload socket down localhost:9092
+reason:{shutdown,tcp_closed}
+2018-06-01 10:10:40.049 [error] <0.180.0> Supervisor 'Elixir.Logger.Supervisor' had child 'Elixir.Logger.ErrorHandler' started with 'Elixir.Logger.Watcher':start_link({error_logger,'Elixir.Logger.ErrorHandler',{true,false,500}}) at <0.185.0> exit with reason normal in context child_terminated
+2018-06-01 10:10:40.082 [info] <0.33.0> Application lager started on node nonode@nohost
+2018-06-01 10:10:40.085 [info] <0.33.0> Application jsone started on node nonode@nohost
+2018-06-01 10:10:40.087 [info] <0.33.0> Application feta started on node nonode@nohost
+2018-06-01 10:10:40.088 [info] <0.33.0> Application datum started on node nonode@nohost
+2018-06-01 10:10:40.092 [info] <0.33.0> Application pipe started on node nonode@nohost
+2018-06-01 10:10:40.093 [info] <0.33.0> Application esq started on node nonode@nohost
+2018-06-01 10:10:40.112 [info] <0.33.0> Application erlkaf started on node nonode@nohost
+2018-06-01 10:10:40.191 [info] <0.273.0> client brod_client_1 connected to localhost:9092
+2018-06-01 10:10:40.313 [info] <0.33.0> Application procon started on node nonode@nohost
+2018-06-01 10:13:26.909 [error] <0.180.0> Supervisor 'Elixir.Logger.Supervisor' had child 'Elixir.Logger.ErrorHandler' started with 'Elixir.Logger.Watcher':start_link({error_logger,'Elixir.Logger.ErrorHandler',{true,false,500}}) at <0.185.0> exit with reason normal in context child_terminated
+2018-06-01 10:13:26.951 [info] <0.33.0> Application lager started on node nonode@nohost
+2018-06-01 10:13:26.955 [info] <0.33.0> Application jsone started on node nonode@nohost
+2018-06-01 10:13:26.958 [info] <0.33.0> Application feta started on node nonode@nohost
+2018-06-01 10:13:26.959 [info] <0.33.0> Application datum started on node nonode@nohost
+2018-06-01 10:13:26.964 [info] <0.33.0> Application pipe started on node nonode@nohost
+2018-06-01 10:13:26.965 [info] <0.33.0> Application esq started on node nonode@nohost
+2018-06-01 10:13:26.980 [info] <0.33.0> Application erlkaf started on node nonode@nohost
+2018-06-01 10:13:27.066 [info] <0.273.0> client brod_client_1 connected to localhost:9092
+2018-06-01 10:13:27.174 [info] <0.33.0> Application procon started on node nonode@nohost
+2018-06-01 10:14:02.887 [error] <0.180.0> Supervisor 'Elixir.Logger.Supervisor' had child 'Elixir.Logger.ErrorHandler' started with 'Elixir.Logger.Watcher':start_link({error_logger,'Elixir.Logger.ErrorHandler',{true,false,500}}) at <0.185.0> exit with reason normal in context child_terminated
+2018-06-01 10:14:02.927 [info] <0.33.0> Application lager started on node nonode@nohost
+2018-06-01 10:14:02.931 [info] <0.33.0> Application jsone started on node nonode@nohost
+2018-06-01 10:14:02.934 [info] <0.33.0> Application feta started on node nonode@nohost
+2018-06-01 10:14:02.935 [info] <0.33.0> Application datum started on node nonode@nohost
+2018-06-01 10:14:02.939 [info] <0.33.0> Application pipe started on node nonode@nohost
+2018-06-01 10:14:02.941 [info] <0.33.0> Application esq started on node nonode@nohost
+2018-06-01 10:14:02.954 [info] <0.33.0> Application erlkaf started on node nonode@nohost
+2018-06-01 10:14:03.039 [info] <0.273.0> client brod_client_1 connected to localhost:9092
+2018-06-01 10:14:03.145 [info] <0.33.0> Application procon started on node nonode@nohost
+2018-06-01 10:14:50.689 [error] <0.180.0> Supervisor 'Elixir.Logger.Supervisor' had child 'Elixir.Logger.ErrorHandler' started with 'Elixir.Logger.Watcher':start_link({error_logger,'Elixir.Logger.ErrorHandler',{true,false,500}}) at <0.185.0> exit with reason normal in context child_terminated
+2018-06-01 10:14:50.725 [info] <0.33.0> Application lager started on node nonode@nohost
+2018-06-01 10:14:50.728 [info] <0.33.0> Application jsone started on node nonode@nohost
+2018-06-01 10:14:50.731 [info] <0.33.0> Application feta started on node nonode@nohost
+2018-06-01 10:14:50.732 [info] <0.33.0> Application datum started on node nonode@nohost
+2018-06-01 10:14:50.736 [info] <0.33.0> Application pipe started on node nonode@nohost
+2018-06-01 10:14:50.738 [info] <0.33.0> Application esq started on node nonode@nohost
+2018-06-01 10:14:50.751 [info] <0.33.0> Application erlkaf started on node nonode@nohost
+2018-06-01 10:14:50.845 [info] <0.273.0> client brod_client_1 connected to localhost:9092
+2018-06-01 10:14:50.964 [info] <0.33.0> Application procon started on node nonode@nohost
+2018-06-01 10:15:49.589 [error] <0.180.0> Supervisor 'Elixir.Logger.Supervisor' had child 'Elixir.Logger.ErrorHandler' started with 'Elixir.Logger.Watcher':start_link({error_logger,'Elixir.Logger.ErrorHandler',{true,false,500}}) at <0.185.0> exit with reason normal in context child_terminated
+2018-06-01 10:15:49.631 [info] <0.33.0> Application lager started on node nonode@nohost
+2018-06-01 10:15:49.635 [info] <0.33.0> Application jsone started on node nonode@nohost
+2018-06-01 10:15:49.637 [info] <0.33.0> Application feta started on node nonode@nohost
+2018-06-01 10:15:49.638 [info] <0.33.0> Application datum started on node nonode@nohost
+2018-06-01 10:15:49.642 [info] <0.33.0> Application pipe started on node nonode@nohost
+2018-06-01 10:15:49.644 [info] <0.33.0> Application esq started on node nonode@nohost
+2018-06-01 10:15:49.657 [info] <0.33.0> Application erlkaf started on node nonode@nohost
+2018-06-01 10:15:49.754 [info] <0.273.0> client brod_client_1 connected to localhost:9092
+2018-06-01 10:15:49.868 [info] <0.33.0> Application procon started on node nonode@nohost
+2018-06-01 10:16:18.402 [error] <0.180.0> Supervisor 'Elixir.Logger.Supervisor' had child 'Elixir.Logger.ErrorHandler' started with 'Elixir.Logger.Watcher':start_link({error_logger,'Elixir.Logger.ErrorHandler',{true,false,500}}) at <0.185.0> exit with reason normal in context child_terminated
+2018-06-01 10:16:18.447 [info] <0.33.0> Application lager started on node nonode@nohost
+2018-06-01 10:16:18.450 [info] <0.33.0> Application jsone started on node nonode@nohost
+2018-06-01 10:16:18.452 [info] <0.33.0> Application feta started on node nonode@nohost
+2018-06-01 10:16:18.453 [info] <0.33.0> Application datum started on node nonode@nohost
+2018-06-01 10:16:18.457 [info] <0.33.0> Application pipe started on node nonode@nohost
+2018-06-01 10:16:18.458 [info] <0.33.0> Application esq started on node nonode@nohost
+2018-06-01 10:16:18.471 [info] <0.33.0> Application erlkaf started on node nonode@nohost
+2018-06-01 10:16:18.557 [info] <0.273.0> client brod_client_1 connected to localhost:9092
+2018-06-01 10:16:18.678 [info] <0.33.0> Application procon started on node nonode@nohost
+2018-06-01 10:16:48.093 [error] <0.180.0> Supervisor 'Elixir.Logger.Supervisor' had child 'Elixir.Logger.ErrorHandler' started with 'Elixir.Logger.Watcher':start_link({error_logger,'Elixir.Logger.ErrorHandler',{true,false,500}}) at <0.185.0> exit with reason normal in context child_terminated
+2018-06-01 10:16:48.133 [info] <0.33.0> Application lager started on node nonode@nohost
+2018-06-01 10:16:48.137 [info] <0.33.0> Application jsone started on node nonode@nohost
+2018-06-01 10:16:48.140 [info] <0.33.0> Application feta started on node nonode@nohost
+2018-06-01 10:16:48.141 [info] <0.33.0> Application datum started on node nonode@nohost
+2018-06-01 10:16:48.145 [info] <0.33.0> Application pipe started on node nonode@nohost
+2018-06-01 10:16:48.146 [info] <0.33.0> Application esq started on node nonode@nohost
+2018-06-01 10:16:48.160 [info] <0.33.0> Application erlkaf started on node nonode@nohost
+2018-06-01 10:16:48.252 [info] <0.273.0> client brod_client_1 connected to localhost:9092
+2018-06-01 10:16:48.365 [info] <0.33.0> Application procon started on node nonode@nohost
+2018-06-01 10:26:48.359 [info] <0.273.0> client brod_client_1 metadata socket down localhost:9092
+Reason:{shutdown,tcp_closed}
+2018-06-01 10:26:48.437 [info] <0.273.0> client brod_client_1: payload socket down localhost:9092
+reason:{shutdown,tcp_closed}

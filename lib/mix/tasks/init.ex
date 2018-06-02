@@ -54,7 +54,8 @@ To finish setup, add these lines in ./config/config.exs:
       config :procon,
       service_name: "#{app_name}", # use to build messages events name "service_name/resource/state"
       default_realtime_topic: "refresh_events",
-      messages_repository: #{inspect host_app_main_repo}
+      messages_repository: #{inspect host_app_main_repo},
+      nb_simultaneous_messages_to_send: 1000
 
 
 generate serializers for your resources (data your service is master of and will generate events):
