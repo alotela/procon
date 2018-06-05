@@ -54,16 +54,20 @@ defmodule Procon.KafkaMetadata do
     :ets.lookup_element(:procon, :kafka_topics, 2)
   end
 
+  def partition_ids_for_topic(topic) do
+    kafka_topics_metadata() |> Map.get(topic)
+  end
+
   @spec nb_partitions_for_topic(String.t) :: integer
   def nb_partitions_for_topic(topic) do
-    kafka_topics_metadata |> Map.get(topic)
+    kafka_topics_metadata() |> Map.get(topic) |> Enum.count()
   end
 
   @doc """
-  returns a map with topics names anb number of partitions
+  returns a map with topics names anb parittions id
   %{
-    "topic0" => 3,
-    "topic1" => 2",
+    "topic0" => [0, 1, 2],
+    "topic1" => [0, 1],
     ...
   }
   """
@@ -77,7 +81,14 @@ defmodule Procon.KafkaMetadata do
     Map.put(
       topics_acc,
       List.keyfind(topic_metadata, :topic, 0) |> elem(1),
-      List.keyfind(topic_metadata, :partition_metadata, 0) |> elem(1) |> Enum.count
+      List.keyfind(topic_metadata, :partition_metadata, 0)
+      |> elem(1)
+      |> Enum.reduce(
+        [],
+        fn(partition_meta, partition_ids) ->
+          [ partition_meta |> List.keyfind(:partition_id, 0) |> elem(1) | partition_ids ]
+        end
+      )
     )
   end
 end

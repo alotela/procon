@@ -13,66 +13,71 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
     )
   end
 
-  def start_production(producer_name) do
-    GenServer.cast(via(producer_name), {:start_production})
+  def start_partition_production(topic, partition, nb_messages \\ 1000) do
+    producer_name = "#{topic}_#{partition}"
+    DynamicSupervisor.start_child(
+      Procon.MessagesProducers.ProducersSupervisor, 
+      {
+        __MODULE__,
+        initial_state: %{nb_messages: nb_messages, topic: topic, partition: partition},
+        producer_name: producer_name
+      }
+    )
+    GenServer.cast(via(producer_name), {:start_partition_production})
   end
 
   def init(initial_state) do
-    brod_producer_name = :"brod_producer_#{initial_state.topic}_#{initial_state.partition}"
-    brod_producer = :brod.start_producer(brod_producer_name, initial_state.topic, [])
+    :ok = :brod.start_producer(:brod_client_1, initial_state.topic, [])
     new_initial_state = Map.merge(
       initial_state,
       %{
-          brod_producer: brod_producer,
-          brod_producer_name: brod_producer_name,
+          brod_client: :brod_client_1,
           producing: false,
-          nb_messages: Map.get(initial_state, :nb_messages) || Application.get_env(:procon, :nb_simultaneous_messages_to_send)
       }
     )
     {:ok, new_initial_state}
   end
 
-  def handle_cast({:start_production}, state) do
-    case Map.get(state, :producing) do
-      true -> nil 
-      _ ->
-        IO.inspect("handle cast start_production")
-        GenServer.cast(self(), :produce_next_messages)
-        IO.inspect("handle cast start_production > after process send")
-        {:noreply, %{state | producing: true}}
+  def handle_info(:produce, state) do
+    case produce_next_messages(state) do
+      {:no_more_messages} -> {:noreply, %{state | :producing => false}}
+      {:ok, _message_index} ->
+        send(self(), :produce)
+        {:noreply, state}
+      _error -> 
+        {:noreply, %{state | :producing => false}}
     end
+  end
+
+  def start_next_production(state) do
+    case Map.get(state, :producing) do
+      true -> 
+        :already_producing
+      _ ->
+        send(self(), :produce)
+        :start_producing
+    end
+  end
+
+  def handle_cast({:start_partition_production}, state) do
+    case start_next_production(state) do
+      :already_producing -> {:noreply, state}
+      :start_producing -> {:noreply, %{state | :producing => true}}
+    end  
   end
 
   def produce_next_messages(state) do
     case Procon.MessagesProducers.Ecto.next_messages_to_send(state.topic, state.partition, state.nb_messages) do
       [] -> {:no_more_messages}
       messages ->
-        with :ok <- :brod.produce_sync(state.brod_producer, state.topic, state.partition, "", messages),
-             :ok <- (fn(messages) -> IO.inspect(messages) end).(messages),
-             {} <- Procon.MessagesProducers.Ecto.delete_messages(Enum.map(messages, &(&1.id)))
+        with :ok <- :brod.produce_sync(state.brod_client, state.topic, state.partition, "", Enum.map(messages, &({"z", &1.blob}))),
+             {:ok, :next} <- Procon.MessagesProducers.Ecto.delete_rows(Enum.map(messages, &(&1.id)))
         do
-          {:ok, messages |> List.head |> elem(0)}
+          {:ok, messages |> Enum.reverse |> hd() |> Map.get(:id)}
         else
-          {:error, error} ->
-            IO.inspect("error while producing messages. Stop")
-            {:error, error}
+          {:error, error} -> {:error, error}
           _ -> {:error}
         end
-    end
-  end
-
-  def handle_cast({:produce_next_messages}, state) do
-    IO.inspect(">2 handle_info produce_next_message #{state.producing} == true")
-    case produce_next_messages(state) do
-      {:no_more_messages} -> {:noreply, %{state | producing: false}}
-      {:ok, message_index} -> 
-        IO.inspect("handle_info pnm 2.1 #{message_index}")
-        Process.send(self(), :produce_next_messages)
-        IO.inspect("fin handle_info pnm 2.2 >1 #{message_index}")
-        {:noreply, state}
-      _ -> 
-        IO.inspect("handle info pnm 3 _")
-        {:noreply, state}
     end
   end
 end

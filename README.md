@@ -20,6 +20,8 @@ mix procon.init
 
 All information will be written in the console to use the lib.
 
+and add this line ```Procon.MessagesProducers.ProducersStarter.start_topics_production_from_database_messages()``` in the ```start()``` function of the main application.
+
 ## TODO
 
 improve this readme
