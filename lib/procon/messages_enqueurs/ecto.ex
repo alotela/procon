@@ -74,6 +74,5 @@ defmodule Procon.MessagesEnqueuers.Ecto do
       partition: partition, 
       blob: blob
     })
-    Procon.MessagesProducers.ProducersStarter.start_topic_production(topic)
   end
 end
