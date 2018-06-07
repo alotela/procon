@@ -70,8 +70,16 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
     case Procon.MessagesProducers.Ecto.next_messages_to_send(state.topic, state.partition, state.nb_messages) do
       [] -> {:no_more_messages}
       messages ->
-        with :ok <- :brod.produce_sync(state.brod_client, state.topic, state.partition, "", Enum.map(messages, &({"z", &1.blob}))),
-             {:ok, :next} <- Procon.MessagesProducers.Ecto.delete_rows(Enum.map(messages, &(&1.id)))
+          with :ok <- :brod.produce_sync(
+            state.brod_client,
+            state.topic,
+            state.partition,
+            "",
+            Procon.Parallel.pmap(
+              messages,
+              fn(message) -> {"", String.replace(message.blob, "\"index\":1,\"event\":", "\"index\":#{message.id},\"event\":")} end)
+          )
+          {:ok, :next} <- Procon.MessagesProducers.Ecto.delete_rows(Enum.map(messages, &(&1.id)))
         do
           {:ok, messages |> Enum.reverse |> hd() |> Map.get(:id)}
         else

@@ -4,7 +4,12 @@ defmodule Procon.MessagesEnqueuers.Ecto do
   def build_message(message_body, message_event, message_metadata) do
     message = %{
       body: message_body,
-      event: message_event
+      event: message_event,
+      # this is a fake index replaced by
+      # real index when we put messages in kafka
+      # since it is autoincremented by the datastore
+      # when we store the message in database
+      index: 1
     }
 
     case message_metadata do

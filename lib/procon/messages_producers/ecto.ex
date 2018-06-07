@@ -31,4 +31,18 @@ defmodule Procon.MessagesProducers.Ecto do
 
   end
 
+  def generate_records() do
+    records = for n <- 1..10000 do
+      %{
+        topic: "refresh_events",
+        partition: 0,
+        blob: "coucou#{n}",
+        inserted_at: DateTime.utc_now(),
+        updated_at: DateTime.utc_now()
+      }
+    end
+
+    Application.get_env(:procon, :messages_repository).insert_all(Procon.Models.Ecto.ProconProducerMessage, records)
+  end
+
 end
