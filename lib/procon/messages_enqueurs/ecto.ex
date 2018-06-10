@@ -1,4 +1,5 @@
 defmodule Procon.MessagesEnqueuers.Ecto do
+  alias Procon.Schemas.Ecto.ProconProducerMessage
   use Bitwise
 
   def build_message(message_body, message_event, message_metadata) do
@@ -74,7 +75,7 @@ defmodule Procon.MessagesEnqueuers.Ecto do
   def enqueue(blob, partition, topic) do
     Application
     .get_env(:procon, :messages_repository)
-    .insert(%Procon.Models.Ecto.ProconProducerMessage{
+    .insert(%ProconProducerMessage{
       topic: topic, 
       partition: partition, 
       blob: blob

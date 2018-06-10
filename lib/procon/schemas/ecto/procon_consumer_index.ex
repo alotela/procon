@@ -1,15 +1,16 @@
-defmodule Procon.Models.Ecto.ProconProducerMessage do
+defmodule Procon.Schemas.Ecto.ProconConsumerIndex do
   use Ecto.Schema
 
   import Ecto.Changeset
 
   @type t :: %__MODULE__{}
 
-  @accepted_params ~w(blob partition topic)a
-  @required_params ~w(blob partition topic)a
+  @accepted_params ~w(from message_id partition topic)a
+  @required_params ~w(from message_id partition topic)a
 
-  schema "procon_producer_messages" do
-    field :blob, :string
+  schema "procon_consumer_indexes" do
+    field :from, :string
+    field :message_id, :integer
     field :partition, :integer
     field :topic, :string
     timestamps

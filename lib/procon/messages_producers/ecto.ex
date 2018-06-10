@@ -1,5 +1,5 @@
 defmodule Procon.MessagesProducers.Ecto do
-  alias Procon.Models.Ecto.ProconProducerMessage, as: ProducerMessage
+  alias Procon.Schemas.Ecto.ProconProducerMessage
   require Logger
   import Ecto.Query
 
@@ -7,7 +7,7 @@ defmodule Procon.MessagesProducers.Ecto do
   def next_messages_to_send(topic, partition, number_of_messages) do
     try do
       Application.get_env(:procon, :messages_repository)
-        .all(from pm in ProducerMessage, 
+        .all(from pm in ProconProducerMessage, 
              where: pm.topic == ^topic 
                     and pm.partition == ^partition,
              limit: ^number_of_messages,
@@ -23,7 +23,7 @@ defmodule Procon.MessagesProducers.Ecto do
   end
 
   def delete_rows(ids) do
-    q = from pm in ProducerMessage, where: pm.id in ^ids
+    q = from pm in ProconProducerMessage, where: pm.id in ^ids
     case Application.get_env(:procon, :messages_repository).delete_all(q) do
       {_, nil} -> {:ok, :next}
       {:error, error} -> {:stop, error}
@@ -41,8 +41,9 @@ defmodule Procon.MessagesProducers.Ecto do
         updated_at: DateTime.utc_now()
       }
     end
-
-    Application.get_env(:procon, :messages_repository).insert_all(Procon.Models.Ecto.ProconProducerMessage, records)
+IO.inspect(DateTime.utc_now, label: "list")
+    Application.get_env(:procon, :messages_repository).insert_all(ProconProducerMessage, records)
+    IO.inspect(DateTime.utc_now, label: "end")
   end
 
 end
