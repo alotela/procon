@@ -78,7 +78,7 @@ generate messages controller to consume events from kafka:
   end
 
   defp generate_migration(filename, migrations_path, host_app_main_repo, template_function) do
-    unless file_exists?(migrations_path, "*#{filename}_#{filename}.exs") do
+    unless file_exists?(migrations_path, "*_#{filename}.exs") do
       file = Path.join(migrations_path, "#{timestamp()}_#{filename}.exs")
       create_file file, template_function.([host_app_main_repo: host_app_main_repo])
       file
