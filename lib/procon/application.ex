@@ -8,7 +8,11 @@ defmodule Procon.Application do
   def start(_type, _args) do
     Procon.KafkaMetadata.cache_kafka_metadata()
     # List all child processes to be supervised
-    :brod.start_client([localhost: 9092], :brod_client_1, [reconnect_cool_down_seconds: 10])
+    :brod.start_client(
+      Application.get_env(:procon, :brokers),
+      Application.get_env(:procon, :broker_client_name),
+      Application.get_env(:procon, :brod_client_config)
+    )
     
     children = [
       {Registry, keys: :unique, name: Procon.ProducersRegistry},
@@ -20,5 +24,10 @@ defmodule Procon.Application do
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Procon.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  def after_start() do
+    Procon.MessagesProducers.ProducersStarter.start_topics_production_from_database_messages()
+    Procon.MessagesControllers.ConsumersStarter.start()
   end
 end

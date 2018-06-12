@@ -27,11 +27,11 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
   end
 
   def init(initial_state) do
-    :ok = :brod.start_producer(:brod_client_1, initial_state.topic, [])
+    :ok = :brod.start_producer(Application.get_env(:procon, :broker_client_name), initial_state.topic, [])
     new_initial_state = Map.merge(
       initial_state,
       %{
-          brod_client: :brod_client_1,
+          brod_client: Application.get_env(:procon, :broker_client_name),
           producing: false,
       }
     )
@@ -78,7 +78,7 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
             Procon.Parallel.pmap(
               messages,
               fn(message) -> {"", String.replace(message.blob, "\"index\":1,\"event\":", "\"index\":#{message.id},\"event\":")} end)
-          )
+          ),
           {:ok, :next} <- Procon.MessagesProducers.Ecto.delete_rows(Enum.map(messages, &(&1.id)))
         do
           {:ok, messages |> Enum.reverse |> hd() |> Map.get(:id)}

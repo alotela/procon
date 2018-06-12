@@ -34,6 +34,13 @@ defmodule Mix.Tasks.Procon.Init do
       &procon_producer_balancings_template/1
     )
 
+    procon_producer_indexes_migration = generate_migration(
+      "procon_producer_indexes",
+      migrations_path,
+      host_app_main_repo,
+      &procon_producer_indexes_template/1
+    )
+
     default_enqueur_path = Path.join(["lib", "procon"])
     create_directory(default_enqueur_path)
 
@@ -47,15 +54,23 @@ Generated files and directories:
     #{procon_producer_messages_migration}: store messages to send to kafka (auto increment index for exactly once processing on consumer side)
     #{procon_consumer_indexes_migration}: store topic/partition consumed indexes (for exactly once processing)
     #{procon_producer_balancings_migration}: store which app/container produces which topic/partition
+    #{procon_producer_indexes_migration}: store producers indexes for transactional information
     lib/events_serializers: directory where your events serializers will be generated
     lib/messages_controllers: directory where your messages controllers will be generated
 
 To finish setup, add these lines in ./config/config.exs:
       config :procon,
-      service_name: "#{app_name}", # use to build messages events name "service_name/resource/state"
+      brokers: [localhost: 9092],
+      consumer_group_name: "",
       default_realtime_topic: "refresh_events",
+      broker_client_name: :kafka_client_service,
       messages_repository: #{inspect host_app_main_repo},
-      nb_simultaneous_messages_to_send: 1000
+      nb_simultaneous_messages_to_send: 1000,
+      offset_commit_interval_seconds: 5,
+      routes: %{
+        "service/resource/created" => {"topic_name", "body_version", Module, :function}
+      },
+      service_name: "#{app_name}", # use to build messages events name "service_name/resource/state"
 
 
 generate serializers for your resources (data your service is master of and will generate events):
@@ -134,6 +149,22 @@ generate messages controller to consume events from kafka:
       create index(:procon_consumer_indexes, [:from])
       create index(:procon_consumer_indexes, [:partition])
       create index(:procon_consumer_indexes, [:topic])
+    end
+  end
+  """
+
+  embed_template :procon_producer_indexes, """
+  defmodule <%= inspect @host_app_main_repo %>.Migrations.ProconProducerIndexes do
+    use Ecto.Migration
+
+    def change do
+      create table(:procon_producer_indexes) do
+        add :last_index, :int8, null: false
+        add :partition, :integer, null: false
+        add :topic, :string, null: false
+      end
+      create index(:procon_producer_indexes, [:partition])
+      create index(:procon_producer_indexes, [:topic])
     end
   end
   """
