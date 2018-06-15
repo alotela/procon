@@ -2,12 +2,20 @@
 
 A high level elixir library to produce and consume kafka messages with transactionnal mechanisms
 
-## Installation
+
+## Getting started
+
+### Prerequisites
+
+You need version 1.6.5 or later of elixir.
+
+
+### Installation
 
 ```elixir
 def deps do
   [
-    {:procon, git: "https://github.com/alotela/procon.git"}
+    {:procon, , git: "https://github.com/alotela/procon.git"}
   ]
 end
 ```
