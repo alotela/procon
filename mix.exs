@@ -24,7 +24,6 @@ defmodule Procon.MixProject do
     [
       {:brod, "~> 3.4"},
       {:ecto, "~> 2.1"},
-      {:erlkaf, git: "https://github.com/silviucpp/erlkaf.git", branch: :master},
       {:postgrex, ">= 0.0.0"}
     ]
   end
