@@ -7,7 +7,7 @@ A high level elixir library to produce and consume kafka messages with transacti
 ```elixir
 def deps do
   [
-    {:procon, , git: "https://github.com/alotela/procon.git"}
+    {:procon, git: "https://github.com/alotela/procon.git"}
   ]
 end
 ```
