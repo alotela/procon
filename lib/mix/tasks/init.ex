@@ -63,6 +63,7 @@ To finish setup, add these lines in ./config/config.exs:
       brokers: [localhost: 9092],
       consumer_group_name: "",
       default_realtime_topic: "refresh_events",
+      brod_client_config: [reconnect_cool_down_seconds: 10],
       broker_client_name: :kafka_client_service,
       messages_repository: #{inspect host_app_main_repo},
       nb_simultaneous_messages_to_send: 1000,
