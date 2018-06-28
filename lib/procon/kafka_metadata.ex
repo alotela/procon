@@ -40,7 +40,7 @@ defmodule Procon.KafkaMetadata do
   """ 
   def cache_kafka_metadata do
     :procon = :ets.new(:procon, [:named_table, :set])
-    {:ok, metadata} = :brod.get_metadata([localhost: 9092])
+    {:ok, metadata} = :brod.get_metadata(Application.get_env(:procon, :brokers))
     true = :ets.insert(
       :procon,
       {
