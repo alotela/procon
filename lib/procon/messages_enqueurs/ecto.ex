@@ -39,7 +39,7 @@ defmodule Procon.MessagesEnqueuers.Ecto do
 
   @spec enqueue_rtevent(map, list) :: {:ok, Ecto.Schema.t} | {:error, Ecto.Changeset.t} | {:error, term}
   def enqueue_rtevent(event_data, options \\ []) do
-    service_name = Application.get_env(:procon, :service_name) || Keyword.get(options, :service_name)
+    service_name = Keyword.get(options, :service_name) || Application.get_env(:procon, :service_name)
     topic = Keyword.get(options, :topic) || Application.get_env(:procon, :default_realtime_topic) 
     message_event = "#{Application.get_env(:procon, :service_name)}/real_time/notify"
     message_metadata = Keyword.get(options, :metadata)
