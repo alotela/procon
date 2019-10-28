@@ -23,7 +23,7 @@ defmodule Procon.MixProject do
   defp deps do
     [
       {:brod, "~> 3.4"},
-      {:ecto, "~> 2.1"},
+      {:ecto, "~> 3.0"},
       {:postgrex, ">= 0.0.0"}
     ]
   end
