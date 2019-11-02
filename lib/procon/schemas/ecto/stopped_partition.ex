@@ -9,11 +9,11 @@ defmodule WokAsyncMessageHandler.Models.StoppedPartition do
   @required_params ~w(topic partition message_id error)a
 
   schema "stopped_partitions" do
-    field :topic, :string
-    field :partition, :integer
-    field :message_id, :integer
-    field :error, :string
-    timestamps
+    field(:topic, :string)
+    field(:partition, :integer)
+    field(:message_id, :integer)
+    field(:error, :string)
+    timestamps()
   end
 
   def create_changeset(record, params \\ :invalid) do

@@ -13,13 +13,15 @@ defmodule Procon.Application do
       Application.get_env(:procon, :broker_client_name),
       Application.get_env(:procon, :brod_client_config)
     )
-    
+
     children = [
       {Registry, keys: :unique, name: Procon.ProducersRegistry},
-      {DynamicSupervisor, name: Procon.MessagesProducers.ProducersSupervisor, strategy: :one_for_one}
+      {DynamicSupervisor,
+       name: Procon.MessagesProducers.ProducersSupervisor, strategy: :one_for_one}
       # Starts a worker by calling: Procon.Worker.start_link(arg)
       # {Procon.Worker, arg},
     ]
+
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Procon.Supervisor]

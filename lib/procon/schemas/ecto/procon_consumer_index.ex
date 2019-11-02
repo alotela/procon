@@ -5,15 +5,14 @@ defmodule Procon.Schemas.Ecto.ProconConsumerIndex do
 
   @type t :: %__MODULE__{}
 
-  @accepted_params ~w(from message_id partition topic)a
-  @required_params ~w(from message_id partition topic)a
+  @accepted_params ~w(message_id partition topic)a
+  @required_params ~w(message_id partition topic)a
 
   schema "procon_consumer_indexes" do
-    field :from, :string
-    field :message_id, :integer
-    field :partition, :integer
-    field :topic, :string
-    timestamps
+    field(:message_id, :integer)
+    field(:partition, :integer)
+    field(:topic, :string)
+    timestamps()
   end
 
   def changeset(record, params \\ :invalid) do

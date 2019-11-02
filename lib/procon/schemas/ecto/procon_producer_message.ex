@@ -9,10 +9,10 @@ defmodule Procon.Schemas.Ecto.ProconProducerMessage do
   @required_params ~w(blob partition topic)a
 
   schema "procon_producer_messages" do
-    field :blob, :string
-    field :partition, :integer
-    field :topic, :string
-    timestamps
+    field(:blob, :string)
+    field(:partition, :integer)
+    field(:topic, :string)
+    timestamps()
   end
 
   def changeset(record, params \\ :invalid) do

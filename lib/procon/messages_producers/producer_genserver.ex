@@ -7,81 +7,116 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
     GenServer.start_link(
       __MODULE__,
       Keyword.get(options, :initial_state),
-      [
-        name: via(Keyword.get(options, :producer_name))
-      ]
+      name: via(Keyword.get(options, :producer_name))
     )
+  end
+
+  def enqueue(topic, partition, message) do
+    producer_name = "#{topic}_#{partition}"
+
+    GenServer.cast(via(producer_name), {:enqueue})
   end
 
   def start_partition_production(topic, partition, nb_messages \\ 1000) do
     producer_name = "#{topic}_#{partition}"
+
     DynamicSupervisor.start_child(
-      Procon.MessagesProducers.ProducersSupervisor, 
+      Procon.MessagesProducers.ProducersSupervisor,
       {
         __MODULE__,
         initial_state: %{nb_messages: nb_messages, topic: topic, partition: partition},
         producer_name: producer_name
       }
     )
+
     GenServer.cast(via(producer_name), {:start_partition_production})
   end
 
   def init(initial_state) do
-    :ok = :brod.start_producer(Application.get_env(:procon, :broker_client_name), initial_state.topic, [])
-    new_initial_state = Map.merge(
-      initial_state,
-      %{
+    :ok =
+      :brod.start_producer(
+        Application.get_env(:procon, :broker_client_name),
+        initial_state.topic,
+        []
+      )
+
+    new_initial_state =
+      Map.merge(
+        initial_state,
+        %{
           brod_client: Application.get_env(:procon, :broker_client_name),
-          producing: false,
-      }
-    )
+          messages_queue: :queue.new(),
+          producing: false
+        }
+      )
+
     {:ok, new_initial_state}
   end
 
   def handle_info(:produce, state) do
     case produce_next_messages(state) do
-      {:no_more_messages} -> {:noreply, %{state | :producing => false}}
+      {:no_more_messages} ->
+        {:noreply, %{state | :producing => false}}
+
       {:ok, _message_index} ->
         send(self(), :produce)
         {:noreply, state}
-      _error -> 
+
+      _error ->
         {:noreply, %{state | :producing => false}}
     end
   end
 
   def start_next_production(state) do
     case Map.get(state, :producing) do
-      true -> 
+      true ->
         :already_producing
+
       _ ->
         send(self(), :produce)
         :start_producing
     end
   end
 
+  def handle_call({:enqueue_message, message}, _from, state) do
+    {
+      :reply,
+      :ok,
+      Map.put(state, :messages_queue, :queue.in(message))
+    }
+  end
+
   def handle_cast({:start_partition_production}, state) do
     case start_next_production(state) do
       :already_producing -> {:noreply, state}
       :start_producing -> {:noreply, %{state | :producing => true}}
-    end  
+    end
   end
 
   def produce_next_messages(state) do
-    case Procon.MessagesProducers.Ecto.next_messages_to_send(state.topic, state.partition, state.nb_messages) do
-      [] -> {:no_more_messages}
+    case Procon.MessagesProducers.Ecto.next_messages_to_send(
+           state.topic,
+           state.partition,
+           state.nb_messages
+         ) do
+      [] ->
+        {:no_more_messages}
+
       messages ->
-          with :ok <- :brod.produce_sync(
-            state.brod_client,
-            state.topic,
-            state.partition,
-            "",
-            Procon.Parallel.pmap(
-              messages,
-              fn(message) -> {"", String.replace(message.blob, "\"index\":1,\"event\":", "\"index\":#{message.id},\"event\":")} end)
-          ),
-          {:ok, :next} <- Procon.MessagesProducers.Ecto.delete_rows(Enum.map(messages, &(&1.id)))
-        do
-          {:ok, messages |> Enum.reverse |> hd() |> Map.get(:id)}
+        with :ok <-
+               :brod.produce_sync(
+                 state.brod_client,
+                 state.topic,
+                 state.partition,
+                 "",
+                 Procon.Parallel.pmap(
+                   messages,
+                   fn %{blob: "{" <> blob, id: id} -> {"", "{\"index\":#{id},#{blob}"} end
+                 )
+               ),
+             {:ok, :next} <-
+               Procon.MessagesProducers.Ecto.delete_rows(Enum.map(messages, & &1.id)) do
+          {:ok, messages |> Enum.reverse() |> hd() |> Map.get(:id)}
         else
           {:error, error} -> {:error, error}
           _ -> {:error}

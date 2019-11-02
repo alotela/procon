@@ -5,16 +5,21 @@ defmodule Mix.Tasks.Procon.Serializer do
   @shortdoc "Generate an event serializer template"
 
   def run(args) do
-    resource = OptionParser.parse(args) |> elem(0) |> Keyword.get(:resource)
+    resource =
+      OptionParser.parse(args, strict: [resource: :string]) |> elem(0) |> Keyword.get(:resource)
+
     service_name = Application.get_env(:procon, :service_name)
-    app_module = Mix.Project.config[:app] |> to_string() |> Macro.camelize()
+    app_module = Mix.Project.config()[:app] |> to_string() |> Macro.camelize()
 
     opts = [app_module: app_module, service_name: service_name, resource: resource]
 
-    create_file Path.join(["lib", "events_serializers", resource |> Macro.underscore]) <> ".ex", serializer_template(opts)
+    create_file(
+      Path.join(["lib", "events_serializers", resource |> Macro.underscore()]) <> ".ex",
+      serializer_template(opts)
+    )
   end
 
-  embed_template :serializer, """
+  embed_template(:serializer, """
   defmodule <%= @app_module %>.EventsSerializers.<%= @resource %> do
 
     @doc \"\"\"
@@ -58,5 +63,5 @@ defmodule Mix.Tasks.Procon.Serializer do
       ""
     end
   end
-  """
+  """)
 end

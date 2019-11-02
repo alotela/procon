@@ -22,8 +22,9 @@ defmodule Procon.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:brod, "~> 3.4"},
-      {:ecto, "~> 2.1"},
+      {:brod, "~> 3.9"},
+      {:ecto, "~> 3.0"},
+      {:jason, "~> 1.1"},
       {:postgrex, ">= 0.0.0"}
     ]
   end
