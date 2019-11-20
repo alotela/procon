@@ -11,12 +11,6 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
     )
   end
 
-  def enqueue(topic, partition, message) do
-    producer_name = "#{topic}_#{partition}"
-
-    GenServer.cast(via(producer_name), {:enqueue})
-  end
-
   def start_partition_production(topic, partition, nb_messages \\ 1000) do
     producer_name = "#{topic}_#{partition}"
 
@@ -76,14 +70,6 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
         send(self(), :produce)
         :start_producing
     end
-  end
-
-  def handle_call({:enqueue_message, message}, _from, state) do
-    {
-      :reply,
-      :ok,
-      Map.put(state, :messages_queue, :queue.in(message))
-    }
   end
 
   def handle_cast({:start_partition_production}, state) do

@@ -51,9 +51,18 @@ defmodule Procon.KafkaMetadata do
     kafka_topics_metadata() |> Map.get(topic)
   end
 
-  @spec nb_partitions_for_topic(String.t()) :: integer
+  @spec nb_partitions_for_topic(String.t()) :: {atom, integer}
   def nb_partitions_for_topic(topic) do
-    kafka_topics_metadata() |> Map.get(topic) |> Enum.count()
+    kafka_topics_metadata()
+    |> Map.get(topic)
+    |> case do
+      nil ->
+        IO.inspect("topic #{topic} not found for partition nb")
+        {:error, 0}
+
+      topic_partitions ->
+        {:ok, topic_partitions |> Enum.count()}
+    end
   end
 
   @doc """

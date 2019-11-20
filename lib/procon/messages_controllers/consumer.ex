@@ -6,58 +6,95 @@ defmodule Procon.MessagesControllers.Consumer do
     Record.extract(:kafka_message, from_lib: "brod/include/brod.hrl")
   )
 
-  def init(_group_id, _args), do: {:ok, []}
+  def init(consumer_config, init_data), do: {:ok, Map.merge(consumer_config, init_data)}
 
-  def handle_message(
-        _topic,
-        partition,
-        {:kafka_message, _offset, _key, message_content, _ts_type, _ts, _headers},
-        state
-      ) do
-    IO.inspect(message_content, label: "message_content")
+  def handle_message({:kafka_message_set, topic, partition, _high_wm_offset, messages}, state) do
+    # IO.inspect(state, label: "state...")
+    # IO.inspect(messages, label: "messages...")
+    # IO.inspect(partition, label: "topic #{topic}")
+    # IO.inspect(message_content, label: "message_content on partition #{partition}")
 
-    case Jason.decode(message_content) |> IO.inspect() do
-      {:ok, decoded_content} ->
-        route_message(decoded_content, partition)
+    Enum.each(
+      messages,
+      fn {:kafka_message, _offset, _key, kafka_message_content, _ts_type, _ts, _headers} ->
+        case Jason.decode(kafka_message_content) do
+          {:ok, procon_message} ->
+            IO.inspect(procon_message,
+              label: "procon message #{state.processor_config.name}/#{topic}/#{partition}"
+            )
 
-      {:error, %Jason.DecodeError{position: position, data: data}} ->
-        IO.inspect(data, label: "invalid json at #{position}")
-    end
+            route_message(procon_message, state.processor_config, topic, partition)
 
-    {:ok, :ack, state}
+          {:error, %Jason.DecodeError{position: position, data: data}} ->
+            IO.inspect(data, label: "invalid json at #{position}")
+        end
+      end
+    )
+
+    {:ok, :commit, state}
   end
 
-  def route_message(decoded_content, partition) do
-    case Application.get_env(:procon, :routes) |> Map.get(decoded_content |> Map.get("event")) do
+  def route_message(procon_message, processor_config, topic, partition) do
+    processor_config.entities
+    |> Enum.find(nil, &(&1.topic == topic))
+    |> case do
       nil ->
-        {:ok, :no_route_data}
+        IO.inspect(processor_config, label: "topic not listened #{topic}")
+        {:error, :topic_not_listened, processor_config}
 
-      {topic, data_version, module, function} ->
-        apply(module, function, [
-          decoded_content
-          |> Map.put("data_version", data_version)
-          |> Map.put("partition", partition)
-          |> Map.put("topic", topic)
-        ])
+      entity_config ->
+        apply(
+          Procon.MessagesControllers.Default,
+          case String.to_atom(procon_message.event) do
+            :created -> :create
+            :deleted -> :delete
+            :updated -> :update
+          end,
+          [
+            procon_message
+            |> Map.merge(entity_config)
+            |> Map.put(:datastore, processor_config.datastore)
+            |> Map.put(:partition, partition)
+          ]
+        )
     end
   end
 
-  def start(topics) do
-    :brod.start_link_group_subscriber(
-      Application.get_env(:procon, :broker_client_name),
-      Application.get_env(:procon, :consumer_group_name),
-      topics,
-      [
+  def start(processor_config) do
+    IO.inspect(processor_config, label: "starting processor with config")
+
+    client_name =
+      processor_config.name
+      |> to_string()
+      |> String.downcase()
+      |> String.replace(".", "_")
+      |> String.to_atom()
+
+    :brod.start_client(
+      Application.get_env(:procon, :brokers),
+      client_name,
+      Application.get_env(:procon, :brod_client_config)
+    )
+    |> IO.inspect(label: "starting client for #{client_name}")
+
+    :brod.start_link_group_subscriber_v2(%{
+      client: client_name,
+      group_id: processor_config.name |> to_string(),
+      topics:
+        Enum.reduce(processor_config.entities, [], &[&1.topic | &2])
+        |> IO.inspect(label: "topics for #{processor_config.name}"),
+      group_config: [
         offset_commit_policy: :commit_to_kafka_v2,
         offset_commit_interval_seconds:
-          Application.get_env(:procon, :offset_commit_interval_seconds)
+          Application.get_env(:procon, :offset_commit_interval_seconds) |> IO.inspect()
       ],
-      [
+      consumer_config: [
         begin_offset: :earliest
       ],
-      __MODULE__,
-      []
-    )
+      cb_module: __MODULE__,
+      init_data: %{processor_config: processor_config}
+    })
+    |> IO.inspect(label: "brod.start_link_group_subscriber_v2")
 
     {:ok}
   end

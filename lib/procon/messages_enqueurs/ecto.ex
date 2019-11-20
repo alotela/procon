@@ -69,7 +69,10 @@ defmodule Procon.MessagesEnqueuers.Ecto do
 
     message_partition =
       event_serializer.build_partition_key(event_data)
-      |> select_partition(Procon.KafkaMetadata.nb_partitions_for_topic(event_serializer.topic))
+      |> select_partition(
+        Procon.KafkaMetadata.nb_partitions_for_topic(event_serializer.topic)
+        |> elem(1)
+      )
 
     message_metadata = Keyword.get(options, :metadata)
 

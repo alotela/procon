@@ -3,49 +3,44 @@ defmodule Procon.MessageControllers.Base do
     quote do
       import Procon.MessageControllers.Base.Helpers
 
-      def datastore, do: @datastore
-      def keys_mapping, do: @keys_mapping
-      def master_key, do: @master_key
-      def model, do: @model
-
-      def create(event) do
-        do_create(__MODULE__, event)
+      def create(event, options) do
+        do_create(__MODULE__, event, options)
       end
 
-      def destroy(event) do
-        do_destroy(__MODULE__, event)
+      def destroy(event, options) do
+        do_destroy(__MODULE__, event, options)
       end
 
-      def update(event) do
-        do_update(__MODULE__, event)
+      def update(event, options) do
+        do_update(__MODULE__, event, options)
       end
 
-      def before_create(event_data), do: event_data
-      def process_create(event), do: process_create(__MODULE__, event)
-      def after_create(event_data), do: {:ok, event_data}
-      def after_create_transaction(event_data), do: {:ok, event_data}
-      def before_update(event_data), do: event_data
-      def process_update(event), do: process_update(__MODULE__, event)
-      def after_update(event_data), do: {:ok, event_data}
-      def after_update_transaction(event_data), do: {:ok, event_data}
-      def before_destroy(event_data), do: event_data
-      def process_destroy(event), do: process_destroy(__MODULE__, event)
-      def after_destroy(event_data), do: {:ok, event_data}
+      def before_create(event_data, options), do: event_data
+      def process_create(event, options), do: process_create(__MODULE__, event, options)
+      def after_create(event_data, options), do: {:ok, event_data}
+      def after_create_transaction(event_data, options), do: {:ok, event_data}
+      def before_update(event_data, options), do: event_data
+      def process_update(event, options), do: process_update(__MODULE__, event, options)
+      def after_update(event_data, options), do: {:ok, event_data}
+      def after_update_transaction(event_data, options), do: {:ok, event_data}
+      def before_destroy(event_data, options), do: event_data
+      def process_destroy(event, options), do: process_destroy(__MODULE__, event, options)
+      def after_destroy(event_data, options), do: {:ok, event_data}
 
-      defoverridable after_create: 1,
-                     before_create: 1,
-                     before_destroy: 1,
-                     after_create_transaction: 1,
-                     after_destroy: 1,
-                     after_update: 1,
-                     after_update_transaction: 1,
-                     before_update: 1,
-                     create: 1,
-                     destroy: 1,
-                     update: 1,
-                     process_create: 1,
-                     process_destroy: 1,
-                     process_update: 1
+      defoverridable after_create: 2,
+                     before_create: 2,
+                     before_destroy: 2,
+                     after_create_transaction: 2,
+                     after_destroy: 2,
+                     after_update: 2,
+                     after_update_transaction: 2,
+                     before_update: 2,
+                     create: 2,
+                     destroy: 2,
+                     update: 2,
+                     process_create: 2,
+                     process_destroy: 2,
+                     process_update: 2
     end
   end
 
@@ -58,82 +53,82 @@ defmodule Procon.MessageControllers.Base do
 
     def ets_table, do: @indexes_ets_table
 
-    def do_create(controller, event) do
-      if message_not_already_processed?(controller, event) do
+    def do_create(controller, event, options) do
+      if message_not_already_processed?(event, options) do
         {:ok, {final_event_data, consumer_message_index}} =
-          controller.datastore.transaction(fn ->
-            controller.process_create(event)
+          options.datastore.transaction(fn ->
+            controller.process_create(event, options)
             |> case do
               {:ok, event_data} ->
-                {:ok, final_event_data} = controller.after_create(event_data)
-                consumer_message_index = update_consumer_message_index(controller, event)
+                {:ok, final_event_data} = controller.after_create(event_data, options)
+                consumer_message_index = update_consumer_message_index(event, options)
                 {final_event_data, consumer_message_index}
 
               {:error, ecto_changeset} ->
                 Logger.warn(
-                  "Unable to create #{inspect(controller.model)} with event #{inspect(event)}@@ changeset : #{
+                  "Unable to create #{inspect(options.model)} with event #{inspect(event)}@@ changeset : #{
                     inspect(ecto_changeset)
                   }"
                 )
 
-                controller.datastore.rollback(ecto_changeset)
+                options.datastore.rollback(ecto_changeset)
             end
           end)
 
         update_consumer_message_index_ets(consumer_message_index)
-        controller.after_create_transaction(final_event_data)
+        controller.after_create_transaction(final_event_data, options)
       end
     end
 
-    def process_create(controller, event) do
+    def process_create(controller, event, options) do
       event_data =
-        record_and_body_from_event(controller, event)
-        |> event_data_with_attributes(controller.keys_mapping)
-        |> controller.before_create()
+        record_and_body_from_event(event, true, options)
+        |> event_data_with_attributes(options.keys_mapping)
+        |> controller.before_create(options)
 
-      controller.model.create_changeset(event_data.record, event_data.attributes)
-      |> controller.datastore.insert_or_update()
+      options.model.create_changeset(event_data.record, event_data.attributes)
+      |> options.datastore.insert_or_update()
       |> case do
         {:ok, struct} -> {:ok, Map.put(event_data, :record, struct)}
         {:error, ecto_changeset} -> {:error, ecto_changeset}
       end
     end
 
-    def do_update(controller, event) do
-      if message_not_already_processed?(controller, event) do
+    def do_update(controller, event, options) do
+      if message_not_already_processed?(event, options) do
         {:ok, {final_event_data, consumer_message_index}} =
-          controller.datastore.transaction(fn ->
-            controller.process_update(event)
+          options.datastore.transaction(fn ->
+            controller.process_update(event, options)
             |> case do
               {:ok, event_data} ->
-                {:ok, final_event_data} = controller.after_update(event_data)
-                consumer_message_index = update_consumer_message_index(controller, event)
+                {:ok, final_event_data} = controller.after_update(event_data, options)
+                consumer_message_index = update_consumer_message_index(event, options)
                 {final_event_data, consumer_message_index}
 
               {:error, ecto_changeset} ->
                 Logger.warn(
-                  "Unable to update #{inspect(controller.model)} with event #{inspect(event)}@@ changeset : #{
+                  "Unable to update #{inspect(options.model)} with event #{inspect(event)}@@ changeset : #{
                     inspect(ecto_changeset)
                   }"
                 )
 
-                controller.datastore.rollback(ecto_changeset)
+                options.datastore.rollback(ecto_changeset)
             end
           end)
 
         update_consumer_message_index_ets(consumer_message_index)
-        controller.after_update_transaction(final_event_data)
+        controller.after_update_transaction(final_event_data, options)
       end
     end
 
-    def process_update(controller, event) do
+    def process_update(controller, event, options) do
       event_data =
-        record_and_body_from_event(controller, event)
-        |> event_data_with_attributes(controller.keys_mapping)
-        |> controller.before_update()
+        record_and_body_from_event(event, true, options)
+        |> event_data_with_attributes(options.keys_mapping)
+        |> controller.before_update(options)
 
-      controller.model.update_changeset(event_data.record, event_data.attributes)
-      |> controller.datastore.insert_or_update()
+      options.model.update_changeset(event_data.record, event_data.attributes)
+      |> options.datastore.insert_or_update()
       |> case do
         {:ok, struct} -> {:ok, Map.put(event_data, :record, struct)}
         {:error, ecto_changeset} -> {:error, ecto_changeset}
@@ -149,24 +144,24 @@ defmodule Procon.MessageControllers.Base do
       Map.put(event_data, :attributes, attributes)
     end
 
-    def do_destroy(controller, event) do
-      if message_not_already_processed?(controller, event) do
+    def do_destroy(controller, event, options) do
+      if message_not_already_processed?(event, options) do
         {:ok, consumer_message_index} =
-          controller.datastore.transaction(fn ->
-            controller.process_destroy(event)
+          options.datastore.transaction(fn ->
+            controller.process_destroy(event, options)
             |> case do
               {:ok, event_data} ->
-                {:ok, _} = controller.after_destroy(event_data)
-                update_consumer_message_index(controller, event)
+                {:ok, _} = controller.after_destroy(event_data, options)
+                update_consumer_message_index(event, options)
 
               {:error, ecto_changeset} ->
                 Logger.info(
-                  "Unable to destroy #{inspect(controller.model)} in event #{inspect(event)}@@#{
+                  "Unable to destroy #{inspect(options.model)} in event #{inspect(event)}@@#{
                     inspect(ecto_changeset)
                   }"
                 )
 
-                controller.datastore.rollback(ecto_changeset)
+                options.datastore.rollback(ecto_changeset)
             end
           end)
 
@@ -174,31 +169,31 @@ defmodule Procon.MessageControllers.Base do
       end
     end
 
-    def process_destroy(controller, event) do
+    def process_destroy(controller, event, options) do
       event_data =
-        record_and_body_from_event(controller, event, false)
-        |> controller.before_destroy()
+        record_and_body_from_event(event, false, options)
+        |> controller.before_destroy(options)
 
       case event_data.record do
         nil ->
           Logger.warn(
-            "No match for destroyed #{inspect(controller.model)} in event #{inspect(event)}"
+            "No match for destroyed #{inspect(options.model)} in event #{inspect(event)}"
           )
 
           {:ok, event_data}
 
         _ ->
-          Logger.info("Destroying #{inspect(controller.model)} with id #{event_data.record.id}")
+          Logger.info("Destroying #{inspect(options.model)} with id #{event_data.record.id}")
 
-          case controller.datastore.delete(event_data.record) do
+          case options.datastore.delete(event_data.record) do
             {:ok, struct} -> {:ok, Map.put(event_data, :record, struct)}
             {:error, ecto_changeset} -> {:error, ecto_changeset}
           end
       end
     end
 
-    def message_not_already_processed?(controller, event) do
-      Map.get(event, "index") > find_last_processed_message_id(controller, event)
+    def message_not_already_processed?(event, options) do
+      Map.get(event, "index") > find_last_processed_message_id(event, options)
     end
 
     def update_consumer_message_index_ets(consumer_message_index) do
@@ -214,7 +209,7 @@ defmodule Procon.MessageControllers.Base do
       struct
     end
 
-    def update_consumer_message_index(controller, event) do
+    def update_consumer_message_index(event, options) do
       topic = Map.get(event, "topic")
       partition = Map.get(event, "partition")
       ets_key = build_ets_key(topic, partition)
@@ -222,7 +217,7 @@ defmodule Procon.MessageControllers.Base do
       struct = get_consumer_message_index_ets(ets_key)
 
       case Procon.Schemas.Ecto.ProconConsumerIndex.changeset(struct, %{message_id: message_id})
-           |> controller.datastore.update() do
+           |> options.datastore.update() do
         {:ok, updated_struct} ->
           updated_struct
 
@@ -231,7 +226,7 @@ defmodule Procon.MessageControllers.Base do
             "Unable to update message index #{inspect(ecto_changeset)} with id #{struct.id}"
           )
 
-          controller.datastore.rollback(ecto_changeset)
+          options.datastore.rollback(ecto_changeset)
       end
     end
 
@@ -241,7 +236,7 @@ defmodule Procon.MessageControllers.Base do
       "#{consumer_message_index.topic}_#{consumer_message_index.partition}"
     end
 
-    defp find_last_processed_message_id(controller, event) do
+    defp find_last_processed_message_id(event, options) do
       topic = Map.get(event, "topic")
       partition = Map.get(event, "partition")
       ets_key = build_ets_key(topic, partition)
@@ -252,10 +247,10 @@ defmodule Procon.MessageControllers.Base do
             case from(c in Procon.Schemas.Ecto.ProconConsumerIndex,
                    where: [topic: ^topic, partition: ^partition]
                  )
-                 |> controller.datastore.one do
+                 |> options.datastore.one do
               nil ->
                 struct =
-                  controller.datastore.insert!(%ProconConsumerIndex{
+                  options.datastore.insert!(%ProconConsumerIndex{
                     message_id: -1,
                     partition: partition,
                     topic: topic
@@ -276,22 +271,22 @@ defmodule Procon.MessageControllers.Base do
       last_processed_message_id
     end
 
-    def record_and_body_from_event(controller, event, return_record \\ true) do
+    def record_and_body_from_event(event, return_record, options) do
       body = get_in(event, ["body", Map.get(event, "data_version")])
 
-      if !is_nil(controller.master_key) do
-        controller.datastore.get_by(
-          controller.model,
-          [{elem(controller.master_key, 0), body[elem(controller.master_key, 1)]}]
+      if !is_nil(options.master_key) do
+        options.datastore.get_by(
+          options.model,
+          [{elem(options.master_key, 0), body[elem(options.master_key, 1)]}]
         )
       else
-        controller.datastore.get(controller.model(), body["id"])
+        options.datastore.get(options.model, body["id"])
       end
       |> case do
         nil ->
           %{
             body: body,
-            record: if(return_record, do: struct(controller.model), else: nil)
+            record: if(return_record, do: struct(options.model), else: nil)
           }
 
         struct ->
