@@ -1,3 +1,3 @@
-defmodule Procon.MessageControllers.Default do
-  use Procon.MessageControllers.Base
+defmodule Procon.MessagesControllers.Default do
+  use Procon.MessagesControllers.Base
 end

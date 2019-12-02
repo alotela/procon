@@ -3,24 +3,66 @@ defmodule Mix.Tasks.Procon.Serializer do
   import Mix.Generator
 
   @shortdoc "Generate an event serializer template"
+  @moduledoc ~S"""
+  #Usage
+  ```
+     mix procon.serializer --processor MyDomain.Processors.ProcessorName --repo ProcessorPg --entity Entity --topic entity-topic
+  ```
+  """
+
+  def info(msg) do
+    msg = """
+    #{msg}
+    """
+
+    Mix.shell().info([msg])
+  end
+
+  def run([]) do
+    info("You need to set --processor, --entity and --repo params :")
+
+    info(
+      "mix procon.serializer --processor MyDomain.Processors.ProcessorName --repo ProcessorPg --entity Entity --topic entity-topic"
+    )
+  end
 
   def run(args) do
-    resource =
-      OptionParser.parse(args, strict: [resource: :string]) |> elem(0) |> Keyword.get(:resource)
+    processor_name =
+      OptionParser.parse(args, strict: [processor: :string, repo: :string])
+      |> elem(0)
+      |> Keyword.get(:processor)
 
-    service_name = Application.get_env(:procon, :service_name)
-    app_module = Mix.Project.config()[:app] |> to_string() |> Macro.camelize()
+    processor_path = Mix.Tasks.Procon.Helpers.processor_path(processor_name)
 
-    opts = [app_module: app_module, service_name: service_name, resource: resource]
+    processor_repo =
+      OptionParser.parse(args, strict: [repo: :string]) |> elem(0) |> Keyword.get(:repo)
+
+    repo_module = Mix.Tasks.Procon.Helpers.repo_name_to_module(processor_name, processor_repo)
+
+    entity =
+      OptionParser.parse(args, strict: [entity: :string]) |> elem(0) |> Keyword.get(:entity)
+
+    topic = OptionParser.parse(args, strict: [topic: :string]) |> elem(0) |> Keyword.get(:topic)
+
+    opts = [
+      entity: entity,
+      processor_name: processor_name,
+      repo_module: repo_module,
+      topic: topic
+    ]
 
     create_file(
-      Path.join(["lib", "events_serializers", resource |> Macro.underscore()]) <> ".ex",
+      Path.join(
+        (processor_path |> String.split("/")) ++
+          ["events", "serializers", entity |> Macro.underscore()]
+      ) <>
+        ".ex",
       serializer_template(opts)
     )
   end
 
   embed_template(:serializer, """
-  defmodule <%= @app_module %>.EventsSerializers.<%= @resource %> do
+  defmodule <%= @processor_name %>.Events.Serializers.<%= @entity %> do
 
     @doc \"\"\"
       Versions are used when we build the message map from event data
@@ -54,14 +96,12 @@ defmodule Mix.Tasks.Procon.Serializer do
       event_data.id
     end
 
-    def build_message_event(event_status) do
-      "<%= @service_name %>/<%= @resource |> Macro.underscore %>/\#{event_status}"
+    def topic do
+      # add topic name where this entity will be produced
+      "<%= @topic %>"
     end
 
-    def topic do
-      # add topic name where this resource will be produced
-      ""
-    end
+    def repo, do: <%= @repo_module %>
   end
   """)
 end

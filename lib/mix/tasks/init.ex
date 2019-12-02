@@ -10,17 +10,12 @@ defmodule Mix.Tasks.Procon.Init do
   ```
   """
 
-  def info(msg) do
-    msg = """
-    #{msg}
-    """
-
-    Mix.shell().info([msg])
-  end
-
   def run([]) do
-    info("You need to set --processor and --repo params :")
-    info("mix procon.init --processor MyDomain.Processors.ProcessorName --repo ProcessorPg")
+    Mix.Tasks.Procon.Helpers.info("You need to set --processor and --repo params :")
+
+    Mix.Tasks.Procon.Helpers.info(
+      "mix procon.init --processor MyDomain.Processors.ProcessorName --repo ProcessorPg"
+    )
   end
 
   def run(args) do
@@ -39,7 +34,7 @@ defmodule Mix.Tasks.Procon.Init do
 
     migrations_path = Path.join(["priv", processor_repo |> Macro.underscore(), "migrations"])
 
-    info("creating migrations directory #{migrations_path}")
+    Mix.Tasks.Procon.Helpers.info("creating migrations directory #{migrations_path}")
     create_directory(migrations_path)
 
     procon_producer_messages_migration =
@@ -87,10 +82,38 @@ defmodule Mix.Tasks.Procon.Init do
 
     generate_repository(app_name, processor_name, processor_path, processor_repo)
 
+    events_path = [processor_path, "events"] |> Path.join()
+
+    Mix.Tasks.Procon.Helpers.info("creating processor's events directory #{events_path}")
+    events_path |> create_directory()
+
+    serializers_path = [events_path, "serializers"] |> Path.join()
+
+    Mix.Tasks.Procon.Helpers.info(
+      "creating processor's events serializers directory #{serializers_path}"
+    )
+
+    serializers_path |> create_directory()
+
     schemas_path = [processor_path, "schemas"] |> Path.join()
 
-    info("creating schemas directory #{schemas_path}")
+    Mix.Tasks.Procon.Helpers.info("creating schemas directory #{schemas_path}")
     schemas_path |> create_directory()
+
+    services_path = [processor_path, "services"] |> Path.join()
+
+    Mix.Tasks.Procon.Helpers.info("creating services directory #{services_path}")
+    services_path |> create_directory()
+
+    services_domain_path = [services_path, "domain"] |> Path.join()
+
+    Mix.Tasks.Procon.Helpers.info("creating services directory #{services_domain_path}")
+    services_domain_path |> create_directory()
+
+    services_infra_path = [services_path, "domain"] |> Path.join()
+
+    Mix.Tasks.Procon.Helpers.info("creating services directory #{services_infra_path}")
+    services_infra_path |> create_directory()
 
     generate_web_directory(app_web, processor_name, processor_path)
     generate_web_file(app_web, processor_name, processor_path)
@@ -129,7 +152,7 @@ defmodule Mix.Tasks.Procon.Init do
 
     Now you can produce message :
 
-      Procon.MessagesEnqueuers.Ecto.enqueue_event(event_data, event_serializer, event_status)
+      Procon.MessagesEnqueuers.Ecto.enqueue_event(event_data, event_serializer, event_type)
 
     where :
       - event_data: map of your data for your message
@@ -142,7 +165,7 @@ defmodule Mix.Tasks.Procon.Init do
 
     """
 
-    info(msg)
+    Mix.Tasks.Procon.Helpers.info(msg)
   end
 
   def short_processor_name(processor_name) do
@@ -153,7 +176,10 @@ defmodule Mix.Tasks.Procon.Init do
     processors_config_directory = Path.join(["config", "processors"])
 
     unless File.exists?(processors_config_directory) do
-      info("creating processors config directory #{processors_config_directory}")
+      Mix.Tasks.Procon.Helpers.info(
+        "creating processors config directory #{processors_config_directory}"
+      )
+
       create_directory(processors_config_directory)
     end
 
@@ -161,7 +187,10 @@ defmodule Mix.Tasks.Procon.Init do
       Path.join([processors_config_directory, short_processor_name(processor_name)])
 
     unless File.exists?(processor_config_directory) do
-      info("creating processor config directory #{processor_config_directory}")
+      Mix.Tasks.Procon.Helpers.info(
+        "creating processor config directory #{processor_config_directory}"
+      )
+
       create_directory(processor_config_directory)
     end
 
@@ -178,7 +207,9 @@ defmodule Mix.Tasks.Procon.Init do
         dev_config_file,
         dev_config_template(
           app_name: app_name,
-          repository: repo_full_name(processor_name, processor_repo),
+          repository:
+            Mix.Tasks.Procon.Helpers.repo_name_to_module(processor_name, processor_repo)
+            |> IO.inspect(label: "repositoryyyyyyy"),
           database: processor_name |> short_processor_name()
         )
       )
@@ -268,21 +299,21 @@ defmodule Mix.Tasks.Procon.Init do
     web_path = Path.join([processor_path, "web"])
 
     unless File.exists?(web_path) do
-      info("creating web directory #{web_path}")
+      Mix.Tasks.Procon.Helpers.info("creating web directory #{web_path}")
       create_directory(web_path)
     end
 
     controllers_path = Path.join([web_path, "controllers"])
 
     unless File.exists?(controllers_path) do
-      info("creating web controllers directory #{controllers_path}")
+      Mix.Tasks.Procon.Helpers.info("creating web controllers directory #{controllers_path}")
       create_directory(controllers_path)
     end
 
     home_controller_path = Path.join([controllers_path, "home.ex"])
 
     unless File.exists?(home_controller_path) do
-      info("creating web home controller file #{home_controller_path}")
+      Mix.Tasks.Procon.Helpers.info("creating web home controller file #{home_controller_path}")
 
       create_file(
         home_controller_path,
@@ -293,21 +324,21 @@ defmodule Mix.Tasks.Procon.Init do
     templates_path = Path.join([web_path, "templates"])
 
     unless File.exists?(templates_path) do
-      info("creating templates directory #{templates_path}")
+      Mix.Tasks.Procon.Helpers.info("creating templates directory #{templates_path}")
       create_directory(templates_path)
     end
 
     layout_path = Path.join([templates_path, "layout"])
 
     unless File.exists?(layout_path) do
-      info("creating layout directory #{layout_path}")
+      Mix.Tasks.Procon.Helpers.info("creating layout directory #{layout_path}")
       create_directory(layout_path)
     end
 
     app_layout_path = Path.join([layout_path, "app.html.eex"])
 
     unless File.exists?(app_layout_path) do
-      info("creating layout app file #{app_layout_path}")
+      Mix.Tasks.Procon.Helpers.info("creating layout app file #{app_layout_path}")
 
       create_file(
         app_layout_path,
@@ -321,14 +352,14 @@ defmodule Mix.Tasks.Procon.Init do
     home_directory_path = Path.join([templates_path, "home"])
 
     unless File.exists?(home_directory_path) do
-      info("creating home templates directory #{home_directory_path}")
+      Mix.Tasks.Procon.Helpers.info("creating home templates directory #{home_directory_path}")
       create_directory(home_directory_path)
     end
 
     home_template_path = Path.join([home_directory_path, "show.html.eex"])
 
     unless File.exists?(home_template_path) do
-      info("creating home template file #{home_template_path}")
+      Mix.Tasks.Procon.Helpers.info("creating home template file #{home_template_path}")
 
       create_file(
         home_template_path,
@@ -339,14 +370,14 @@ defmodule Mix.Tasks.Procon.Init do
     views_path = Path.join([web_path, "views"])
 
     unless File.exists?(views_path) do
-      info("creating web views path #{views_path}")
+      Mix.Tasks.Procon.Helpers.info("creating web views path #{views_path}")
       create_directory(views_path)
     end
 
     layout_view_path = Path.join([views_path, "layout_view.ex"])
 
     unless File.exists?(layout_view_path) do
-      info("creating layout view file #{layout_view_path}")
+      Mix.Tasks.Procon.Helpers.info("creating layout view file #{layout_view_path}")
 
       create_file(
         layout_view_path,
@@ -357,7 +388,7 @@ defmodule Mix.Tasks.Procon.Init do
     home_view_path = Path.join([views_path, "home_view.ex"])
 
     unless File.exists?(home_view_path) do
-      info("creating home view file #{home_view_path}")
+      Mix.Tasks.Procon.Helpers.info("creating home view file #{home_view_path}")
 
       create_file(
         home_view_path,
@@ -368,7 +399,7 @@ defmodule Mix.Tasks.Procon.Init do
     router_path = Path.join([web_path, "router.ex"])
 
     unless File.exists?(router_path) do
-      info("creating router file #{router_path}")
+      Mix.Tasks.Procon.Helpers.info("creating router file #{router_path}")
 
       create_file(
         router_path,
@@ -460,25 +491,22 @@ defmodule Mix.Tasks.Procon.Init do
   </html>
   """)
 
-  def repo_full_name(processor_name, processor_repo) do
-    Module.concat([processor_name, Repositories, processor_repo])
-  end
-
   def generate_repository(app_name, processor_name, processor_path, processor_repo) do
     repositories_path = Path.join([processor_path, "repositories"])
-    info("creating repository path #{repositories_path}")
+    Mix.Tasks.Procon.Helpers.info("creating repository path #{repositories_path}")
     create_directory(repositories_path)
 
     repo_file_path = Path.join([repositories_path, "pg.ex"])
 
     unless File.exists?(repo_file_path) do
-      info("creating default repo file #{repo_file_path}")
+      Mix.Tasks.Procon.Helpers.info("creating default repo file #{repo_file_path}")
 
       create_file(
         repo_file_path,
         pg_repo_template(
           app_name: app_name,
-          processor_repo: repo_full_name(processor_name, processor_repo)
+          processor_repo:
+            Mix.Tasks.Procon.Helpers.repo_name_to_module(processor_name, processor_repo)
         )
       )
     end
@@ -501,11 +529,14 @@ defmodule Mix.Tasks.Procon.Init do
        ) do
     unless file_exists?(migrations_path, "*_#{filename}.exs") do
       file = Path.join(migrations_path, "#{timestamp()}_#{filename}.exs")
-      info("creating migration file #{file}")
+      Mix.Tasks.Procon.Helpers.info("creating migration file #{file}")
 
       create_file(
         file,
-        template_function.(processor_repo: repo_full_name(processor_name, processor_repo))
+        template_function.(
+          processor_repo:
+            Mix.Tasks.Procon.Helpers.repo_name_to_module(processor_name, processor_repo)
+        )
       )
 
       file
@@ -554,7 +585,7 @@ defmodule Mix.Tasks.Procon.Init do
         add :message_id, :int8, null: false
         add :partition, :integer, null: false
         add :topic, :string, null: false
-        add :error, :text, null: false
+        add :error, :text, null: true
         timestamps
       end
       create index(:procon_consumer_indexes, [:partition])

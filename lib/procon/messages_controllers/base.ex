@@ -1,7 +1,7 @@
-defmodule Procon.MessageControllers.Base do
+defmodule Procon.MessagesControllers.Base do
   defmacro __using__(_options) do
     quote do
-      import Procon.MessageControllers.Base.Helpers
+      import Procon.MessagesControllers.Base.Helpers
 
       def create(event, options) do
         do_create(__MODULE__, event, options)
@@ -49,9 +49,6 @@ defmodule Procon.MessageControllers.Base do
     require Logger
     require Record
     alias Procon.Schemas.Ecto.ProconConsumerIndex
-    @indexes_ets_table :procon_consumer_indexes
-
-    def ets_table, do: @indexes_ets_table
 
     def do_create(controller, event, options) do
       if message_not_already_processed?(event, options) do
@@ -75,7 +72,7 @@ defmodule Procon.MessageControllers.Base do
             end
           end)
 
-        update_consumer_message_index_ets(consumer_message_index)
+        update_consumer_message_index_ets(consumer_message_index, options.processor_name)
         controller.after_create_transaction(final_event_data, options)
       end
     end
@@ -86,7 +83,7 @@ defmodule Procon.MessageControllers.Base do
         |> event_data_with_attributes(options.keys_mapping)
         |> controller.before_create(options)
 
-      options.model.create_changeset(event_data.record, event_data.attributes)
+      options.model.messages_create_changeset(event_data.record, event_data.attributes)
       |> options.datastore.insert_or_update()
       |> case do
         {:ok, struct} -> {:ok, Map.put(event_data, :record, struct)}
@@ -116,7 +113,7 @@ defmodule Procon.MessageControllers.Base do
             end
           end)
 
-        update_consumer_message_index_ets(consumer_message_index)
+        update_consumer_message_index_ets(consumer_message_index, options.processor_name)
         controller.after_update_transaction(final_event_data, options)
       end
     end
@@ -127,7 +124,7 @@ defmodule Procon.MessageControllers.Base do
         |> event_data_with_attributes(options.keys_mapping)
         |> controller.before_update(options)
 
-      options.model.update_changeset(event_data.record, event_data.attributes)
+      options.model.messages_update_changeset(event_data.record, event_data.attributes)
       |> options.datastore.insert_or_update()
       |> case do
         {:ok, struct} -> {:ok, Map.put(event_data, :record, struct)}
@@ -165,7 +162,7 @@ defmodule Procon.MessageControllers.Base do
             end
           end)
 
-        update_consumer_message_index_ets(consumer_message_index)
+        update_consumer_message_index_ets(consumer_message_index, options.processor_name)
       end
     end
 
@@ -196,25 +193,25 @@ defmodule Procon.MessageControllers.Base do
       Map.get(event, "index") > find_last_processed_message_id(event, options)
     end
 
-    def update_consumer_message_index_ets(consumer_message_index) do
+    def update_consumer_message_index_ets(consumer_message_index, processor_name) do
       true =
         :ets.insert(
-          @indexes_ets_table,
+          processor_name,
           {build_ets_key(consumer_message_index), consumer_message_index}
         )
     end
 
-    defp get_consumer_message_index_ets(ets_key) do
-      [{^ets_key, struct}] = :ets.lookup(@indexes_ets_table, ets_key)
+    defp get_consumer_message_index_ets(ets_key, ets_table) do
+      [{^ets_key, struct}] = :ets.lookup(ets_table, ets_key)
       struct
     end
 
     def update_consumer_message_index(event, options) do
-      topic = Map.get(event, "topic")
-      partition = Map.get(event, "partition")
+      topic = Map.get(options, :topic)
+      partition = Map.get(event, :partition)
       ets_key = build_ets_key(topic, partition)
       message_id = Map.get(event, "index")
-      struct = get_consumer_message_index_ets(ets_key)
+      struct = get_consumer_message_index_ets(ets_key, options.processor_name)
 
       case Procon.Schemas.Ecto.ProconConsumerIndex.changeset(struct, %{message_id: message_id})
            |> options.datastore.update() do
@@ -237,12 +234,12 @@ defmodule Procon.MessageControllers.Base do
     end
 
     defp find_last_processed_message_id(event, options) do
-      topic = Map.get(event, "topic")
-      partition = Map.get(event, "partition")
+      topic = Map.get(options, :topic)
+      partition = Map.get(event, :partition)
       ets_key = build_ets_key(topic, partition)
 
       last_processed_message_id =
-        case :ets.lookup(@indexes_ets_table, ets_key) do
+        case :ets.lookup(options.processor_name, ets_key) do
           [] ->
             case from(c in Procon.Schemas.Ecto.ProconConsumerIndex,
                    where: [topic: ^topic, partition: ^partition]
@@ -256,11 +253,11 @@ defmodule Procon.MessageControllers.Base do
                     topic: topic
                   })
 
-                update_consumer_message_index_ets(struct)
+                update_consumer_message_index_ets(struct, options.processor_name)
                 struct.message_id
 
               struct ->
-                update_consumer_message_index_ets(struct)
+                update_consumer_message_index_ets(struct, options.processor_name)
                 struct.message_id
             end
 
@@ -272,7 +269,7 @@ defmodule Procon.MessageControllers.Base do
     end
 
     def record_and_body_from_event(event, return_record, options) do
-      body = get_in(event, ["body", Map.get(event, "data_version")])
+      body = get_in(event, ["body", Map.get(options, :event_version) |> to_string()])
 
       if !is_nil(options.master_key) do
         options.datastore.get_by(

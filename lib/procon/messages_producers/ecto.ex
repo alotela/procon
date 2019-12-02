@@ -3,10 +3,10 @@ defmodule Procon.MessagesProducers.Ecto do
   require Logger
   import Ecto.Query
 
-  @spec next_messages_to_send(String.t(), integer, integer) :: list(tuple)
-  def next_messages_to_send(topic, partition, number_of_messages) do
+  @spec next_messages_to_send(String.t(), integer, integer, Atom) :: list(tuple)
+  def next_messages_to_send(topic, partition, number_of_messages, processor_repo) do
     try do
-      Application.get_env(:procon, :messages_repository).all(
+      processor_repo.all(
         from(pm in ProconProducerMessage,
           where:
             pm.topic == ^topic and
@@ -26,16 +26,16 @@ defmodule Procon.MessagesProducers.Ecto do
     end
   end
 
-  def delete_rows(ids) do
+  def delete_rows(processor_repo, ids) do
     q = from(pm in ProconProducerMessage, where: pm.id in ^ids)
 
-    case Application.get_env(:procon, :messages_repository).delete_all(q) do
+    case processor_repo.delete_all(q) do
       {_, nil} -> {:ok, :next}
       {:error, error} -> {:stop, error}
     end
   end
 
-  def generate_records() do
+  def generate_records(processor_repo) do
     records =
       for n <- 1..10000 do
         %{
@@ -48,7 +48,7 @@ defmodule Procon.MessagesProducers.Ecto do
       end
 
     IO.inspect(DateTime.utc_now(), label: "list")
-    Application.get_env(:procon, :messages_repository).insert_all(ProconProducerMessage, records)
+    processor_repo.insert_all(ProconProducerMessage, records)
     IO.inspect(DateTime.utc_now(), label: "end")
   end
 end

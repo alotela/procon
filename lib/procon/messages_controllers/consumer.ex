@@ -45,16 +45,17 @@ defmodule Procon.MessagesControllers.Consumer do
       entity_config ->
         apply(
           Procon.MessagesControllers.Default,
-          case String.to_atom(procon_message.event) do
+          case procon_message |> Map.get("event") |> String.to_atom() do
             :created -> :create
             :deleted -> :delete
             :updated -> :update
           end,
           [
             procon_message
-            |> Map.merge(entity_config)
+            |> Map.put(:partition, partition),
+            entity_config
             |> Map.put(:datastore, processor_config.datastore)
-            |> Map.put(:partition, partition)
+            |> Map.put(:processor_name, processor_config.name)
           ]
         )
     end

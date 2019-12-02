@@ -11,14 +11,19 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
     )
   end
 
-  def start_partition_production(topic, partition, nb_messages \\ 1000) do
+  def start_partition_production(partition, nb_messages, processor_repo, topic) do
     producer_name = "#{topic}_#{partition}"
 
     DynamicSupervisor.start_child(
       Procon.MessagesProducers.ProducersSupervisor,
       {
         __MODULE__,
-        initial_state: %{nb_messages: nb_messages, topic: topic, partition: partition},
+        initial_state: %{
+          nb_messages: nb_messages,
+          partition: partition,
+          repo: processor_repo,
+          topic: topic
+        },
         producer_name: producer_name
       }
     )
@@ -83,7 +88,8 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
     case Procon.MessagesProducers.Ecto.next_messages_to_send(
            state.topic,
            state.partition,
-           state.nb_messages
+           state.nb_messages,
+           state.repo
          ) do
       [] ->
         {:no_more_messages}
@@ -101,7 +107,7 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
                  )
                ),
              {:ok, :next} <-
-               Procon.MessagesProducers.Ecto.delete_rows(Enum.map(messages, & &1.id)) do
+               Procon.MessagesProducers.Ecto.delete_rows(state.repo, Enum.map(messages, & &1.id)) do
           {:ok, messages |> Enum.reverse() |> hd() |> Map.get(:id)}
         else
           {:error, error} -> {:error, error}
