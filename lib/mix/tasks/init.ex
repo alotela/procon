@@ -118,33 +118,43 @@ defmodule Mix.Tasks.Procon.Init do
     generate_web_directory(app_web, processor_name, processor_path)
     generate_web_file(app_web, processor_name, processor_path)
 
-    generate_config_files(app_name, processor_name, processor_repo)
+    generated_config_files = generate_config_files(app_name, processor_name, processor_repo)
 
     msg = """
-    Procon initialized for your project.
+
+
+    #{processor_name} procon processor added to your project.
 
     Generated files and directories :
+        #{processor_path}: the new processor directory, where you put your code
+        #{migrations_path}: where you find migration files for this processor
+        #{generated_config_files |> hd()}: where you find config files for this processor
         #{procon_producer_messages_migration}: store messages to send to kafka (auto increment index for exactly once processing on consumer side)
         #{procon_consumer_indexes_migration}: store topic/partition consumed indexes (for exactly once processing)
         #{procon_producer_balancings_migration}: store which app/container produces which topic/partition
         #{procon_producer_indexes_migration}: store producers indexes for transactional information
-        lib/events_serializers: directory where your events serializers will be generated
-        lib/#{app_name}/message_controllers: directory where your messages controllers will be generated
 
-    To finish the stup:
-      add this line to lib/web/#{app_name}_web/router.ex:
+      IMPORTANT!! To finish the setup:
+      --------------------------------
 
-      forward "/#{processor_name |> short_processor_name()}", #{processor_name}.Web.Router
+      * add this line to lib/web/#{app_name}_web/router.ex:
 
-      add these lines in ./config/config.exs :
+        forward "/#{processor_name |> short_processor_name()}", #{processor_name}.Web.Router
 
-      config :procon,
-        brokers: [localhost: 9092],
-        brod_client_config: [reconnect_cool_down_seconds: 10],
-        nb_simultaneous_messages_to_send: 1000,
-        offset_commit_interval_seconds: 5,
-        consumers: []
-      }
+      * add these lines in ./config/config.exs :
+
+        config :procon,
+          brokers: [localhost: 9092],
+          brod_client_config: [reconnect_cool_down_seconds: 10],
+          nb_simultaneous_messages_to_send: 1000,
+          offset_commit_interval_seconds: 5,
+          consumers: []
+        }
+
+      * add the processor repository #{processor_name |> short_processor_name()} to "config/config.exs" in "ecto_repos" array
+      * add the processor repository #{processor_name |> short_processor_name()} to "lib/[your_app]/application.ex" in children array to start        the repo when the application starts.
+
+      * configure your processor in #{generated_config_files |> tl()}. This is where you add your kafka listeners.
 
     generate serializers for your resources (data your service is master of and will generate events):
       mix procon.serializer --resource ResourceName
@@ -152,12 +162,16 @@ defmodule Mix.Tasks.Procon.Init do
 
     Now you can produce message :
 
-      Procon.MessagesEnqueuers.Ecto.enqueue_event(event_data, event_serializer, event_type)
+      Procon.MessagesEnqueuers.Ecto.enqueue_event(event_data, EventSerializerModule, event_type)
+      Procon.MessagesProducers.ProducersStarter.start_topic_production(nb_messages_to_batch, ProcessorRepository, topic)
 
     where :
-      - event_data: map of your data for your message
-      - event_status: :created or :updated or :deleted
-      - event_serializer: module serializer you have generated and parameterized
+      - event_data: a map/struct of your data for your message
+      - event_type: a state (:created or :updated or :deleted)
+      - EventSerializerModule: module serializer you have generated and parameterized
+      - nb_messages_to_batch: number of messages to send at the same time (use 1000 to start)
+      - ProcessorRepository: the repository module where messages are stored
+      - topic: the topic to start production for
 
 
     generate messages controller to consume events from kafka:
@@ -197,7 +211,10 @@ defmodule Mix.Tasks.Procon.Init do
     processor_config_file = Path.join([processor_config_directory, "config.exs"])
 
     unless File.exists?(processor_config_file) do
-      create_file(processor_config_file, processor_config_template([]))
+      create_file(processor_config_file, processor_config_template(
+        processor_name: processor_name,
+        repository: Mix.Tasks.Procon.Helpers.repo_name_to_module(processor_name, processor_repo)
+      ))
     end
 
     dev_config_file = Path.join([processor_config_directory, "dev.exs"])
@@ -207,13 +224,13 @@ defmodule Mix.Tasks.Procon.Init do
         dev_config_file,
         dev_config_template(
           app_name: app_name,
-          repository:
-            Mix.Tasks.Procon.Helpers.repo_name_to_module(processor_name, processor_repo)
-            |> IO.inspect(label: "repositoryyyyyyy"),
+          repository: Mix.Tasks.Procon.Helpers.repo_name_to_module(processor_name, processor_repo),
           database: processor_name |> short_processor_name()
         )
       )
     end
+
+    [processor_config_directory, processor_config_file]
   end
 
   embed_template(
@@ -221,7 +238,29 @@ defmodule Mix.Tasks.Procon.Init do
     """
     use Mix.Config
 
-    import_config "\#{Mix.env()}.exs"
+    config :procon, Processors,
+      "Elixir.<%= @processor_name %>": [
+        deps: [
+          # add your deps here, they will be merged with mix.exs deps
+        ],
+        consumers: [
+        # %{
+        #    datastore: <%= @repository %>,
+        #    name: <%= @processor_name %>,
+        #    entities: [
+        #      %{
+        #        event_version: 1,
+        #        keys_mapping: %{},
+        #        master_key: {:processor_schema_key, "key_from_event"},
+        #        model: YourEctoSchemaModule,
+        #        topic: "the_topic_to_listen"
+        #      }
+        #    ]
+        #  }
+        ]
+      ]
+
+    if [__DIR__, "\#{Mix.env}.exs"] |> Path.join() |> File.exists?(), do: import_config("\#{Mix.env()}.exs")
     """
   )
 

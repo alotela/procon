@@ -66,7 +66,7 @@ defmodule Procon.KafkaMetadata do
   end
 
   @doc """
-  returns a map with topics names anb parittions id
+  returns a map with topics names anb partitions id
   %{
     "topic0" => [0, 1, 2],
     "topic1" => [0, 1],
