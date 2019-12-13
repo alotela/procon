@@ -3,7 +3,8 @@ defmodule Procon.MessagesProducers.ProducersStarter do
   alias Procon.Schemas.Ecto.ProconProducerMessage
   import Ecto.Query
 
-  def start_topic_production(module, nb_messages \\ 1000), do: start_topic_production(nb_messages, module.repo(), module.topic())
+  def start_topic_production(module, nb_messages \\ 1000),
+    do: start_topic_production(nb_messages, module.repo(), module.topic())
 
   def start_topic_production(nb_messages, processor_repo, topic) do
     Procon.KafkaMetadata.partition_ids_for_topic(topic)

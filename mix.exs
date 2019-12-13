@@ -25,6 +25,7 @@ defmodule Procon.MixProject do
       {:brod, "~> 3.9"},
       {:ecto, "~> 3.0"},
       {:jason, "~> 1.1"},
+      {:inflex, "~> 2.0.0"},
       {:postgrex, ">= 0.0.0"}
     ]
   end

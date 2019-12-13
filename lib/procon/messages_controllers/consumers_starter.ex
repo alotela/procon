@@ -12,7 +12,9 @@ defmodule Procon.MessagesControllers.ConsumersStarter do
 
   def activated_consumers() do
     Application.get_env(:procon, Processors)
-    |> Enum.filter(&Enum.member?(Application.get_env(:procon, :activated_processors), elem(&1, 0)))
+    |> Enum.filter(
+      &Enum.member?(Application.get_env(:procon, :activated_processors), elem(&1, 0))
+    )
     |> Enum.reduce([], &(Keyword.get(elem(&1, 1), :consumers, []) ++ &2))
   end
 end
