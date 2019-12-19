@@ -13,7 +13,7 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
           app_web_module: app_web_module,
           default_service_module: Helpers.default_service_name(processor_name),
           processor_module: processor_name,
-          resources: Helpers.processor_to_resource(processor_name),
+          resources: Helpers.processor_to_kebab_resource(processor_name),
           crud: crud
         )
       )

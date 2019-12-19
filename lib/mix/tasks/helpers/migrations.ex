@@ -146,6 +146,8 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
     def change do
       create table(:<%= @table %>, primary_key: false) do
         add(:id, :uuid, primary_key: true)
+
+        timestamps()
       end
     end
   end

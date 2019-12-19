@@ -54,6 +54,12 @@ defmodule Mix.Tasks.Procon.Helpers do
     |> List.last()
   end
 
+  def processor_to_kebab_resource(processor_name) do
+    processor_name
+    |> processor_to_resource()
+    |> String.replace("_", "-")
+  end
+
   def processor_to_resource(processor_name) do
     processor_name
     |> String.split(".")
