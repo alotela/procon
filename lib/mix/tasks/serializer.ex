@@ -84,7 +84,7 @@ defmodule Mix.Tasks.Procon.Serializer do
       end
     end
 
-    def destroyed(event_data, version) do
+    def deleted(event_data, version) do
       case version do
         1 -> %{id: event_data.id}
         # 2 -> %{id: event_data.id2}

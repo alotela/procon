@@ -163,6 +163,7 @@ defmodule Mix.Tasks.Procon.Init do
     )
 
     controller_errors_path = Helpers.ControllersErrors.create_default_controllers_errors(app_web)
+    controller_helpers_path = Helpers.ControllersErrors.create_controllers_helpers(app_web)
 
     msg = """
 
@@ -178,6 +179,7 @@ defmodule Mix.Tasks.Procon.Init do
         #{procon_producer_indexes_migration}: store producers indexes for transactional information
         #{processor_entity_migration}: default entity managed by this processor
         #{controller_errors_path}: list of errors for http reponse
+        #{controller_helpers_path}: controllers helpers
 
       IMPORTANT!! To finish the setup:
       --------------------------------

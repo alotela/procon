@@ -9,7 +9,7 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultGetter do
       create_file(
         file_path,
         default_template(
-          module: Helpers.default_service_name(processor_name) <> ".Getter",
+          module: Helpers.default_service_name(processor_name),
           processor_repo_module: Helpers.repo_name_to_module(processor_name, processor_repo),
           entity_module: Helpers.default_schema_module(processor_name),
           get_entity: String.contains?(get_search, "r"),
