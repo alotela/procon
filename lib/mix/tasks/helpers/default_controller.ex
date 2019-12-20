@@ -78,7 +78,7 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
           {:error, error_code, data} ->
             <%= @app_web_module %>.Controllers.Helpers.render_error(conn, <%= @app_web_module %>.Controllers.Errors.error_to_http_code(error_code), data)
 
-          {:ok, entity} ->
+          entity ->
             conn
             |> put_status(:ok)
             |> render("show.json-api", data: entity)

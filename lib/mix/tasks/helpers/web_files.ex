@@ -127,9 +127,23 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
     unless File.exists?(router_path) do
       Helpers.info("creating router file #{router_path}")
 
+      actions = Enum.reduce(
+        [["c", :create], ["r", :show], ["u", :update], ["i", :index], ["d", :delete]],
+        [],
+        fn [letter, action], acc ->
+          case String.contains?(crud, letter) do
+            true ->
+              [":#{action}" | acc]
+            false ->
+              acc
+          end
+        end
+      )
+
       create_file(
         router_path,
         router_template(
+          actions: actions |> Enum.join(", "),
           app_web: app_web,
           processor_name: processor_name,
           controller: processor_name |> Helpers.processor_to_controller(),
@@ -153,7 +167,7 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
 
       scope "/api", <%= @processor_name %>.Web.Controllers, as: :api do
         pipe_through([:api, :jsonapi])
-        resources("<%= @resource_path %>", <%= @controller %>, only: [:create, :delete, :update])
+        resources("<%= @resource_path %>", <%= @controller %>, only: [<%= @actions %>])
       end
     end
     """
