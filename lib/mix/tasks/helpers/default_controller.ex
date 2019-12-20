@@ -87,19 +87,19 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
     <% end %>
 
     <%= if String.contains?(@crud, "u") do %>
-      def update(conn, %{"id" => id, "data" => %{"attributes" => attributes}, "type" => "<%= @resources %>"}) do
+      def update(conn, %{"id" => id, "data" => %{"attributes" => attributes, "type" => "<%= @resources %>"}}) do
         <%= @default_service_module %>.Updater.update(id, attributes, conn.assigns)
         |> case do
           {:error, error_code, data} ->
             <%= @app_web_module %>.Controllers.Helpers.render_error(conn, <%= @app_web_module %>.Controllers.Errors.error_to_http_code(error_code), data)
 
-          {:ok, :entity, updated_entity} ->
+          {:ok, :no_entity} ->
+            conn |> send_resp(204, "")
+
+          {:ok, updated_entity} ->
             conn
             |> put_status(:ok)
             |> render("show.json-api", data: updated_entity)
-
-          {:ok, :no_entity} ->
-            conn |> send_resp(204, "")
         end
       end
     <% end %>
