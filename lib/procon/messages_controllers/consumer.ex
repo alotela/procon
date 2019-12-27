@@ -9,11 +9,6 @@ defmodule Procon.MessagesControllers.Consumer do
   def init(consumer_config, init_data), do: {:ok, Map.merge(consumer_config, init_data)}
 
   def handle_message({:kafka_message_set, topic, partition, _high_wm_offset, messages}, state) do
-    # IO.inspect(state, label: "state...")
-    # IO.inspect(messages, label: "messages...")
-    # IO.inspect(partition, label: "topic #{topic}")
-    # IO.inspect(message_content, label: "message_content on partition #{partition}")
-
     Enum.each(
       messages,
       fn {:kafka_message, _offset, _key, kafka_message_content, _ts_type, _ts, _headers} ->
@@ -44,7 +39,7 @@ defmodule Procon.MessagesControllers.Consumer do
 
       entity_config ->
         apply(
-          Procon.MessagesControllers.Default,
+          Map.get(entity_config, :messages_controller, Procon.MessagesControllers.Default),
           case procon_message |> Map.get("event") |> String.to_atom() do
             :created -> :create
             :deleted -> :delete
