@@ -164,6 +164,7 @@ defmodule Mix.Tasks.Procon.Init do
 
     controller_errors_path = Helpers.ControllersErrors.create_default_controllers_errors(app_web)
     controller_helpers_path = Helpers.ControllersErrors.create_controllers_helpers(app_web)
+    [activated_path] = Helpers.Activated.generate_config_activated(processor_name)
 
     msg = """
 
@@ -180,6 +181,7 @@ defmodule Mix.Tasks.Procon.Init do
         #{processor_entity_migration}: default entity managed by this processor
         #{controller_errors_path}: list of errors for http reponse
         #{controller_helpers_path}: controllers helpers
+        #{activated_path}: list of activated processors
 
       IMPORTANT!! To finish the setup:
       --------------------------------
@@ -188,7 +190,7 @@ defmodule Mix.Tasks.Procon.Init do
 
         forward "/#{processor_name |> Helpers.short_processor_name()}", #{processor_name}.Web.Router
 
-      * add these lines in ./config/config.exs :
+      * add these lines in ./config/config.exs (if they are not already added):
 
         config :procon,
           brokers: [localhost: 9092],
@@ -198,10 +200,12 @@ defmodule Mix.Tasks.Procon.Init do
           consumers: []
         }
 
-      * add the processor repository #{processor_name |> Helpers.short_processor_name()} to "config/config.exs" in "ecto_repos" array
-      * add the processor repository #{processor_name |> Helpers.short_processor_name()} to "lib/[your_app]/application.ex" in children array to start        the repo when the application starts.
+      * add the processor repository #{processor_name |> Helpers.repo_name_to_module(processor_repo)} to "config/config.exs" in "ecto_repos" array
+      * add the processor repository #{processor_name |> Helpers.repo_name_to_module(processor_repo)} to "lib/#{app_name}/application.ex" in children array to start the repo when the application starts.
 
       * configure your processor in #{generated_config_files |> tl()}. This is where you add your kafka listeners.
+
+      * add you processor #{processor_name} to the list of activated processors in config/processors/activated.exs
 
     generate serializers for your resources (data your service is master of and will generate events):
       mix procon.serializer --resource ResourceName
