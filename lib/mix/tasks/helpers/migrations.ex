@@ -20,21 +20,26 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
         table: Helpers.processor_to_resource(processor_name)
       ]
 
-      content = case template do
-        :procon_producer_messages ->
-          procon_producer_messages_template(args)
-        :procon_consumer_indexes ->
-          procon_consumer_indexes_template(args)
-        :procon_producer_indexes ->
-          procon_producer_indexes_template(args)
-        :procon_enqueur ->
-          procon_enqueur_template(args)
-        :procon_producer_balancings ->
-          procon_producer_balancings_template(args)
-        :processor_entity ->
-          processor_entity_template(args)
-      end
+      content =
+        case template do
+          :procon_producer_messages ->
+            procon_producer_messages_template(args)
 
+          :procon_consumer_indexes ->
+            procon_consumer_indexes_template(args)
+
+          :procon_producer_indexes ->
+            procon_producer_indexes_template(args)
+
+          :procon_enqueur ->
+            procon_enqueur_template(args)
+
+          :procon_producer_balancings ->
+            procon_producer_balancings_template(args)
+
+          :processor_entity ->
+            processor_entity_template(args)
+        end
 
       create_file(file, content)
 
@@ -47,6 +52,7 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
       nil ->
         {{y, m, d}, {hh, mm, ss}} = :calendar.universal_time()
         "#{y}#{pad(m)}#{pad(d)}#{pad(hh)}#{pad(mm)}#{pad(ss)}" |> String.to_integer()
+
       time ->
         time + 1
     end

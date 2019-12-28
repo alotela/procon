@@ -30,7 +30,9 @@ defmodule Mix.Tasks.Procon.Helpers do
   end
 
   def default_serializer_module(processor_name) do
-    "#{processor_name}.Events.Serializers.#{processor_name |> processor_to_controller() |> Inflex.singularize()}"
+    "#{processor_name}.Events.Serializers.#{
+      processor_name |> processor_to_controller() |> Inflex.singularize()
+    }"
   end
 
   def default_service_name(processor_name) do

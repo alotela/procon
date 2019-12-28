@@ -3,13 +3,14 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultSchema do
   import Mix.Generator
 
   def create_default_schema(processor_name, schema_directory_path) do
-    schema_file_path = Path.join([
-      schema_directory_path,
-      processor_name
-      |> Helpers.processor_to_resource()
-      |> Inflex.singularize()
-      |> Kernel.<>(".ex")
-    ])
+    schema_file_path =
+      Path.join([
+        schema_directory_path,
+        processor_name
+        |> Helpers.processor_to_resource()
+        |> Inflex.singularize()
+        |> Kernel.<>(".ex")
+      ])
 
     unless File.exists?(schema_file_path) do
       create_file(

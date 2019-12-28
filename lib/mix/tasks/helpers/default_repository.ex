@@ -16,8 +16,7 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultRepository do
         repo_file_path,
         pg_repo_template(
           app_name: app_name,
-          processor_repo:
-            Helpers.repo_name_to_module(processor_name, processor_repo)
+          processor_repo: Helpers.repo_name_to_module(processor_name, processor_repo)
         )
       )
     end

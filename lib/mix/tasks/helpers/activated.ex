@@ -7,6 +7,7 @@ defmodule Mix.Tasks.Procon.Helpers.Activated do
     unless File.exists?(file) do
       create_file(file, file_template(processor_name: processor_name))
     end
+
     [file]
   end
 

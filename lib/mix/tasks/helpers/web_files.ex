@@ -15,7 +15,13 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
     unless File.exists?(controllers_path) do
       Helpers.info("creating web controllers directory #{controllers_path}")
       create_directory(controllers_path)
-      Helpers.DefaultController.create_default_controller(processor_name, controllers_path, app_web, crud)
+
+      Helpers.DefaultController.create_default_controller(
+        processor_name,
+        controllers_path,
+        app_web,
+        crud
+      )
     end
 
     home_controller_path = Path.join([controllers_path, "home.ex"])
@@ -127,18 +133,20 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
     unless File.exists?(router_path) do
       Helpers.info("creating router file #{router_path}")
 
-      actions = Enum.reduce(
-        [["c", :create], ["r", :show], ["u", :update], ["i", :index], ["d", :delete]],
-        [],
-        fn [letter, action], acc ->
-          case String.contains?(crud, letter) do
-            true ->
-              [":#{action}" | acc]
-            false ->
-              acc
+      actions =
+        Enum.reduce(
+          [["c", :create], ["r", :show], ["u", :update], ["i", :index], ["d", :delete]],
+          [],
+          fn [letter, action], acc ->
+            case String.contains?(crud, letter) do
+              true ->
+                [":#{action}" | acc]
+
+              false ->
+                acc
+            end
           end
-        end
-      )
+        )
 
       create_file(
         router_path,

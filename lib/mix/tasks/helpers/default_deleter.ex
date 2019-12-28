@@ -2,7 +2,11 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultDeleter do
   alias Mix.Tasks.Procon.Helpers
   import Mix.Generator
 
-  def create_default_delete_service(domain_services_directory_path, processor_name, processor_repo) do
+  def create_default_delete_service(
+        domain_services_directory_path,
+        processor_name,
+        processor_repo
+      ) do
     file_path = Path.join([domain_services_directory_path, "deleter.ex"])
 
     unless File.exists?(file_path) do

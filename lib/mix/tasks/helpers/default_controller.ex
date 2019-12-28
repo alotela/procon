@@ -3,7 +3,8 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
   import Mix.Generator
 
   def create_default_controller(processor_name, controllers_path, app_web_module, crud) do
-    controller_file_path = Path.join([controllers_path, Helpers.processor_to_resource(processor_name) <> ".ex"])
+    controller_file_path =
+      Path.join([controllers_path, Helpers.processor_to_resource(processor_name) <> ".ex"])
 
     unless File.exists?(controller_file_path) do
       create_file(
@@ -18,7 +19,6 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
         )
       )
     end
-
   end
 
   embed_template(

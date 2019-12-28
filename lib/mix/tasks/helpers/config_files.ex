@@ -6,9 +6,7 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
     processors_config_directory = Path.join(["config", "processors"])
 
     unless File.exists?(processors_config_directory) do
-      Helpers.info(
-        "creating processors config directory #{processors_config_directory}"
-      )
+      Helpers.info("creating processors config directory #{processors_config_directory}")
 
       create_directory(processors_config_directory)
     end
@@ -17,9 +15,7 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
       Path.join([processors_config_directory, Helpers.short_processor_name(processor_name)])
 
     unless File.exists?(processor_config_directory) do
-      Helpers.info(
-        "creating processor config directory #{processor_config_directory}"
-      )
+      Helpers.info("creating processor config directory #{processor_config_directory}")
 
       create_directory(processor_config_directory)
     end
@@ -43,8 +39,7 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
         dev_config_file,
         dev_config_template(
           app_name: app_name,
-          repository:
-            Helpers.repo_name_to_module(processor_name, processor_repo),
+          repository: Helpers.repo_name_to_module(processor_name, processor_repo),
           database: processor_name |> Helpers.short_processor_name()
         )
       )

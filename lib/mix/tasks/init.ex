@@ -115,7 +115,12 @@ defmodule Mix.Tasks.Procon.Init do
         processor_name |> String.split(".") |> List.last() |> Macro.underscore()
       ])
 
-    Helpers.DefaultRepository.generate_repository(app_name, processor_name, processor_path, processor_repo)
+    Helpers.DefaultRepository.generate_repository(
+      app_name,
+      processor_name,
+      processor_path,
+      processor_repo
+    )
 
     events_path = [processor_path, "events"] |> Path.join()
 
@@ -124,9 +129,7 @@ defmodule Mix.Tasks.Procon.Init do
 
     serializers_path = [events_path, "serializers"] |> Path.join()
 
-    Helpers.info(
-      "creating processor's events serializers directory #{serializers_path}"
-    )
+    Helpers.info("creating processor's events serializers directory #{serializers_path}")
 
     serializers_path |> create_directory()
 
@@ -148,19 +151,19 @@ defmodule Mix.Tasks.Procon.Init do
     Helpers.WebDirectory.generate_web_directory(app_web, processor_name, processor_path, crud)
     Helpers.WebFile.generate_web_file(app_web, processor_name, processor_path)
 
-    generated_config_files = Helpers.ConfigFiles.generate_config_files(app_name, processor_name, processor_repo)
+    generated_config_files =
+      Helpers.ConfigFiles.generate_config_files(app_name, processor_name, processor_repo)
 
-    Mix.Tasks.Procon.Serializer.run(
-      ["--processor",
-       processor_name,
-        "--repo",
-        processor_repo,
-        "--entity",
-        processor_default_entity,
-        "--topic",
-        processor_default_topic
-      ]
-    )
+    Mix.Tasks.Procon.Serializer.run([
+      "--processor",
+      processor_name,
+      "--repo",
+      processor_repo,
+      "--entity",
+      processor_default_entity,
+      "--topic",
+      processor_default_topic
+    ])
 
     controller_errors_path = Helpers.ControllersErrors.create_default_controllers_errors(app_web)
     controller_helpers_path = Helpers.ControllersErrors.create_controllers_helpers(app_web)
@@ -200,8 +203,12 @@ defmodule Mix.Tasks.Procon.Init do
           consumers: []
         }
 
-      * add the processor repository #{processor_name |> Helpers.repo_name_to_module(processor_repo)} to "config/config.exs" in "ecto_repos" array
-      * add the processor repository #{processor_name |> Helpers.repo_name_to_module(processor_repo)} to "lib/#{app_name}/application.ex" in children array to start the repo when the application starts.
+      * add the processor repository #{
+      processor_name |> Helpers.repo_name_to_module(processor_repo)
+    } to "config/config.exs" in "ecto_repos" array
+      * add the processor repository #{
+      processor_name |> Helpers.repo_name_to_module(processor_repo)
+    } to "lib/#{app_name}/application.ex" in children array to start the repo when the application starts.
 
       * configure your processor in #{generated_config_files |> tl()}. This is where you add your kafka listeners.
 
@@ -237,20 +244,25 @@ defmodule Mix.Tasks.Procon.Init do
     services_domain_path = [services_path, "domain"] |> Path.join()
     Helpers.info("creating services domain directory #{services_domain_path}")
     services_domain_path |> create_directory()
+
     if String.contains?(crud, "c") do
-      services_domain_path |> Helpers.DefaultCreator.create_default_create_service(processor_name, processor_repo)
+      services_domain_path
+      |> Helpers.DefaultCreator.create_default_create_service(processor_name, processor_repo)
     end
 
     if String.contains?(crud, "r") || String.contains?(crud, "i") do
-      services_domain_path |> Helpers.DefaultGetter.create_default_getter_service(processor_name, processor_repo, crud)
+      services_domain_path
+      |> Helpers.DefaultGetter.create_default_getter_service(processor_name, processor_repo, crud)
     end
 
     if String.contains?(crud, "u") do
-      services_domain_path |> Helpers.DefaultUpdater.create_default_update_service(processor_name, processor_repo)
+      services_domain_path
+      |> Helpers.DefaultUpdater.create_default_update_service(processor_name, processor_repo)
     end
 
     if String.contains?(crud, "d") do
-      services_domain_path |> Helpers.DefaultDeleter.create_default_delete_service(processor_name, processor_repo)
+      services_domain_path
+      |> Helpers.DefaultDeleter.create_default_delete_service(processor_name, processor_repo)
     end
   end
 end
