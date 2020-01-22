@@ -7,8 +7,8 @@ defmodule Procon.MessagesControllers.Base do
         do_create(__MODULE__, event, options)
       end
 
-      def destroy(event, options) do
-        do_destroy(__MODULE__, event, options)
+      def delete(event, options) do
+        do_delete(__MODULE__, event, options)
       end
 
       def update(event, options) do
@@ -23,23 +23,23 @@ defmodule Procon.MessagesControllers.Base do
       def process_update(event, options), do: process_update(__MODULE__, event, options)
       def after_update(event_data, options), do: {:ok, event_data}
       def after_update_transaction(event_data, options), do: {:ok, event_data}
-      def before_destroy(event_data, options), do: event_data
-      def process_destroy(event, options), do: process_destroy(__MODULE__, event, options)
-      def after_destroy(event_data, options), do: {:ok, event_data}
+      def before_delete(event_data, options), do: event_data
+      def process_delete(event, options), do: process_delete(__MODULE__, event, options)
+      def after_delete(event_data, options), do: {:ok, event_data}
 
       defoverridable after_create: 2,
                      before_create: 2,
-                     before_destroy: 2,
+                     before_delete: 2,
                      after_create_transaction: 2,
-                     after_destroy: 2,
+                     after_delete: 2,
                      after_update: 2,
                      after_update_transaction: 2,
                      before_update: 2,
                      create: 2,
-                     destroy: 2,
+                     delete: 2,
                      update: 2,
                      process_create: 2,
-                     process_destroy: 2,
+                     process_delete: 2,
                      process_update: 2
     end
   end
@@ -141,19 +141,19 @@ defmodule Procon.MessagesControllers.Base do
       Map.put(event_data, :attributes, attributes)
     end
 
-    def do_destroy(controller, event, options) do
+    def do_delete(controller, event, options) do
       if message_not_already_processed?(event, options) do
         {:ok, consumer_message_index} =
           options.datastore.transaction(fn ->
-            controller.process_destroy(event, options)
+            controller.process_delete(event, options)
             |> case do
               {:ok, event_data} ->
-                {:ok, _} = controller.after_destroy(event_data, options)
+                {:ok, _} = controller.after_delete(event_data, options)
                 update_consumer_message_index(event, options)
 
               {:error, ecto_changeset} ->
                 Logger.info(
-                  "Unable to destroy #{inspect(options.model)} in event #{inspect(event)}@@#{
+                  "Unable to delete #{inspect(options.model)} in event #{inspect(event)}@@#{
                     inspect(ecto_changeset)
                   }"
                 )
@@ -166,21 +166,19 @@ defmodule Procon.MessagesControllers.Base do
       end
     end
 
-    def process_destroy(controller, event, options) do
+    def process_delete(controller, event, options) do
       event_data =
         record_and_body_from_event(event, false, options)
-        |> controller.before_destroy(options)
+        |> controller.before_delete(options)
 
       case event_data.record do
         nil ->
-          Logger.warn(
-            "No match for destroyed #{inspect(options.model)} in event #{inspect(event)}"
-          )
+          Logger.warn("No match for deleted #{inspect(options.model)} in event #{inspect(event)}")
 
           {:ok, event_data}
 
         _ ->
-          Logger.info("Destroying #{inspect(options.model)} with id #{event_data.record.id}")
+          Logger.info("Deleting #{inspect(options.model)} with id #{event_data.record.id}")
 
           case options.datastore.delete(event_data.record) do
             {:ok, struct} -> {:ok, Map.put(event_data, :record, struct)}
