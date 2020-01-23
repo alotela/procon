@@ -14,10 +14,6 @@ defmodule Procon.MessagesControllers.Consumer do
       fn {:kafka_message, _offset, _key, kafka_message_content, _ts_type, _ts, _headers} ->
         case Jason.decode(kafka_message_content) do
           {:ok, procon_message} ->
-            IO.inspect(procon_message,
-              label: "procon message #{state.processor_config.name}/#{topic}/#{partition}"
-            )
-
             route_message(procon_message, state.processor_config, topic, partition)
 
           {:error, %Jason.DecodeError{position: position, data: data}} ->
