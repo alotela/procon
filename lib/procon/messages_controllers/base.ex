@@ -51,8 +51,9 @@ defmodule Procon.MessagesControllers.Base do
     alias Procon.Schemas.Ecto.ProconConsumerIndex
 
     def do_create(controller, event, options) do
-      if message_not_already_processed?(event, options) do
-        {:ok, {final_event_data, consumer_message_index}} =
+      case message_not_already_processed?(event, options) do
+        true ->
+          {:ok, {final_event_data, consumer_message_index}} =
           options.datastore.transaction(fn ->
             controller.process_create(event, options)
             |> case do
@@ -72,8 +73,12 @@ defmodule Procon.MessagesControllers.Base do
             end
           end)
 
-        update_consumer_message_index_ets(consumer_message_index, options.processor_name)
-        controller.after_create_transaction(final_event_data, options)
+          update_consumer_message_index_ets(consumer_message_index, options.processor_name)
+          controller.after_create_transaction(final_event_data, options)
+
+        _ ->
+          IO.inspect(event, label: "message already processed", syntax_colors: [atom: :red, binary: :red, boolean: :red, list: :red, map: :red, number: :red, regex: :red, string: :red, tuple: :red])
+
       end
     end
 
@@ -188,7 +193,13 @@ defmodule Procon.MessagesControllers.Base do
     end
 
     def message_not_already_processed?(event, options) do
-      Map.get(event, "index") > find_last_processed_message_id(event, options)
+      last_processed_message_id = find_last_processed_message_id(event, options)
+      case Map.get(options, :bypass_message_index) do
+        true ->
+          true
+        _ ->
+          Map.get(event, "index") > last_processed_message_id
+      end
     end
 
     def update_consumer_message_index_ets(consumer_message_index, processor_name) do
