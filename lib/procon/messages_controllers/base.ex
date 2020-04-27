@@ -26,12 +26,14 @@ defmodule Procon.MessagesControllers.Base do
       def before_delete(event_data, options), do: event_data
       def process_delete(event, options), do: process_delete(__MODULE__, event, options)
       def after_delete(event_data, options), do: {:ok, event_data}
+      def after_delete_transaction(event_data, options), do: {:ok, event_data}
 
       defoverridable after_create: 2,
                      before_create: 2,
                      before_delete: 2,
                      after_create_transaction: 2,
                      after_delete: 2,
+                     after_delete_transaction: 2,
                      after_update: 2,
                      after_update_transaction: 2,
                      before_update: 2,
@@ -148,13 +150,14 @@ defmodule Procon.MessagesControllers.Base do
 
     def do_delete(controller, event, options) do
       if message_not_already_processed?(event, options) do
-        {:ok, consumer_message_index} =
+        {:ok, {final_event_data, consumer_message_index}} =
           options.datastore.transaction(fn ->
             controller.process_delete(event, options)
             |> case do
               {:ok, event_data} ->
-                {:ok, _} = controller.after_delete(event_data, options)
-                update_consumer_message_index(event, options)
+                {:ok, final_event_data} = controller.after_delete(event_data, options)
+                consumer_message_index = update_consumer_message_index(event, options)
+                {final_event_data, consumer_message_index}
 
               {:error, ecto_changeset} ->
                 Logger.info(
@@ -168,6 +171,7 @@ defmodule Procon.MessagesControllers.Base do
           end)
 
         update_consumer_message_index_ets(consumer_message_index, options.processor_name)
+        controller.after_delete_transaction(final_event_data, options)
       end
     end
 
