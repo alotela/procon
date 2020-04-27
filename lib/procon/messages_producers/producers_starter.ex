@@ -7,8 +7,12 @@ defmodule Procon.MessagesProducers.ProducersStarter do
     do: start_topic_production(nb_messages, module.repo(), module.topic())
 
   def start_topic_production(nb_messages, processor_repo, topic) do
-    Procon.KafkaMetadata.partition_ids_for_topic(topic)
-    |> Enum.each(&MPPG.start_partition_production(&1, nb_messages, processor_repo, topic))
+    case Procon.KafkaMetadata.partition_ids_for_topic(topic) do
+      nil ->
+        throw("The topic #{topic} does not seem to exists. Program")
+      partition_ids ->
+        Enum.each(partition_ids, &MPPG.start_partition_production(&1, nb_messages, processor_repo, topic))
+    end
   end
 
   def start_topics_production_from_database_messages() do
