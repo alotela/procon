@@ -12,7 +12,7 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
   end
 
   def start_partition_production(partition, nb_messages, processor_repo, topic) do
-    producer_name = "#{topic}_#{partition}"
+    producer_name = "#{processor_repo}_#{topic}_#{partition}"
 
     DynamicSupervisor.start_child(
       Procon.MessagesProducers.ProducersSupervisor,
