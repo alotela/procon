@@ -6,7 +6,10 @@ defmodule Procon.MessagesControllers.Consumer do
     Record.extract(:kafka_message, from_lib: "brod/include/brod.hrl")
   )
 
-  def init(consumer_config, init_data), do: {:ok, Map.merge(consumer_config, init_data)}
+  def init(consumer_config, init_data) do
+    Logger.metadata(procon_processor: consumer_config.group_id)
+    {:ok, Map.merge(consumer_config, init_data)}
+  end
 
   def handle_message({:kafka_message_set, topic, partition, _high_wm_offset, messages}, state) do
     Enum.each(
@@ -53,8 +56,6 @@ defmodule Procon.MessagesControllers.Consumer do
   end
 
   def start(processor_config) do
-    IO.inspect(processor_config, label: "starting processor with config")
-
     client_name =
       processor_config.name
       |> to_string()
@@ -67,14 +68,12 @@ defmodule Procon.MessagesControllers.Consumer do
       client_name,
       Application.get_env(:procon, :brod_client_config)
     )
-    |> IO.inspect(label: "starting client for #{client_name}")
 
     :brod.start_link_group_subscriber_v2(%{
       client: client_name,
       group_id: processor_config.name |> to_string(),
       topics:
-        Enum.reduce(processor_config.entities, [], &[&1.topic | &2])
-        |> IO.inspect(label: "topics for #{processor_config.name}"),
+        Enum.reduce(processor_config.entities, [], &[&1.topic | &2]),
       group_config: [
         offset_commit_policy: :commit_to_kafka_v2,
         offset_commit_interval_seconds:
@@ -86,7 +85,6 @@ defmodule Procon.MessagesControllers.Consumer do
       cb_module: __MODULE__,
       init_data: %{processor_config: processor_config}
     })
-    |> IO.inspect(label: "brod.start_link_group_subscriber_v2")
 
     {:ok}
   end

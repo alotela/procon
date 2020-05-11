@@ -10,8 +10,12 @@ defmodule Procon.MessagesProducers.ProducersStarter do
     case Procon.KafkaMetadata.partition_ids_for_topic(topic) do
       nil ->
         throw("The topic #{topic} does not seem to exists. Program")
+
       partition_ids ->
-        Enum.each(partition_ids, &MPPG.start_partition_production(&1, nb_messages, processor_repo, topic))
+        Enum.each(
+          partition_ids,
+          &MPPG.start_partition_production(&1, nb_messages, processor_repo, topic)
+        )
     end
   end
 
@@ -29,6 +33,7 @@ defmodule Procon.MessagesProducers.ProducersStarter do
         processor_repo,
         nb_messages \\ Application.get_env(:procon, :nb_simultaneous_messages_to_send)
       ) do
+    Logger.metadata(procon_processor_repo: processor_repo)
     from(pm in ProconProducerMessage, group_by: pm.topic, select: {pm.topic, count(pm.id)})
     |> processor_repo.all()
     |> Enum.each(fn {topic, _} -> start_topic_production(nb_messages, processor_repo, topic) end)

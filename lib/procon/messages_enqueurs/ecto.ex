@@ -64,6 +64,7 @@ defmodule Procon.MessagesEnqueuers.Ecto do
   @spec enqueue_event(map, module, :atom, list) ::
           {:ok, Ecto.Schema.t()} | {:error, Ecto.Changeset.t()} | {:error, term}
   def enqueue_event(event_data, event_serializer, event_type, options \\ []) do
+    Logger.metadata(procon_processor_repo: event_serializer.repo)
     message_body = build_event_message_versions(event_data, event_type, event_serializer)
 
     message_partition =

@@ -64,9 +64,11 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
         #    name: <%= @processor_name %>,
         #    entities: [
         #      %{
+        #        bypass_message_index: true, # optional
         #        event_version: 1,
-        #        keys_mapping: %{},
-        #        master_key: {:processor_schema_key, "key_from_event"},
+        #        keys_mapping: %{"key_from_event" => :key_in_your_schema}, # optional
+        #        master_key: {:processor_schema_key, "key_from_event"}, # optional
+        #        messages_controller: MessageControllerToHandleMessage, # optional
         #        model: YourEctoSchemaModule,
         #        topic: "the_topic_to_listen"
         #      }

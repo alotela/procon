@@ -10,8 +10,9 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
         processor_repo,
         template
       ) do
+    file = Path.join(migrations_path, "#{timestamp}_#{filename}.exs")
     unless Helpers.file_exists?(migrations_path, "*_#{filename}.exs") do
-      file = Path.join(migrations_path, "#{timestamp}_#{filename}.exs")
+
       Helpers.info("creating migration file #{file}")
 
       args = [
@@ -42,9 +43,8 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
         end
 
       create_file(file, content)
-
-      file
     end
+    file
   end
 
   def timestamp(seed \\ nil) do

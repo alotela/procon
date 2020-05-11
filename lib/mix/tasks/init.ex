@@ -101,7 +101,7 @@ defmodule Mix.Tasks.Procon.Init do
     processor_entity_migration =
       Helpers.Migrations.generate_migration(
         migration_time + 4,
-        "processor_entity",
+        "add_table_#{Helpers.processor_to_resource(processor_name)}",
         migrations_path,
         processor_name,
         processor_repo,
@@ -142,7 +142,7 @@ defmodule Mix.Tasks.Procon.Init do
     Helpers.info("creating services directory #{services_path}")
     services_path |> create_directory()
 
-    create_default_services(services_path, processor_name, processor_repo, crud)
+    domain_service_path = create_default_services(services_path, processor_name, processor_repo, crud)
 
     services_infra_path = [services_path, "domain"] |> Path.join()
     Helpers.info("creating services infra directory #{services_infra_path}")
@@ -185,6 +185,7 @@ defmodule Mix.Tasks.Procon.Init do
         #{controller_errors_path}: list of errors for http reponse
         #{controller_helpers_path}: controllers helpers
         #{activated_path}: list of activated processors
+        #{domain_service_path}: default services to manage service entity
 
       IMPORTANT!! To finish the setup:
       --------------------------------
@@ -212,7 +213,7 @@ defmodule Mix.Tasks.Procon.Init do
 
       * configure your processor in #{generated_config_files |> tl()}. This is where you add your kafka listeners.
 
-      * add you processor #{processor_name} to the list of activated processors in config/processors/activated.exs
+      * add your processor #{processor_name} to the list of activated processors in config/processors/activated.exs
 
     generate serializers for your resources (data your service is master of and will generate events):
       mix procon.serializer --resource ResourceName
@@ -241,7 +242,7 @@ defmodule Mix.Tasks.Procon.Init do
   end
 
   def create_default_services(services_path, processor_name, processor_repo, crud) do
-    services_domain_path = [services_path, "domain"] |> Path.join()
+    services_domain_path = [services_path, "domain", Helpers.processor_to_resource(processor_name)] |> Path.join()
     Helpers.info("creating services domain directory #{services_domain_path}")
     services_domain_path |> create_directory()
 
@@ -264,5 +265,7 @@ defmodule Mix.Tasks.Procon.Init do
       services_domain_path
       |> Helpers.DefaultDeleter.create_default_delete_service(processor_name, processor_repo)
     end
+
+    services_domain_path
   end
 end

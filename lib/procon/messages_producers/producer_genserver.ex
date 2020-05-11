@@ -49,6 +49,7 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
         }
       )
 
+    Logger.metadata(procon_processor_repo: new_initial_state.repo)
     {:ok, new_initial_state}
   end
 

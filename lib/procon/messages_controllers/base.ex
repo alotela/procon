@@ -56,31 +56,43 @@ defmodule Procon.MessagesControllers.Base do
       case message_not_already_processed?(event, options) do
         true ->
           {:ok, {final_event_data, consumer_message_index}} =
-          options.datastore.transaction(fn ->
-            controller.process_create(event, options)
-            |> case do
-              {:ok, event_data} ->
-                {:ok, final_event_data} = controller.after_create(event_data, options)
-                consumer_message_index = update_consumer_message_index(event, options)
-                {final_event_data, consumer_message_index}
+            options.datastore.transaction(fn ->
+              controller.process_create(event, options)
+              |> case do
+                {:ok, event_data} ->
+                  {:ok, final_event_data} = controller.after_create(event_data, options)
+                  consumer_message_index = update_consumer_message_index(event, options)
+                  {final_event_data, consumer_message_index}
 
-              {:error, ecto_changeset} ->
-                Logger.warn(
-                  "Unable to create #{inspect(options.model)} with event #{inspect(event)}@@ changeset : #{
-                    inspect(ecto_changeset)
-                  }"
-                )
+                {:error, ecto_changeset} ->
+                  Logger.warn(
+                    "Unable to create #{inspect(options.model)} with event #{inspect(event)}@@ changeset : #{
+                      inspect(ecto_changeset)
+                    }"
+                  )
 
-                options.datastore.rollback(ecto_changeset)
-            end
-          end)
+                  options.datastore.rollback(ecto_changeset)
+              end
+            end)
 
           update_consumer_message_index_ets(consumer_message_index, options.processor_name)
           controller.after_create_transaction(final_event_data, options)
 
         _ ->
-          IO.inspect(event, label: "message already processed", syntax_colors: [atom: :red, binary: :red, boolean: :red, list: :red, map: :red, number: :red, regex: :red, string: :red, tuple: :red])
-
+          IO.inspect(event,
+            label: "message already processed",
+            syntax_colors: [
+              atom: :red,
+              binary: :red,
+              boolean: :red,
+              list: :red,
+              map: :red,
+              number: :red,
+              regex: :red,
+              string: :red,
+              tuple: :red
+            ]
+          )
       end
     end
 
@@ -198,9 +210,11 @@ defmodule Procon.MessagesControllers.Base do
 
     def message_not_already_processed?(event, options) do
       last_processed_message_id = find_last_processed_message_id(event, options)
+
       case Map.get(options, :bypass_message_index) do
         true ->
           true
+
         _ ->
           Map.get(event, "index") > last_processed_message_id
       end
