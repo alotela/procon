@@ -37,31 +37,33 @@ defmodule Procon.MessagesControllers.Consumer do
         {:error, :topic_not_listened, processor_config}
 
       entity_config ->
-        apply(
-          Map.get(entity_config, :messages_controller, Procon.MessagesControllers.Default),
-          case procon_message |> Map.get("event") |> String.to_atom() do
-            :created -> :create
-            :deleted -> :delete
-            :updated -> :update
-          end,
-          [
-            procon_message
-            |> Map.put(:partition, partition),
-            entity_config
-            |> Map.put(:datastore, processor_config.datastore)
-            |> Map.put(:processor_name, processor_config.name)
-          ]
-        )
+        procon_message
+        |> Map.get("event", :no_event_name)
+        |> case do
+          :no_event_name ->
+            IO.inspect(procon_message, label: "no routage because no event name")
+
+          event_name ->
+            apply(
+              Map.get(entity_config, :messages_controller, Procon.MessagesControllers.Default),
+              case event_name |> String.to_atom() do
+                :created -> :create
+                :deleted -> :delete
+                :updated -> :update
+              end,
+              [
+                procon_message |> Map.put(:partition, partition),
+                entity_config
+                |> Map.put(:datastore, processor_config.datastore)
+                |> Map.put(:processor_name, processor_config.name)
+              ]
+            )
+        end
     end
   end
 
   def start(processor_config) do
-    client_name =
-      processor_config.name
-      |> to_string()
-      |> String.downcase()
-      |> String.replace(".", "_")
-      |> String.to_atom()
+    client_name = client_name(processor_config.name)
 
     :brod.start_client(
       Application.get_env(:procon, :brokers),
@@ -69,15 +71,20 @@ defmodule Procon.MessagesControllers.Consumer do
       Application.get_env(:procon, :brod_client_config)
     )
 
+    start_consumer_for_topic(processor_config, client_name)
+
+    {:ok}
+  end
+
+  def start_consumer_for_topic(processor_config, client_name \\ nil) do
     :brod.start_link_group_subscriber_v2(%{
-      client: client_name,
+      client: client_name || client_name(processor_config.name),
       group_id: processor_config.name |> to_string(),
-      topics:
-        Enum.reduce(processor_config.entities, [], &[&1.topic | &2]),
+      topics: Enum.reduce(processor_config.entities, [], &[&1.topic | &2]),
       group_config: [
         offset_commit_policy: :commit_to_kafka_v2,
         offset_commit_interval_seconds:
-          Application.get_env(:procon, :offset_commit_interval_seconds) |> IO.inspect()
+          Application.get_env(:procon, :offset_commit_interval_seconds)
       ],
       consumer_config: [
         begin_offset: :earliest
@@ -87,5 +94,13 @@ defmodule Procon.MessagesControllers.Consumer do
     })
 
     {:ok}
+  end
+
+  def client_name(processor_name) do
+    processor_name
+    |> to_string()
+    |> String.downcase()
+    |> String.replace(".", "_")
+    |> String.to_atom()
   end
 end
