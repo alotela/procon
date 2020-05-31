@@ -17,7 +17,8 @@ defmodule Procon.Application do
     children = [
       {Registry, keys: :unique, name: Procon.ProducersRegistry},
       {DynamicSupervisor,
-       name: Procon.MessagesProducers.ProducersSupervisor, strategy: :one_for_one}
+       name: Procon.MessagesProducers.ProducersSupervisor, strategy: :one_for_one},
+      Procon.MessagesControllers.ConsumersStarter
       # Starts a worker by calling: Procon.Worker.start_link(arg)
       # {Procon.Worker, arg},
     ]
@@ -30,6 +31,6 @@ defmodule Procon.Application do
 
   def after_start() do
     Procon.MessagesProducers.ProducersStarter.start_topics_production_from_database_messages()
-    Procon.MessagesControllers.ConsumersStarter.start()
+    Procon.MessagesControllers.ConsumersStarter.start_activated_processors()
   end
 end
