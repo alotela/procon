@@ -66,6 +66,15 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
         #    name: <%= @processor_name %>,
         #    entities: [
         #      %{
+        #         bypass_message_index: true,
+        #         event_version: 1,
+        #         keys_mapping: %{},
+        #         master_key: {:topic_name, "topic_name"},
+        #         messages_controller: Procon.MessagesController.DynamicTopics,
+        #         model: Procon.Schemas.DynamicTopic,
+        #         topic: "procon-dynamic-topics"
+        #      },
+        #      %{
         #        bypass_message_index: true, # optional
         #        dynamic_topic: true, # optional: use it if you need to listen topics by pattern
         #        event_version: 1,

@@ -14,7 +14,7 @@ defmodule Procon.MessagesControllers.ProcessorConfig do
     |> Enum.find(
       &(
         Map.get(&1, :dynamic_topic) !== true && &1.topic == topic_name
-        || (Map.get(&1, :dynamic_topic) === true && String.contains?(topic_name, &1.topic))
+        || (Map.get(&1, :dynamic_topic) === true && String.starts_with?(topic_name, &1.topic))
       )
     )
   end
