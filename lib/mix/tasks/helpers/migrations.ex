@@ -11,8 +11,8 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
         template
       ) do
     file = Path.join(migrations_path, "#{timestamp}_#{filename}.exs")
-    unless Helpers.file_exists?(migrations_path, "*_#{filename}.exs") do
 
+    unless Helpers.file_exists?(migrations_path, "*_#{filename}.exs") do
       Helpers.info("creating migration file #{file}")
 
       args = [
@@ -23,6 +23,9 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
 
       content =
         case template do
+          :procon_dynamic_topics ->
+            procon_dynamic_topics_template(args)
+
           :procon_producer_messages ->
             procon_producer_messages_template(args)
 
@@ -44,6 +47,7 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
 
       create_file(file, content)
     end
+
     file
   end
 
@@ -158,4 +162,23 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
     end
   end
   """)
+
+  embed_template(:procon_dynamic_topics, """
+defmodule <%= @processor_repo %>.Migrations.AddTableProconDynamicTopics do
+  use Ecto.Migration
+
+  def change do
+    create table(:procon_dynamic_topics) do
+      add(:entity, :string)
+      add(:inserted_at, :naive_datetime)
+      add(:partitions_count, :integer)
+      add(:processor, :string)
+      add(:tenant_id, :binary_id)
+      add(:topic_name, :string)
+    end
+
+    create(unique_index(:procon_dynamic_topics, [:topic_name], name: :unique_topic))
+  end
+end
+""")
 end

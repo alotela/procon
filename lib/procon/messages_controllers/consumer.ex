@@ -29,8 +29,8 @@ defmodule Procon.MessagesControllers.Consumer do
   end
 
   def route_message(procon_message, processor_config, topic, partition) do
-    processor_config.entities
-    |> Enum.find(nil, &(&1.topic == topic))
+    processor_config
+    |> Procon.MessagesControllers.ProcessorConfig.find_entity_for_topic_pattern(topic)
     |> case do
       nil ->
         IO.inspect(processor_config, label: "topic not listened #{topic}")
@@ -54,8 +54,11 @@ defmodule Procon.MessagesControllers.Consumer do
               [
                 procon_message |> Map.put(:partition, partition),
                 entity_config
+                |> Map.put(:processor_config, processor_config)
                 |> Map.put(:datastore, processor_config.datastore)
                 |> Map.put(:processor_name, processor_config.name)
+                |> Map.put(:dynamic_topics_filters, Map.get(processor_config, :dynamic_topics_filters, []))
+                |> Map.put(:dynamic_topics_autostart_consumers, Map.get(processor_config, :dynamic_topics_autostart_consumers, false))
               ]
             )
         end
@@ -77,10 +80,25 @@ defmodule Procon.MessagesControllers.Consumer do
   end
 
   def start_consumer_for_topic(processor_config, client_name \\ nil) do
+    topics =
+      Enum.reduce(processor_config.entities, [], fn entity_config, state ->
+        case Map.get(entity_config, :dynamic_topic) do
+          true ->
+            Procon.MessagesController.Datastores.Ecto.find_dynamic_topics(
+              processor_config.datastore,
+              entity_config.topic
+            )
+
+          _ ->
+            [entity_config.topic]
+        end
+        |> Kernel.++(state)
+      end)
+
     :brod.start_link_group_subscriber_v2(%{
       client: client_name || client_name(processor_config.name),
       group_id: processor_config.name |> to_string(),
-      topics: Enum.reduce(processor_config.entities, [], &[&1.topic | &2]),
+      topics: topics,
       group_config: [
         offset_commit_policy: :commit_to_kafka_v2,
         offset_commit_interval_seconds:

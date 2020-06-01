@@ -61,16 +61,19 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
         consumers: [
         # %{
         #    datastore: <%= @repository %>,
+        #    dynamic_topics_autostart_consumers: true | false # autostart dynamic topics when they are stored in datastore
+        #    dynamic_topics_filters: [%{processor_name: "origin_processor", entity_name: "entity_name_from_processor", (optional)autostart: true | false}] # tuples in this list will store in database the dynamic topics created by others processors
         #    name: <%= @processor_name %>,
         #    entities: [
         #      %{
         #        bypass_message_index: true, # optional
+        #        dynamic_topic: true, # optional: use it if you need to listen topics by pattern
         #        event_version: 1,
         #        keys_mapping: %{"key_from_event" => :key_in_your_schema}, # optional
         #        master_key: {:processor_schema_key, "key_from_event"}, # optional
         #        messages_controller: MessageControllerToHandleMessage, # optional
         #        model: YourEctoSchemaModule,
-        #        topic: "the_topic_to_listen"
+        #        topic: "the_topic_to_listen" # if "dynamic_topic: true", procon will start all topics in procon_dynamic_topics table starting with this string
         #      }
         #    ]
         #  }

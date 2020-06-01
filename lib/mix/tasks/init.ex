@@ -108,6 +108,16 @@ defmodule Mix.Tasks.Procon.Init do
         :processor_entity
       )
 
+    procon_dynamic_topics_migration =
+      Helpers.Migrations.generate_migration(
+        migration_time + 5,
+        "procon_dynamic_topics",
+        migrations_path,
+        processor_name,
+        processor_repo,
+        :procon_dynamic_topics
+      )
+
     processor_path =
       Path.join([
         "lib",
@@ -142,7 +152,8 @@ defmodule Mix.Tasks.Procon.Init do
     Helpers.info("creating services directory #{services_path}")
     services_path |> create_directory()
 
-    domain_service_path = create_default_services(services_path, processor_name, processor_repo, crud)
+    domain_service_path =
+      create_default_services(services_path, processor_name, processor_repo, crud)
 
     services_infra_path = [services_path, "domain"] |> Path.join()
     Helpers.info("creating services infra directory #{services_infra_path}")
@@ -165,6 +176,9 @@ defmodule Mix.Tasks.Procon.Init do
       processor_default_topic
     ])
 
+    dynamic_topic_serializer =
+      Helpers.Serializers.create_dynamic_topic(processor_name, processor_repo, serializers_path)
+
     controller_errors_path = Helpers.ControllersErrors.create_default_controllers_errors(app_web)
     controller_helpers_path = Helpers.ControllersErrors.create_controllers_helpers(app_web)
     [activated_path] = Helpers.Activated.generate_config_activated(processor_name)
@@ -181,11 +195,13 @@ defmodule Mix.Tasks.Procon.Init do
         #{procon_consumer_indexes_migration}: store topic/partition consumed indexes (for exactly once processing)
         #{procon_producer_balancings_migration}: store which app/container produces which topic/partition
         #{procon_producer_indexes_migration}: store producers indexes for transactional information
+        #{procon_dynamic_topics_migration}: store dynamic topics from your system
         #{processor_entity_migration}: default entity managed by this processor
         #{controller_errors_path}: list of errors for http reponse
         #{controller_helpers_path}: controllers helpers
         #{activated_path}: list of activated processors
         #{domain_service_path}: default services to manage service entity
+        #{dynamic_topic_serializer}: serializer for dynamic topic creation
 
       IMPORTANT!! To finish the setup:
       --------------------------------
@@ -242,7 +258,9 @@ defmodule Mix.Tasks.Procon.Init do
   end
 
   def create_default_services(services_path, processor_name, processor_repo, crud) do
-    services_domain_path = [services_path, "domain", Helpers.processor_to_resource(processor_name)] |> Path.join()
+    services_domain_path =
+      [services_path, "domain", Helpers.processor_to_resource(processor_name)] |> Path.join()
+
     Helpers.info("creating services domain directory #{services_domain_path}")
     services_domain_path |> create_directory()
 
