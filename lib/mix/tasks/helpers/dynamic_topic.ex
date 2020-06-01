@@ -22,7 +22,7 @@ defmodule Mix.Tasks.Procon.Helpers.Serializers do
     :dynamic_topic,
     """
     defmodule <%= @processor_module %>.Events.Serializers.DynamicTopic do
-      use Calions.DynamicTopics.Events.Serializers.DynamicTopic,
+      use Procon.Serializers.DynamicTopicBase,
         repo: <%= @processor_repo %>
     end
     """
