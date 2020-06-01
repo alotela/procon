@@ -23,6 +23,7 @@ defmodule Procon.MessagesControllers.ProcessorConfig do
     processor_config
     |> find_entity_for_topic_name(topic_name)
     |> Map.put(:topic, topic_name)
+    |> Map.drop([:dynamic_topic])
   end
 
   def build_processor_config_for_topic_name(processor_config, topic_name) do
