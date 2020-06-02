@@ -62,7 +62,7 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
         # %{
         #    datastore: <%= @repository %>,
         #    dynamic_topics_autostart_consumers: true | false # autostart dynamic topics when they are stored in datastore
-        #    dynamic_topics_filters: [%{processor_name: "origin_processor", entity_name: "entity_name_from_processor", (optional)autostart: true | false}] # tuples in this list will store in database the dynamic topics created by others processors
+        #    dynamic_topics_filters: [%{processor: "origin_processor", entity: "entity_name_from_processor", (optional)autostart: true | false}] # tuples in this list will store in database the dynamic topics created by others processors
         #    name: <%= @processor_name %>,
         #    entities: [
         #      %{
