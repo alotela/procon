@@ -296,7 +296,7 @@ defmodule Procon.MessagesControllers.Base do
     end
 
     def record_and_body_from_event(event, return_record, options) do
-      body = get_in(event, ["body", Map.get(options, :event_version) |> to_string()])
+      body = extract_versioned_body(event, options)
 
       if !is_nil(options.master_key) do
         options.datastore.get_by(
@@ -310,11 +310,12 @@ defmodule Procon.MessagesControllers.Base do
         nil ->
           %{
             body: body,
+            record_from_db: false,
             record: if(return_record, do: struct(options.model), else: nil)
           }
 
         struct ->
-          %{body: body, record: struct}
+          %{body: body, record_from_db: true, record: struct}
       end
     end
 
