@@ -317,5 +317,10 @@ defmodule Procon.MessagesControllers.Base do
           %{body: body, record: struct}
       end
     end
+
+    @spec extract_versioned_body(map, map) :: map
+    def extract_versioned_body(event, options) do
+      get_in(event, ["body", Map.get(options, :event_version) |> to_string()])
+    end
   end
 end
