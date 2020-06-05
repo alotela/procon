@@ -57,8 +57,14 @@ defmodule Procon.MessagesControllers.Consumer do
                 |> Map.put(:processor_config, processor_config)
                 |> Map.put(:datastore, processor_config.datastore)
                 |> Map.put(:processor_name, processor_config.name)
-                |> Map.put(:dynamic_topics_filters, Map.get(processor_config, :dynamic_topics_filters, []))
-                |> Map.put(:dynamic_topics_autostart_consumers, Map.get(processor_config, :dynamic_topics_autostart_consumers, false))
+                |> Map.put(
+                  :dynamic_topics_filters,
+                  Map.get(processor_config, :dynamic_topics_filters, [])
+                )
+                |> Map.put(
+                  :dynamic_topics_autostart_consumers,
+                  Map.get(processor_config, :dynamic_topics_autostart_consumers, false)
+                )
               ]
             )
         end
@@ -74,12 +80,12 @@ defmodule Procon.MessagesControllers.Consumer do
       Application.get_env(:procon, :brod_client_config)
     )
 
-    start_consumer_for_topic(processor_config, client_name)
+    start_consumer_for_topic(processor_config, nil, client_name)
 
     {:ok}
   end
 
-  def start_consumer_for_topic(processor_config, client_name \\ nil) do
+  def start_consumer_for_topic(processor_config, group_id \\ nil, client_name \\ nil) do
     topics =
       Enum.reduce(processor_config.entities, [], fn entity_config, state ->
         case Map.get(entity_config, :dynamic_topic) do
@@ -97,7 +103,7 @@ defmodule Procon.MessagesControllers.Consumer do
 
     :brod.start_link_group_subscriber_v2(%{
       client: client_name || client_name(processor_config.name),
-      group_id: processor_config.name |> to_string(),
+      group_id: group_id || processor_config.name |> to_string(),
       topics: topics,
       group_config: [
         offset_commit_policy: :commit_to_kafka_v2,

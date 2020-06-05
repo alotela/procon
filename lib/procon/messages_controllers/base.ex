@@ -61,6 +61,15 @@ defmodule Procon.MessagesControllers.Base do
               |> case do
                 {:ok, event_data} ->
                   {:ok, final_event_data} = controller.after_create(event_data, options)
+
+                  {:ok, final_event_data} =
+                    forward_entity(
+                      final_event_data,
+                      if(final_event_data.record_from_db, do: :updated, else: :created),
+                      Map.get(options, :serializer, nil),
+                      Map.get(options, :serializer_validation, nil)
+                    )
+
                   consumer_message_index = update_consumer_message_index(event, options)
                   {final_event_data, consumer_message_index}
 
@@ -76,6 +85,7 @@ defmodule Procon.MessagesControllers.Base do
             end)
 
           update_consumer_message_index_ets(consumer_message_index, options.processor_name)
+          start_forward_production(Map.get(options, :serializer, nil))
           controller.after_create_transaction(final_event_data, options)
 
         _ ->
@@ -110,6 +120,32 @@ defmodule Procon.MessagesControllers.Base do
       end
     end
 
+    def forward_entity(event_data, _type, nil, nil),
+      do: {:ok, Map.put(event_data, :entity_forwarded, false)}
+
+    def forward_entity(event_data, type, serializer, serializer_validation) do
+      case serializer_validation do
+        nil ->
+          true
+
+        _ ->
+          serializer_validation.(event_data.record, type)
+      end
+      |> case do
+        true ->
+          Procon.MessagesEnqueuers.Ecto.enqueue_event(
+            event_data.record,
+            serializer,
+            type
+          )
+
+          {:ok, Map.put(event_data, :entity_forwarded, true)}
+
+        false ->
+          {:ok, Map.put(event_data, :entity_forwarded, false)}
+      end
+    end
+
     def do_update(controller, event, options) do
       if message_not_already_processed?(event, options) do
         {:ok, {final_event_data, consumer_message_index}} =
@@ -118,6 +154,15 @@ defmodule Procon.MessagesControllers.Base do
             |> case do
               {:ok, event_data} ->
                 {:ok, final_event_data} = controller.after_update(event_data, options)
+
+                {:ok, final_event_data} =
+                  forward_entity(
+                    final_event_data,
+                    :updated,
+                    Map.get(options, :serializer, nil),
+                    Map.get(options, :serializer_validation, nil)
+                  )
+
                 consumer_message_index = update_consumer_message_index(event, options)
                 {final_event_data, consumer_message_index}
 
@@ -133,8 +178,15 @@ defmodule Procon.MessagesControllers.Base do
           end)
 
         update_consumer_message_index_ets(consumer_message_index, options.processor_name)
+        start_forward_production(Map.get(options, :serializer, nil))
         controller.after_update_transaction(final_event_data, options)
       end
+    end
+
+    def start_forward_production(nil), do: nil
+
+    def start_forward_production(serializer) do
+      Procon.MessagesProducers.ProducersStarter.start_topic_production(serializer)
     end
 
     def process_update(controller, event, options) do
@@ -168,6 +220,15 @@ defmodule Procon.MessagesControllers.Base do
             |> case do
               {:ok, event_data} ->
                 {:ok, final_event_data} = controller.after_delete(event_data, options)
+
+                {:ok, final_event_data} =
+                  forward_entity(
+                    final_event_data,
+                    :deleted,
+                    Map.get(options, :serializer, nil),
+                    Map.get(options, :serializer_validation, nil)
+                  )
+
                 consumer_message_index = update_consumer_message_index(event, options)
                 {final_event_data, consumer_message_index}
 
@@ -183,6 +244,7 @@ defmodule Procon.MessagesControllers.Base do
           end)
 
         update_consumer_message_index_ets(consumer_message_index, options.processor_name)
+        start_forward_production(Map.get(options, :serializer, nil))
         controller.after_delete_transaction(final_event_data, options)
       end
     end

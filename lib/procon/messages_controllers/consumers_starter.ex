@@ -9,10 +9,10 @@ defmodule Procon.MessagesControllers.ConsumersStarter do
     )
   end
 
-  def start_consumer_for_topic(config) do
+  def start_consumer_for_topic(config, group_id \\ nil) do
     GenServer.cast(
       Procon.MessagesControllers.ConsumersStarter,
-      {:start_consumer_for_topic, config}
+      {:start_consumer_for_topic, config, group_id}
     )
   end
 
@@ -28,8 +28,8 @@ defmodule Procon.MessagesControllers.ConsumersStarter do
     {:ok, initial_state}
   end
 
-  def handle_cast({:start_consumer_for_topic, config}, state) do
-    Procon.MessagesControllers.Consumer.start_consumer_for_topic(config)
+  def handle_cast({:start_consumer_for_topic, config, group_id}, state) do
+    Procon.MessagesControllers.Consumer.start_consumer_for_topic(config, group_id)
     {:noreply, state}
   end
 

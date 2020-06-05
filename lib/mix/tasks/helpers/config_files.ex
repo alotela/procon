@@ -82,6 +82,8 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
         #        master_key: {:processor_schema_key, "key_from_event"}, # optional
         #        messages_controller: MessageControllerToHandleMessage, # optional
         #        model: YourEctoSchemaModule,
+        #        serializer: SerializerModule, # optional: if specified, forward the entity to broker directly at the end of transaction with this serializer
+        #        serializer_validation: CheckSerializationAllowedModule # optional: a module with "run" method to check if entity must be sent to broker
         #        topic: "the_topic_to_listen" # if "dynamic_topic: true", procon will start all topics in procon_dynamic_topics table starting with this string
         #      }
         #    ]
