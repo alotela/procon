@@ -88,7 +88,12 @@ defmodule Procon.MessagesEnqueuers.Ecto do
 
     case message_body |> build_message(event_type, message_metadata) |> Jason.encode() do
       {:ok, message_blob} ->
-        enqueue(message_blob, message_partition, event_serializer.topic, event_serializer.repo)
+        enqueue(
+          message_blob,
+          message_partition,
+          Keyword.get(options, :topic, event_serializer.topic),
+          event_serializer.repo
+        )
 
       {:error, error} ->
         {:error, error}
