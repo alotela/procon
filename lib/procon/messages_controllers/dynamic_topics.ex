@@ -18,7 +18,7 @@ defmodule Procon.MessagesController.DynamicTopics do
     end
     |> case do
       nil ->
-        {:ok, event}
+        {:ok, Map.put(event, :record_from_db, false)}
 
       dynamic_topics_filter_config ->
         case super(event, options) do
