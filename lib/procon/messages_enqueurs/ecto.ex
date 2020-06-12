@@ -77,28 +77,31 @@ defmodule Procon.MessagesEnqueuers.Ecto do
     Logger.metadata(procon_processor_repo: event_serializer.repo)
     message_body = build_event_message_versions(event_data, event_type, event_serializer)
 
-    message_partition =
-      event_serializer.build_partition_key(event_data)
-      |> select_partition(
-        Procon.KafkaMetadata.nb_partitions_for_topic(
-          Keyword.get(options, :topic, event_serializer.topic)
-        )
-        |> elem(1)
-      )
+    Keyword.get(options, :topic, event_serializer.topic)
+    |> Procon.KafkaMetadata.nb_partitions_for_topic()
+    |> case do
+      {:error, :unkown_topic} ->
+        {:error, :unkown_topic}
 
-    message_metadata = Keyword.get(options, :metadata)
+      {:ok, nb_partitions} ->
+        message_metadata = Keyword.get(options, :metadata)
 
-    case message_body |> build_message(event_type, message_metadata) |> Jason.encode() do
-      {:ok, message_blob} ->
-        enqueue(
-          message_blob,
-          message_partition,
-          Keyword.get(options, :topic, event_serializer.topic),
-          event_serializer.repo
-        )
+        message_body
+        |> build_message(event_type, message_metadata)
+        |> Jason.encode()
+        |> case do
+          {:ok, message_blob} ->
+            enqueue(
+              message_blob,
+              event_serializer.build_partition_key(event_data)
+              |> select_partition(nb_partitions),
+              Keyword.get(options, :topic, event_serializer.topic),
+              event_serializer.repo
+            )
 
-      {:error, error} ->
-        {:error, error}
+          {:error, error} ->
+            {:error, error}
+        end
     end
   end
 
