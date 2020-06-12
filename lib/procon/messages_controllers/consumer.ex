@@ -54,17 +54,14 @@ defmodule Procon.MessagesControllers.Consumer do
               [
                 procon_message |> Map.put(:partition, partition),
                 entity_config
-                |> Map.put(:processor_config, processor_config)
-                |> Map.put(:datastore, processor_config.datastore)
-                |> Map.put(:processor_name, processor_config.name)
-                |> Map.put(
-                  :dynamic_topics_filters,
-                  Map.get(processor_config, :dynamic_topics_filters, [])
-                )
-                |> Map.put(
-                  :dynamic_topics_autostart_consumers,
-                  Map.get(processor_config, :dynamic_topics_autostart_consumers, false)
-                )
+                |> Map.merge(%{
+                  processor_config: processor_config,
+                  datastore: processor_config.datastore,
+                  processor_name: processor_config.name,
+                  dynamic_topics_filters: Map.get(processor_config, :dynamic_topics_filters, []),
+                  dynamic_topics_autostart_consumers:
+                    Map.get(processor_config, :dynamic_topics_autostart_consumers, false)
+                })
               ]
             )
         end
