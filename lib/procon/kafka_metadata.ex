@@ -27,8 +27,14 @@ defmodule Procon.KafkaMetadata do
   }
   }
   """
-  def cache_kafka_metadata do
-    :procon = :ets.new(:procon, [:named_table, :set])
+  def cache_kafka_metadata() do
+    case :ets.whereis(:procon) do
+      :undefined ->
+        :procon = :ets.new(:procon, [:named_table, :public, :set])
+
+      _ ->
+        nil
+    end
 
     {:ok, %{brokers: _, cluster_id: _, controller_id: _, topic_metadata: topic_metadata}} =
       :brod.get_metadata(Application.get_env(:procon, :brokers))
@@ -43,7 +49,7 @@ defmodule Procon.KafkaMetadata do
       )
   end
 
-  def kafka_topics_metadata do
+  def kafka_topics_metadata() do
     :ets.lookup_element(:procon, :kafka_topics, 2)
   end
 
@@ -52,13 +58,19 @@ defmodule Procon.KafkaMetadata do
   end
 
   @spec nb_partitions_for_topic(String.t()) :: {atom, integer}
-  def nb_partitions_for_topic(topic) do
+  def nb_partitions_for_topic(topic, force_refresh \\ false) do
     kafka_topics_metadata()
     |> Map.get(topic)
     |> case do
       nil ->
-        IO.inspect("topic #{topic} not found for partition nb")
-        {:error, 0}
+        case force_refresh do
+          true ->
+            {:error, :unkown_topic}
+
+          false ->
+            cache_kafka_metadata()
+            nb_partitions_for_topic(topic, true)
+        end
 
       topic_partitions ->
         {:ok, topic_partitions |> Enum.count()}
