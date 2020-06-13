@@ -65,7 +65,7 @@ defmodule Procon.KafkaMetadata do
       nil ->
         case force_refresh do
           true ->
-            {:error, :unkown_topic}
+            {:error, :unknown_topic}
 
           false ->
             cache_kafka_metadata()

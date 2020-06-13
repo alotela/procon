@@ -80,8 +80,8 @@ defmodule Procon.MessagesEnqueuers.Ecto do
     Keyword.get(options, :topic, event_serializer.topic)
     |> Procon.KafkaMetadata.nb_partitions_for_topic()
     |> case do
-      {:error, :unkown_topic} ->
-        {:error, :unkown_topic}
+      {:error, :unknown_topic} ->
+        {:error, :unknown_topic}
 
       {:ok, nb_partitions} ->
         message_metadata = Keyword.get(options, :metadata)
