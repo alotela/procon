@@ -46,8 +46,12 @@ defmodule Procon.MessagesEnqueuers.Ecto do
   @spec enqueue_rtevent(map, Ecto.Repo.t(), list) ::
           {:ok, Ecto.Schema.t()} | {:error, Ecto.Changeset.t()} | {:error, term}
   def enqueue_rtevent(event_data, event_serializer, options \\ []) do
+    key =
+      [event_serializer.repo |> to_string(), event_data.channel, event_data.event]
+      |> IO.iodata_to_binary()
+
     last_update_time =
-      :ets.lookup(:procon_enqueuers_thresholds, event_serializer.threshold_ets_key)
+      :ets.lookup(:procon_enqueuers_thresholds, key)
       |> case do
         [{_, update_time}] ->
           update_time
@@ -60,11 +64,7 @@ defmodule Procon.MessagesEnqueuers.Ecto do
 
     case new_update_time - last_update_time > event_serializer.threshold do
       true ->
-        :ets.insert(
-          :procon_enqueuers_thresholds,
-          {event_serializer.threshold_ets_key(), new_update_time}
-        )
-
+        :ets.insert(:procon_enqueuers_thresholds, {key, new_update_time})
         enqueue_event(event_data, event_serializer, :created, options)
 
       false ->
