@@ -21,8 +21,6 @@ defmodule Procon.Serializers.RealtimeBase do
 
       def repo(), do: unquote(Keyword.fetch!(options, :repo))
 
-      def threshold_ets_key(), do: unquote(Keyword.fetch!(options, :threshold_ets_key))
-
       def threshold(), do: unquote(Keyword.fetch!(options, :threshold))
 
       defoverridable message_versions: 0
@@ -30,7 +28,6 @@ defmodule Procon.Serializers.RealtimeBase do
       defoverridable build_partition_key: 1
       defoverridable repo: 0
       defoverridable threshold: 0
-      defoverridable threshold_ets_key: 0
     end
   end
 end
