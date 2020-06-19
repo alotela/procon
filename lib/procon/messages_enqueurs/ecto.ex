@@ -58,21 +58,18 @@ defmodule Procon.MessagesEnqueuers.Ecto do
 
     new_update_time = :os.system_time(:millisecond)
 
-    response =
-      case new_update_time - last_update_time > event_serializer.threshold do
-        true ->
-          enqueue_event(event_data, event_serializer, :created, options)
+    case new_update_time - last_update_time > event_serializer.threshold do
+      true ->
+        :ets.insert(
+          :procon_enqueuers_thresholds,
+          {event_serializer.threshold_ets_key(), new_update_time}
+        )
 
-        false ->
-          :no_enqueue
-      end
+        enqueue_event(event_data, event_serializer, :created, options)
 
-    :ets.insert(
-      :procon_enqueuers_thresholds,
-      {event_serializer.threshold_ets_key(), new_update_time}
-    )
-
-    response
+      false ->
+        :no_enqueue
+    end
   end
 
   @spec enqueue_event(map(), module(), states(), list()) ::
