@@ -30,6 +30,9 @@ defmodule Procon.Application do
   end
 
   def after_start() do
+    :procon_enqueuers_thresholds =
+      :ets.new(:procon_enqueuers_thresholds, [:named_table, :public, :set])
+
     Procon.MessagesProducers.ProducersStarter.start_topics_production_from_database_messages()
     Procon.MessagesControllers.ConsumersStarter.start_activated_processors()
   end

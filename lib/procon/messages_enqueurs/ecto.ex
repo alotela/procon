@@ -45,36 +45,41 @@ defmodule Procon.MessagesEnqueuers.Ecto do
 
   @spec enqueue_rtevent(map, Ecto.Repo.t(), list) ::
           {:ok, Ecto.Schema.t()} | {:error, Ecto.Changeset.t()} | {:error, term}
-  def enqueue_rtevent(event_data, repo, options \\ []) do
-    service_name =
-      Keyword.get(options, :service_name) || Application.get_env(:procon, :service_name)
+  def enqueue_rtevent(event_data, event_serializer, options \\ []) do
+    last_update_time =
+      :ets.lookup(:procon_enqueuers_thresholds, event_serializer.threshold_ets_key)
+      |> case do
+        [{_, update_time}] ->
+          update_time
 
-    topic = Keyword.get(options, :topic) || Application.get_env(:procon, :default_realtime_topic)
-    message_event = "#{Application.get_env(:procon, :service_name)}/real_time/notify"
-    message_metadata = Keyword.get(options, :metadata)
+        [] ->
+          :os.system_time(:millisecond) - event_serializer.threshold - 1
+      end
 
-    message_body = %{
-      1 => %{payload: %{channel: event_data.channel, source: service_name}}
-    }
+    new_update_time = :os.system_time(:millisecond)
 
-    partition_key = Keyword.get(options, :pkey) || service_name
+    response =
+      case new_update_time - last_update_time > event_serializer.threshold do
+        true ->
+          enqueue_event(event_data, event_serializer, :created, options)
 
-    message_partition =
-      select_partition(
-        partition_key,
-        Procon.KafkaMetadata.nb_partitions_for_topic(topic) |> elem(1)
-      )
+        false ->
+          :no_enqueue
+      end
 
-    case message_body |> build_message(message_event, message_metadata) |> Jason.encode() do
-      {:ok, message_blob} -> enqueue(message_blob, message_partition, topic, repo)
-      {:error, error} -> {:error, error}
-    end
+    :ets.insert(
+      :procon_enqueuers_thresholds,
+      {event_serializer.threshold_ets_key(), new_update_time}
+    )
+
+    response
   end
 
   @spec enqueue_event(map(), module(), states(), list()) ::
           {:ok, Ecto.Schema.t()} | {:error, Ecto.Changeset.t()} | {:error, term}
   def enqueue_event(event_data, event_serializer, event_type, options \\ []) do
     Logger.metadata(procon_processor_repo: event_serializer.repo)
+
     message_body = build_event_message_versions(event_data, event_type, event_serializer)
 
     Keyword.get(options, :topic, event_serializer.topic)
