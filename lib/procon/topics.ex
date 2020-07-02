@@ -1,6 +1,6 @@
 defmodule Procon.Topics do
   @spec create_topic(binary, pos_integer()) :: {:error, any} | :ok
-  def create_topic(topic, num_partitions) when is_binary(topic) do
+  def create_topic(topic, num_partitions, timeout \\ 5000) when is_binary(topic) do
     :brod.create_topics(
       Application.get_env(:procon, :brokers),
       [
@@ -12,7 +12,7 @@ defmodule Procon.Topics do
           topic: topic
         }
       ],
-      %{timeout: 1000}
+      %{timeout: timeout}
     )
   end
 
@@ -33,7 +33,7 @@ defmodule Procon.Topics do
     :brod.create_topics(
       config.brokers || Application.get_env(:procon, :brokers),
       config.topics,
-      config.timeout || %{timeout: 1000}
+      config.timeout || %{timeout: 5000}
     )
   end
 
