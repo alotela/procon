@@ -15,11 +15,11 @@ defmodule Procon.Services.DynamicTopics.Creator do
 
     multi =
       Ecto.Multi.new()
-      |> Ecto.Multi.run(:create_topic, fn _repo, _data ->
+      |> Ecto.Multi.run(Keyword.get(options, :multi_topic_name, :create_topic), fn _repo, _data ->
         Procon.Topics.create_topic(real_entity.topic_name, real_entity.partitions_count)
         {:ok, nil}
       end)
-      |> Ecto.Multi.run(:message, fn _repo, _data ->
+      |> Ecto.Multi.run(Keyword.get(options, :multi_message_name, :message), fn _repo, _data ->
         Procon.MessagesEnqueuers.Ecto.enqueue_event(
           real_entity,
           Keyword.fetch!(options, :dynamic_topics_serializer),
