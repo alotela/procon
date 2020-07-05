@@ -49,7 +49,7 @@ defmodule Procon.MessagesEnqueuers.Ecto do
     key =
       [
         event_serializer.repo |> to_string(),
-        Map.get(event_data, :channel, event_data.session_id),
+        Map.get(event_data, :channel, Map.get(event_data, :session_id, "")),
         event_data.event
       ]
       |> IO.iodata_to_binary()
