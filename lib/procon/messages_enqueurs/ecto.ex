@@ -47,7 +47,11 @@ defmodule Procon.MessagesEnqueuers.Ecto do
           {:ok, Ecto.Schema.t()} | {:error, Ecto.Changeset.t()} | {:error, term}
   def enqueue_rtevent(event_data, event_serializer, options \\ []) do
     key =
-      [event_serializer.repo |> to_string(), event_data.channel, event_data.event]
+      [
+        event_serializer.repo |> to_string(),
+        Map.get(event_data, :channel, event_data.session_id),
+        event_data.event
+      ]
       |> IO.iodata_to_binary()
 
     last_update_time =
