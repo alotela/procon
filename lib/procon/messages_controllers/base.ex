@@ -55,42 +55,60 @@ defmodule Procon.MessagesControllers.Base do
     def do_create(controller, event, options) do
       case message_not_already_processed?(event, options) do
         true ->
-          {:ok, {final_event_data, consumer_message_index}} =
-            options.datastore.transaction(fn ->
-              controller.process_create(event, options)
-              |> case do
-                {:ok, event_data} ->
-                  {:ok, final_event_data} = controller.after_create(event_data, options)
+          options.datastore.transaction(fn ->
+            controller.process_create(event, options)
+            |> case do
+              {:ok, event_data} ->
+                {:ok, final_event_data} = controller.after_create(event_data, options)
 
-                  {:ok, final_event_data} =
-                    forward_entity(
-                      final_event_data,
-                      if(final_event_data.record_from_db, do: :updated, else: :created),
-                      Map.get(options, :serializer, nil),
-                      Map.get(options, :serializer_validation, nil)
-                    )
-
-                  consumer_message_index = update_consumer_message_index(event, options)
-                  {final_event_data, consumer_message_index}
-
-                {:error, ecto_changeset} ->
-                  Logger.warn(
-                    "Unable to create #{inspect(options.model)} with event #{inspect(event)}@@ changeset : #{
-                      inspect(ecto_changeset)
-                    }"
+                {:ok, final_event_data} =
+                  forward_entity(
+                    final_event_data,
+                    if(final_event_data.record_from_db, do: :updated, else: :created),
+                    Map.get(options, :serializer, nil),
+                    Map.get(options, :serializer_validation, nil)
                   )
 
-                  options.datastore.rollback(ecto_changeset)
-              end
-            end)
+                consumer_message_index = update_consumer_message_index(event, options)
 
-          update_consumer_message_index_ets(consumer_message_index, options.processor_name)
-          start_forward_production(Map.get(options, :serializer, nil))
-          controller.after_create_transaction(final_event_data, options)
+                {final_event_data, consumer_message_index}
+
+              {:error, ecto_changeset} ->
+                Logger.warn(
+                  "Unable to create #{inspect(options.model)} with event #{inspect(event)}@@ changeset : #{
+                    inspect(ecto_changeset)
+                  }"
+                )
+
+                options.datastore.rollback(ecto_changeset)
+            end
+          end)
+          |> case do
+            {:ok, {final_event_data, consumer_message_index}} ->
+              update_consumer_message_index_ets(consumer_message_index, options.processor_name)
+              start_forward_production(Map.get(options, :serializer, nil))
+              controller.after_create_transaction(final_event_data, options)
+
+            {:error, error} ->
+              IO.inspect(error,
+                label: "PROCON ALERT : error while processing",
+                syntax_colors: [
+                  atom: :red,
+                  binary: :red,
+                  boolean: :red,
+                  list: :red,
+                  map: :red,
+                  number: :red,
+                  regex: :red,
+                  string: :red,
+                  tuple: :red
+                ]
+              )
+          end
 
         _ ->
           IO.inspect(event,
-            label: "message already processed",
+            label: "PROCON ALERT : message already processed",
             syntax_colors: [
               atom: :red,
               binary: :red,
