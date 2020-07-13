@@ -1,18 +1,18 @@
 defmodule Procon.Topics do
   @spec create_topic(binary, pos_integer()) :: {:error, any} | :ok
-  def create_topic(topic, num_partitions, timeout \\ 5000) when is_binary(topic) do
+  def create_topic(topic, num_partitions, options \\ []) when is_binary(topic) do
     :brod.create_topics(
       Application.get_env(:procon, :brokers),
       [
         %{
-          config_entries: [],
+          config_entries: Keyword.get(options, :config_entries, []),
           num_partitions: num_partitions,
-          replica_assignment: [],
-          replication_factor: 1,
+          replica_assignment: Keyword.get(options, :replica_assignment, []),
+          replication_factor: Keyword.get(options, :replication_factor, 1),
           topic: topic
         }
       ],
-      %{timeout: timeout}
+      %{timeout: Keyword.get(options, :timeout, 5000)}
     )
   end
 
