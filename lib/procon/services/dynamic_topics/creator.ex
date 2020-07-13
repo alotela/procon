@@ -16,7 +16,12 @@ defmodule Procon.Services.DynamicTopics.Creator do
     multi =
       Ecto.Multi.new()
       |> Ecto.Multi.run(Keyword.get(options, :multi_topic_name, :create_topic), fn _repo, _data ->
-        Procon.Topics.create_topic(real_entity.topic_name, real_entity.partitions_count)
+        Procon.Topics.create_topic(
+          real_entity.topic_name,
+          real_entity.partitions_count,
+          Keyword.get(options, :topic_config, [])
+        )
+
         {:ok, nil}
       end)
       |> Ecto.Multi.run(Keyword.get(options, :multi_message_name, :message), fn _repo, _data ->
