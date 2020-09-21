@@ -44,7 +44,10 @@ defmodule Procon.MessagesEnqueuers.Ecto do
   end
 
   @spec enqueue_rtevent(map, Ecto.Repo.t(), list) ::
-          {:ok, Ecto.Schema.t()} | {:error, Ecto.Changeset.t()} | {:error, term}
+          {:ok, Ecto.Schema.t()}
+          | {:error, Ecto.Changeset.t()}
+          | {:error, term}
+          | {:ok, :no_enqueue}
   def enqueue_rtevent(event_data, event_serializer, options \\ []) do
     key =
       [
@@ -72,12 +75,15 @@ defmodule Procon.MessagesEnqueuers.Ecto do
         enqueue_event(event_data, event_serializer, :created, options)
 
       false ->
-        :no_enqueue
+        {:ok, :no_enqueue}
     end
   end
 
   @spec enqueue_event(map(), module(), states(), list()) ::
-          {:ok, Ecto.Schema.t()} | {:error, Ecto.Changeset.t()} | {:error, term}
+          {:ok, Ecto.Schema.t()}
+          | {:error, Ecto.Changeset.t()}
+          | {:error, term}
+          | {:error, :unknown_topic, String.t()}
   def enqueue_event(event_data, event_serializer, event_type, options \\ []) do
     Logger.metadata(procon_processor_repo: event_serializer.repo)
 
@@ -86,8 +92,8 @@ defmodule Procon.MessagesEnqueuers.Ecto do
     Keyword.get(options, :topic, event_serializer.topic)
     |> Procon.KafkaMetadata.nb_partitions_for_topic()
     |> case do
-      {:error, :unknown_topic} ->
-        {:error, :unknown_topic}
+      {:error, :unknown_topic, topic} ->
+        {:error, :unknown_topic, topic}
 
       {:ok, nb_partitions} ->
         message_metadata = Keyword.get(options, :metadata)

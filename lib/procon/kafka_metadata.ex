@@ -57,7 +57,8 @@ defmodule Procon.KafkaMetadata do
     kafka_topics_metadata() |> Map.get(topic)
   end
 
-  @spec nb_partitions_for_topic(String.t()) :: {atom, integer}
+  @spec nb_partitions_for_topic(String.t()) ::
+          {:ok, integer} | {:error, :unknown_topic, String.t()}
   def nb_partitions_for_topic(topic, force_refresh \\ false) do
     kafka_topics_metadata()
     |> Map.get(topic)
@@ -65,7 +66,7 @@ defmodule Procon.KafkaMetadata do
       nil ->
         case force_refresh do
           true ->
-            {:error, :unknown_topic}
+            {:error, :unknown_topic, topic}
 
           false ->
             cache_kafka_metadata()

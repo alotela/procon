@@ -91,7 +91,39 @@ defmodule Procon.MessagesControllers.Base do
 
             {:error, error} ->
               IO.inspect(error,
-                label: "PROCON ALERT : error while processing",
+                label: "PROCON ALERT : error while processing > error",
+                syntax_colors: [
+                  atom: :red,
+                  binary: :red,
+                  boolean: :red,
+                  list: :red,
+                  map: :red,
+                  number: :red,
+                  regex: :red,
+                  string: :red,
+                  tuple: :red
+                ]
+              )
+
+              IO.inspect(options,
+                label:
+                  "PROCON ALERT : #{options.processor_name} : error while processing > options",
+                syntax_colors: [
+                  atom: :red,
+                  binary: :red,
+                  boolean: :red,
+                  list: :red,
+                  map: :red,
+                  number: :red,
+                  regex: :red,
+                  string: :red,
+                  tuple: :red
+                ]
+              )
+
+              IO.inspect(event,
+                label:
+                  "PROCON ALERT : #{options.processor_name} : error while processing > event",
                 syntax_colors: [
                   atom: :red,
                   binary: :red,
@@ -108,7 +140,7 @@ defmodule Procon.MessagesControllers.Base do
 
         _ ->
           IO.inspect(event,
-            label: "PROCON ALERT : message already processed",
+            label: "PROCON ALERT : #{options.processor_name} : message already processed",
             syntax_colors: [
               atom: :red,
               binary: :red,

@@ -3,11 +3,11 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
 
   def via(producer_name), do: {:via, Registry, {Procon.ProducersRegistry, producer_name}}
 
-  def start_link(options) do
+  def start_link(state) do
     GenServer.start_link(
       __MODULE__,
-      Keyword.get(options, :initial_state),
-      name: via(Keyword.get(options, :producer_name))
+      state,
+      name: via(state.producer_name)
     )
   end
 
@@ -16,15 +16,19 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
 
     DynamicSupervisor.start_child(
       Procon.MessagesProducers.ProducersSupervisor,
-      {
-        __MODULE__,
-        initial_state: %{
-          nb_messages: nb_messages,
-          partition: partition,
-          repo: processor_repo,
-          topic: topic
-        },
-        producer_name: producer_name
+      %{
+        start:
+          {__MODULE__, :start_link,
+           [
+             %{
+               nb_messages: nb_messages,
+               partition: partition,
+               producer_name: producer_name,
+               repo: processor_repo,
+               topic: topic
+             }
+           ]},
+        id: producer_name
       }
     )
 
