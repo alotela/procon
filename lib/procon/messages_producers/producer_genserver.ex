@@ -7,12 +7,12 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
     GenServer.start_link(
       __MODULE__,
       state,
-      name: via(state.producer_name)
+      name: state.producer_name
     )
   end
 
   def start_partition_production(partition, nb_messages, processor_repo, topic) do
-    producer_name = "#{processor_repo}_#{topic}_#{partition}"
+    producer_name = :"#{processor_repo}_#{topic}_#{partition}"
 
     DynamicSupervisor.start_child(
       Procon.MessagesProducers.ProducersSupervisor,
@@ -32,7 +32,7 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
       }
     )
 
-    GenServer.cast(via(producer_name), {:start_partition_production})
+    GenServer.cast(producer_name, {:start_partition_production})
   end
 
   def init(initial_state) do
