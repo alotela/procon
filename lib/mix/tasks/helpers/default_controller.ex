@@ -2,7 +2,13 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
   alias Mix.Tasks.Procon.Helpers
   import Mix.Generator
 
-  def create_default_controller(processor_name, controllers_path, app_web_module, crud) do
+  def create_default_controller(
+        processor_name,
+        controllers_path,
+        app_web_module,
+        crud,
+        public_controller
+      ) do
     controller_file_path =
       Path.join([controllers_path, Helpers.processor_to_resource(processor_name) <> ".ex"])
 
@@ -10,7 +16,7 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
       create_file(
         controller_file_path,
         default_controller_template(
-          controller_module: Helpers.default_controller_module(processor_name),
+          controller_module: Helpers.default_controller_module(processor_name, public_controller),
           app_web_module: app_web_module |> String.replace(processor_name, "Processor"),
           default_service_module:
             Helpers.default_service_name(processor_name)

@@ -15,7 +15,7 @@ defmodule Mix.Tasks.Procon.Init do
     Helpers.info("You need to set --processor with maybe optional params :")
 
     Helpers.info(
-      "mix procon.init --processor MyApp.Processors.[Commands|Operators|QueryViews|PushViews].ProcessorName [--repo ProcessorPg] [--crud criud] [--html]"
+      "mix procon.init --processor MyApp.Processors.[Commands|Operators|QueryViews|PushViews].ProcessorName [--repo ProcessorPg] [--crud criud] [--html] [--public]"
     )
   end
 
@@ -37,9 +37,14 @@ defmodule Mix.Tasks.Procon.Init do
       OptionParser.parse(args, strict: [jsonapi: :boolean]) |> elem(0) |> Keyword.get(:jsonapi)
 
     generate_html =
-      OptionParser.parse(args, strict: [jsonapi: :boolean])
+      OptionParser.parse(args, strict: [html: :boolean])
       |> elem(0)
       |> Keyword.get(:html, false)
+
+    public_controller =
+      OptionParser.parse(args, strict: [public: :boolean])
+      |> elem(0)
+      |> Keyword.get(:public, false)
 
     processor_repo =
       OptionParser.parse(args, strict: [repo: :string])
@@ -180,7 +185,8 @@ defmodule Mix.Tasks.Procon.Init do
       processor_name,
       processor_path,
       crud,
-      generate_html
+      generate_html,
+      public_controller
     )
 
     Helpers.WebFile.generate_web_file(app_web, processor_name, processor_path)

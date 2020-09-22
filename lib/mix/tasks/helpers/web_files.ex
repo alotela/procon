@@ -2,7 +2,14 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
   alias Mix.Tasks.Procon.Helpers
   import Mix.Generator
 
-  def generate_web_directory(app_web, processor_name, processor_path, crud, generate_html) do
+  def generate_web_directory(
+        app_web,
+        processor_name,
+        processor_path,
+        crud,
+        generate_html,
+        public_controller
+      ) do
     web_path = Path.join([processor_path, "web"])
 
     unless File.exists?(web_path) do
@@ -10,7 +17,8 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
       create_directory(web_path)
     end
 
-    controllers_path = Path.join([web_path, "controllers"])
+    controllers_path =
+      Path.join([web_path, "controllers", "#{if public_controller, do: "", else: "private"}"])
 
     unless File.exists?(controllers_path) do
       Helpers.info("creating web controllers directory #{controllers_path}")
@@ -20,11 +28,13 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
         processor_name,
         controllers_path,
         app_web,
-        crud
+        crud,
+        public_controller
       )
     end
 
-    views_path = Path.join([web_path, "views"])
+    views_path =
+      Path.join([web_path, "views", "#{if public_controller, do: "", else: "private"}"])
 
     if generate_html do
       home_controller_path = Path.join([controllers_path, "home.ex"])
@@ -124,8 +134,12 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
       create_file(
         entity_view_path,
         entity_view_template(
-          controller: processor_name |> Helpers.processor_to_controller(),
-          processor_name: processor_name
+          controller:
+            "#{if public_controller, do: "", else: "Private."}#{
+              processor_name |> Helpers.processor_to_controller()
+            }",
+          processor_name: processor_name,
+          public_controller: public_controller
         )
       )
     end
@@ -150,14 +164,35 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
           end
         )
 
+      html =
+        case generate_html do
+          true ->
+            """
+            scope "/", #{processor_name}.Web.Controllers do
+            pipe_through(:browser)
+
+            get("/", Home, :show, singleton: true)
+            end
+            """
+
+          false ->
+            ""
+        end
+
       create_file(
         router_path,
         router_template(
-          actions: actions |> Enum.join(", "),
           app_web: app_web,
           processor_name: processor_name,
           controller: processor_name |> Helpers.processor_to_controller(),
-          resource_path: "/#{processor_name |> Helpers.processor_to_resource()}"
+          resource_path: """
+          #{if public_controller, do: "", else: "scope \"/private\", Private, as: :private do"}
+            resources("/#{processor_name |> Helpers.processor_to_resource()}", #{
+            processor_name |> Helpers.processor_to_controller()
+          }, only: [#{actions |> Enum.join(", ")}])
+          #{if public_controller, do: "", else: "end"}
+          """,
+          html: html
         )
       )
     end
@@ -168,16 +203,11 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
     """
     defmodule <%= @processor_name%>.Web.Router do
       use <%= @app_web%>, :router
-
-      scope "/", <%= @processor_name %>.Web.Controllers do
-        pipe_through(:browser)
-
-        get("/", Home, :show, singleton: true)
-      end
-
+      <%= @html %>
       scope "/api", <%= @processor_name %>.Web.Controllers, as: :api do
         pipe_through([:api, :jsonapi])
-        resources("<%= @resource_path %>", <%= @controller %>, only: [<%= @actions %>])
+
+        <%= @resource_path %>
       end
     end
     """

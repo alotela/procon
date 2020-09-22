@@ -25,8 +25,10 @@ defmodule Mix.Tasks.Procon.Helpers do
     |> String.replace("Elixir.", "")
   end
 
-  def default_controller_module(processor_name) do
-    "#{processor_name}.Web.Controllers.#{processor_name |> processor_to_controller()}"
+  def default_controller_module(processor_name, public_controller) do
+    "#{processor_name}.Web.Controllers.#{if public_controller, do: "", else: "Private."}#{
+      processor_name |> processor_to_controller()
+    }"
   end
 
   def info(msg) do
