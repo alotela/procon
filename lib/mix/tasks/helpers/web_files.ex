@@ -2,7 +2,7 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
   alias Mix.Tasks.Procon.Helpers
   import Mix.Generator
 
-  def generate_web_directory(app_web, processor_name, processor_path, crud) do
+  def generate_web_directory(app_web, processor_name, processor_path, crud, generate_html) do
     web_path = Path.join([processor_path, "web"])
 
     unless File.exists?(web_path) do
@@ -24,90 +24,92 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
       )
     end
 
-    home_controller_path = Path.join([controllers_path, "home.ex"])
-
-    unless File.exists?(home_controller_path) do
-      Helpers.info("creating web home controller file #{home_controller_path}")
-
-      create_file(
-        home_controller_path,
-        home_controller_template(processor_name: processor_name)
-      )
-    end
-
-    templates_path = Path.join([web_path, "templates"])
-
-    unless File.exists?(templates_path) do
-      Helpers.info("creating templates directory #{templates_path}")
-      create_directory(templates_path)
-    end
-
-    layout_path = Path.join([templates_path, "layout"])
-
-    unless File.exists?(layout_path) do
-      Helpers.info("creating layout directory #{layout_path}")
-      create_directory(layout_path)
-    end
-
-    app_layout_path = Path.join([layout_path, "app.html.eex"])
-
-    unless File.exists?(app_layout_path) do
-      Helpers.info("creating layout app file #{app_layout_path}")
-
-      create_file(
-        app_layout_path,
-        app_layout_template(
-          processor_name: processor_name,
-          render_call: "<%= render @view_module, @view_template, assigns %>"
-        )
-      )
-    end
-
-    home_directory_path = Path.join([templates_path, "home"])
-
-    unless File.exists?(home_directory_path) do
-      Helpers.info("creating home templates directory #{home_directory_path}")
-      create_directory(home_directory_path)
-    end
-
-    home_template_path = Path.join([home_directory_path, "show.html.eex"])
-
-    unless File.exists?(home_template_path) do
-      Helpers.info("creating home template file #{home_template_path}")
-
-      create_file(
-        home_template_path,
-        home_template_template(processor_name: processor_name)
-      )
-    end
-
     views_path = Path.join([web_path, "views"])
 
-    unless File.exists?(views_path) do
-      Helpers.info("creating web views path #{views_path}")
-      create_directory(views_path)
-    end
+    if generate_html do
+      home_controller_path = Path.join([controllers_path, "home.ex"])
 
-    layout_view_path = Path.join([views_path, "layout_view.ex"])
+      unless File.exists?(home_controller_path) do
+        Helpers.info("creating web home controller file #{home_controller_path}")
 
-    unless File.exists?(layout_view_path) do
-      Helpers.info("creating layout view file #{layout_view_path}")
+        create_file(
+          home_controller_path,
+          home_controller_template(processor_name: processor_name)
+        )
+      end
 
-      create_file(
-        layout_view_path,
-        layout_view_template(processor_name: processor_name)
-      )
-    end
+      templates_path = Path.join([web_path, "templates"])
 
-    home_view_path = Path.join([views_path, "home_view.ex"])
+      unless File.exists?(templates_path) do
+        Helpers.info("creating templates directory #{templates_path}")
+        create_directory(templates_path)
+      end
 
-    unless File.exists?(home_view_path) do
-      Helpers.info("creating home view file #{home_view_path}")
+      layout_path = Path.join([templates_path, "layout"])
 
-      create_file(
-        home_view_path,
-        home_view_template(processor_name: processor_name)
-      )
+      unless File.exists?(layout_path) do
+        Helpers.info("creating layout directory #{layout_path}")
+        create_directory(layout_path)
+      end
+
+      app_layout_path = Path.join([layout_path, "app.html.eex"])
+
+      unless File.exists?(app_layout_path) do
+        Helpers.info("creating layout app file #{app_layout_path}")
+
+        create_file(
+          app_layout_path,
+          app_layout_template(
+            processor_name: processor_name,
+            render_call: "<%= render @view_module, @view_template, assigns %>"
+          )
+        )
+      end
+
+      home_directory_path = Path.join([templates_path, "home"])
+
+      unless File.exists?(home_directory_path) do
+        Helpers.info("creating home templates directory #{home_directory_path}")
+        create_directory(home_directory_path)
+      end
+
+      home_template_path = Path.join([home_directory_path, "show.html.eex"])
+
+      unless File.exists?(home_template_path) do
+        Helpers.info("creating home template file #{home_template_path}")
+
+        create_file(
+          home_template_path,
+          home_template_template(processor_name: processor_name)
+        )
+      end
+
+      unless File.exists?(views_path) do
+        Helpers.info("creating web views path #{views_path}")
+        create_directory(views_path)
+      end
+
+      layout_view_path = Path.join([views_path, "layout_view.ex"])
+
+      unless File.exists?(layout_view_path) do
+        Helpers.info("creating layout view file #{layout_view_path}")
+
+        create_file(
+          layout_view_path,
+          layout_view_template(processor_name: processor_name)
+        )
+      end
+
+      home_view_path = Path.join([views_path, "home_view.ex"])
+
+      unless File.exists?(home_view_path) do
+        Helpers.info("creating home view file #{home_view_path}")
+
+        create_file(
+          home_view_path,
+          home_view_template(processor_name: processor_name)
+        )
+      end
     end
 
     entity_view_path =

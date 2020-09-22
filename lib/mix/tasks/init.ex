@@ -15,7 +15,7 @@ defmodule Mix.Tasks.Procon.Init do
     Helpers.info("You need to set --processor with maybe optional params :")
 
     Helpers.info(
-      "mix procon.init --processor MyApp.Processors.[Commands|Operators|QueryViews|PushViews].ProcessorName [--repo ProcessorPg] [--crud criud]"
+      "mix procon.init --processor MyApp.Processors.[Commands|Operators|QueryViews|PushViews].ProcessorName [--repo ProcessorPg] [--crud criud] [--html]"
     )
   end
 
@@ -35,6 +35,11 @@ defmodule Mix.Tasks.Procon.Init do
 
     _jsonapi =
       OptionParser.parse(args, strict: [jsonapi: :boolean]) |> elem(0) |> Keyword.get(:jsonapi)
+
+    generate_html =
+      OptionParser.parse(args, strict: [jsonapi: :boolean])
+      |> elem(0)
+      |> Keyword.get(:html, false)
 
     processor_repo =
       OptionParser.parse(args, strict: [repo: :string])
@@ -170,7 +175,14 @@ defmodule Mix.Tasks.Procon.Init do
     Helpers.info("creating services infra directory #{services_infra_path}")
     services_infra_path |> create_directory()
 
-    Helpers.WebDirectory.generate_web_directory(app_web, processor_name, processor_path, crud)
+    Helpers.WebDirectory.generate_web_directory(
+      app_web,
+      processor_name,
+      processor_path,
+      crud,
+      generate_html
+    )
+
     Helpers.WebFile.generate_web_file(app_web, processor_name, processor_path)
 
     generated_config_files =
