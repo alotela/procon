@@ -3,16 +3,21 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
   import Mix.Generator
 
   def generate_config_files(app_name, processor_name, processor_repo) do
-    processors_config_directory = Path.join(["config", "processors"])
+    processors_config_type_directory =
+      Path.join([
+        "config",
+        "processors",
+        Helpers.processor_type(processor_name) |> Macro.underscore()
+      ])
 
-    unless File.exists?(processors_config_directory) do
-      Helpers.info("creating processors config directory #{processors_config_directory}")
+    unless File.exists?(processors_config_type_directory) do
+      Helpers.info("creating processors config directory #{processors_config_type_directory}")
 
-      create_directory(processors_config_directory)
+      create_directory(processors_config_type_directory)
     end
 
     processor_config_directory =
-      Path.join([processors_config_directory, Helpers.short_processor_name(processor_name)])
+      Path.join([processors_config_type_directory, Helpers.short_processor_name(processor_name)])
 
     unless File.exists?(processor_config_directory) do
       Helpers.info("creating processor config directory #{processor_config_directory}")
@@ -40,7 +45,14 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
         dev_config_template(
           app_name: app_name,
           repository: Helpers.repo_name_to_module(processor_name, processor_repo),
-          database: processor_name |> Helpers.short_processor_name()
+          database:
+            "#{Helpers.processor_type(processor_name) |> Macro.underscore()}_#{
+              processor_name |> Helpers.short_processor_name()
+            }",
+          repo_path:
+            "priv/#{Helpers.processor_type(processor_name) |> Macro.underscore()}/#{
+              processor_repo |> Macro.underscore()
+            }"
         )
       )
     end
@@ -104,7 +116,8 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
     database: "<%= @database %>",
     hostname: "localhost",
     show_sensitive_data_on_connection_error: true,
-    pool_size: 10
+    pool_size: 10,
+    priv: "<%= @repo_path %>"
     """
   )
 end

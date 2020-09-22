@@ -15,9 +15,15 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultCreator do
         default_service_creator_template(
           creator_module: Helpers.default_service_name(processor_name) <> ".Creator",
           processor_module: processor_name,
-          processor_repo_module: Helpers.repo_name_to_module(processor_name, processor_repo),
-          schema_module: Helpers.default_schema_module(processor_name),
-          serializer_module: Helpers.default_serializer_module(processor_name)
+          processor_repo_module:
+            Helpers.repo_name_to_module(processor_name, processor_repo)
+            |> String.replace(processor_name, "Processor"),
+          schema_module:
+            Helpers.default_schema_module(processor_name)
+            |> String.replace(processor_name, "Processor"),
+          serializer_module:
+            Helpers.default_serializer_module(processor_name)
+            |> String.replace(processor_name, "Processor")
         )
       )
     end
@@ -27,7 +33,7 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultCreator do
     :default_service_creator,
     """
     defmodule <%= @creator_module %> do
-      # alias <%= @processor_module %>, as: Processor
+      alias <%= @processor_module %>, as: Processor
 
       def create(%{} = attributes) do
         Ecto.Multi.new()

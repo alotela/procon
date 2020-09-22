@@ -7,8 +7,16 @@ defmodule Mix.Tasks.Procon.Helpers do
     Path.join([
       "lib",
       "processors",
-      processor_name |> String.split(".") |> List.last() |> Macro.underscore()
+      processor_type(processor_name),
+      short_processor_name(processor_name)
     ])
+  end
+
+  def processor_type(processor_name) do
+    processor_name
+    |> String.split(".")
+    |> List.pop_at(2)
+    |> elem(0)
   end
 
   def repo_name_to_module(processor_name, processor_repo) do

@@ -11,8 +11,10 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
         controller_file_path,
         default_controller_template(
           controller_module: Helpers.default_controller_module(processor_name),
-          app_web_module: app_web_module,
-          default_service_module: Helpers.default_service_name(processor_name),
+          app_web_module: app_web_module |> String.replace(processor_name, "Processor"),
+          default_service_module:
+            Helpers.default_service_name(processor_name)
+            |> String.replace(processor_name, "Processor"),
           processor_module: processor_name,
           resources: Helpers.processor_to_kebab_resource(processor_name),
           crud: crud
@@ -27,8 +29,8 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
     defmodule <%= @controller_module %> do
       alias <%= @processor_module %>, as: Processor
       use Processor.Web, :controller
-
     <%= if String.contains?(@crud, "c") do %>
+
       def create(conn, %{"data" => %{"attributes" => attributes, "type" => "<%= @resources %>"}}) do
         attributes
         |> <%= @default_service_module %>.Creator.create()
@@ -48,9 +50,8 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
             |> render("show.json-api", data: created_entity)
         end
       end
-    <% end %>
+    <% end %><%= if String.contains?(@crud, "d") do %>
 
-    <%= if String.contains?(@crud, "d") do %>
       def delete(conn, %{"id" => id}) do
         <%= @default_service_module %>.Deleter.delete(id, conn.assigns)
         |> case do
@@ -61,17 +62,15 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
             conn |> send_resp(204, "")
         end
       end
-    <% end %>
+    <% end %><%= if String.contains?(@crud, "i") do %>
 
-    <%= if String.contains?(@crud, "i") do %>
       def index(conn, params) do
         conn
         |> put_status(:ok)
         |> render("index.json-api", data: <%= @default_service_module %>.Getter.get(params, conn.assigns))
       end
-    <% end %>
+    <% end %><%= if String.contains?(@crud, "r") do %>
 
-    <%= if String.contains?(@crud, "r") do %>
       def show(conn, %{"id" => id}) do
         <%= @default_service_module %>.Getter.get(id, conn.assigns)
         |> case do
@@ -84,9 +83,8 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
             |> render("show.json-api", data: entity)
         end
       end
-    <% end %>
+    <% end %><%= if String.contains?(@crud, "u") do %>
 
-    <%= if String.contains?(@crud, "u") do %>
       def update(conn, %{"id" => id, "data" => %{"attributes" => attributes, "type" => "<%= @resources %>"}}) do
         <%= @default_service_module %>.Updater.update(id, attributes, conn.assigns)
         |> case do

@@ -12,10 +12,10 @@ defmodule Mix.Tasks.Procon.Init do
   """
 
   def run([]) do
-    Helpers.info("You need to set --processor and --repo params :")
+    Helpers.info("You need to set --processor with maybe optional params :")
 
     Helpers.info(
-      "mix procon.init --processor MyDomain.Processors.ProcessorName --repo ProcessorPg --crud criud"
+      "mix procon.init --processor MyApp.Processors.[Commands|Operators|QueryViews|PushViews].ProcessorName [--repo ProcessorPg] [--crud criud]"
     )
   end
 
@@ -26,17 +26,20 @@ defmodule Mix.Tasks.Procon.Init do
       Mix.Project.get!() |> Module.split() |> List.first() |> to_string() |> Kernel.<>("Web")
 
     processor_name =
-      OptionParser.parse(args, strict: [processor: :string, repo: :string])
+      OptionParser.parse(args, strict: [processor: :string])
       |> elem(0)
       |> Keyword.get(:processor)
 
-    crud = OptionParser.parse(args, strict: [crud: :string]) |> elem(0) |> Keyword.get(:crud)
+    crud =
+      OptionParser.parse(args, strict: [crud: :string]) |> elem(0) |> Keyword.get(:crud, "criud")
 
     _jsonapi =
       OptionParser.parse(args, strict: [jsonapi: :boolean]) |> elem(0) |> Keyword.get(:jsonapi)
 
     processor_repo =
-      OptionParser.parse(args, strict: [repo: :string]) |> elem(0) |> Keyword.get(:repo)
+      OptionParser.parse(args, strict: [repo: :string])
+      |> elem(0)
+      |> Keyword.get(:repo, "#{Helpers.processor_to_controller(processor_name)}Pg")
 
     processor_default_entity =
       processor_name
@@ -47,11 +50,18 @@ defmodule Mix.Tasks.Procon.Init do
       [
         app_name,
         "int-evt",
+        Helpers.processor_type(processor_name) |> Macro.underscore(),
         processor_name |> Helpers.processor_to_resource()
       ]
       |> Enum.join("-")
 
-    migrations_path = Path.join(["priv", processor_repo |> Macro.underscore(), "migrations"])
+    migrations_path =
+      Path.join([
+        "priv",
+        Helpers.processor_type(processor_name) |> Macro.underscore(),
+        processor_repo |> Macro.underscore(),
+        "migrations"
+      ])
 
     Helpers.info("creating migrations directory #{migrations_path}")
     create_directory(migrations_path)
@@ -122,6 +132,7 @@ defmodule Mix.Tasks.Procon.Init do
       Path.join([
         "lib",
         "processors",
+        Helpers.processor_type(processor_name) |> Macro.underscore(),
         processor_name |> String.split(".") |> List.last() |> Macro.underscore()
       ])
 
@@ -208,7 +219,9 @@ defmodule Mix.Tasks.Procon.Init do
 
       * add this line to lib/web/#{app_name}_web/router.ex:
 
-        forward "/#{processor_name |> Helpers.short_processor_name()}", #{processor_name}.Web.Router
+        forward "/#{Helpers.processor_type(processor_name) |> Macro.underscore()}/#{
+      processor_name |> Helpers.short_processor_name()
+    }", #{processor_name}.Web.Router
 
       * add these lines in ./config/config.exs (if they are not already added):
 
@@ -223,7 +236,7 @@ defmodule Mix.Tasks.Procon.Init do
       * add the processor repository #{
       processor_name |> Helpers.repo_name_to_module(processor_repo)
     } to "config/config.exs" in "ecto_repos" array
-      * add the processor repository #{
+      * if it is not automatically added, add the processor repository #{
       processor_name |> Helpers.repo_name_to_module(processor_repo)
     } to "lib/#{app_name}/application.ex" in children array to start the repo when the application starts.
 
