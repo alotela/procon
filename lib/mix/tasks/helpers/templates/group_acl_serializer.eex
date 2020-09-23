@@ -1,0 +1,6 @@
+defmodule <%= @processor_name %>.Events.Serializers.GroupAcl do
+  use Calions.GroupAcls.Events.Serializers.GroupAcl,
+    repo: <%= @processor_name %>.Repositories.<%= @processor_repo %>,
+    topic: <%= @topic %>,
+    type: :<%= @type %>
+end

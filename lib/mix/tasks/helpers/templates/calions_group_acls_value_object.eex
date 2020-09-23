@@ -1,0 +1,3 @@
+defmodule <%= @processor_name %>.ValueObjects.GroupAcls do
+  use Calions.GroupAcls.ValueObjects.GroupAcls
+end

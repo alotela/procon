@@ -3,11 +3,11 @@ defmodule Mix.Tasks.Procon.AddAuthentication do
   import Mix.Generator
   alias Mix.Tasks.Procon.Helpers
 
-  @shortdoc "Generate an event serializer template"
+  @shortdoc "Add Calions authentication to a command or view processor"
   @moduledoc ~S"""
   #Usage
   ```
-     mix procon.add_authentication --processor MyApp.Processors.ProcessorName [--repo ProcessorPg]
+     mix procon.add_authentication --processor MyApp.Processors.ProcessorType.ProcessorName [--repo ProcessorNamePg]
   ```
   """
 

@@ -1,0 +1,28 @@
+defmodule <%= @processor_name %>.Migrations.AddAclsTables do
+  use Ecto.Migration
+
+  create table(:group_acls, primary_key: false) do
+    add(:acls, {:array, :string})
+    add(:app_group_id, :uuid, null: false)
+    add(:id, :uuid, primary_key: true)
+    add(:group_name, :string)
+    add(:organization_id, :uuid, null: false)
+    add(:type, :string)
+
+    timestamps()
+  end
+
+  create(index(:group_acls, [:app_group_id]))
+  create(index(:group_acls, [:organization_id]))
+
+  create table(:user_app_groups, primary_key: false) do
+    add(:id, :uuid, primary_key: true)
+    add(:app_group_id, :uuid, null: false)
+    add(:user_id, :uuid, null: false)
+
+    timestamps()
+  end
+
+  create(index(:user_app_groups, [:app_group_id]))
+  create(index(:user_app_groups, [:user_id]))
+end
