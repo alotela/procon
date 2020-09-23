@@ -1,0 +1,41 @@
+use Mix.Config
+
+config :procon, Processors,
+  "Elixir.<%= @processor_name %>": [
+    deps: [
+      # add your deps here, they will be merged with mix.exs deps
+    ],
+    consumers: [
+      %{
+        datastore: <%= @repository %>,
+        # dynamic_topics_autostart_consumers: true | false # autostart dynamic topics when they are stored in datastore
+        # dynamic_topics_filters: [%{processor: "origin_processor", entity: "entity_name_from_processor", (optional)autostart: true | false}] # tuples in this list will store in database the dynamic topics created by others processors
+        name: <%= @processor_name %>,
+        entities: [
+          # %{
+          # bypass_message_index: true,
+          # event_version: 1,
+          # keys_mapping: %{},
+          # master_key: {:topic_name, "topic_name"},
+          # messages_controller: Procon.MessagesController.DynamicTopics,
+          # model: Procon.Schemas.DynamicTopic,
+          # topic: "procon-dynamic-topics"
+          # },
+          # %{
+          #   bypass_message_index: true, # optional
+          #   dynamic_topic: true, # optional: use it if you need to listen topics by pattern
+          #   event_version: 1,
+          #   keys_mapping: %{"key_from_event" => :key_in_your_schema}, # optional
+          #   master_key: {:processor_schema_key, "key_from_event"}, # optional
+          #   messages_controller: MessageControllerToHandleMessage, # optional
+          #   model: YourEctoSchemaModule,
+          #   serializer: SerializerModule, # optional: if specified, forward the entity to broker directly at the end of transaction with this serializer
+          #   serializer_validation: CheckSerializationAllowedModule # optional: a module with "run" method to check if entity must be sent to broker
+          #   topic: "the_topic_to_listen" # if "dynamic_topic: true", procon will start all topics in procon_dynamic_topics table starting with this string
+          # }
+        ]
+      }
+    ]
+  ]
+
+if [__DIR__, "\#{Mix.env}.exs"] |> Path.join() |> File.exists?(), do: import_config("\#{Mix.env()}.exs")
