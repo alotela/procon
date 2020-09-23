@@ -67,15 +67,6 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
 
   embed_template(
     :dev_config,
-    """
-    use Mix.Config
-
-    config :<%= @app_name%>, <%= @repository %>,
-    database: "<%= @database %>",
-    hostname: "localhost",
-    show_sensitive_data_on_connection_error: true,
-    pool_size: 10,
-    priv: "<%= @repo_path %>"
-    """
+    from_file: Path.join([__ENV__.file |> Path.dirname(), "templates", "dev_config.eex"])
   )
 end

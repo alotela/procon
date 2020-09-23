@@ -19,6 +19,28 @@ defmodule Mix.Tasks.Procon.Helpers do
     |> elem(0)
   end
 
+  def router_file_path(processor_name) do
+    [processor_path(processor_name), "web", "router.ex"] |> Path.join()
+  end
+
+  def migrations_path(processor_name, processor_repo) do
+    Path.join([
+      "priv",
+      processor_type(processor_name) |> Macro.underscore(),
+      processor_repo |> Macro.underscore(),
+      "migrations"
+    ])
+  end
+
+  def config_directory(processor_name) do
+    Path.join([
+      "config",
+      "processors",
+      processor_type(processor_name) |> Macro.underscore(),
+      short_processor_name(processor_name)
+    ])
+  end
+
   def repo_name_to_module(processor_name, processor_repo) do
     Module.concat([processor_name, Repositories, processor_repo])
     |> to_string()

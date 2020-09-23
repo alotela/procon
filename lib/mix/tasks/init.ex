@@ -7,7 +7,7 @@ defmodule Mix.Tasks.Procon.Init do
   @moduledoc ~S"""
   #Usage
   ```
-     mix procon.init --processor MyDomain.Processors.ProcessorName --repo ProcessorPg --crud criud
+     mix procon.init --processor MyApp.Processors.[Commands|Operators|QueryViews|PushViews].ProcessorName [--repo ProcessorPg] [--crud criud] [--html] [--public]
   ```
   """
 
@@ -65,13 +65,7 @@ defmodule Mix.Tasks.Procon.Init do
       ]
       |> Enum.join("-")
 
-    migrations_path =
-      Path.join([
-        "priv",
-        Helpers.processor_type(processor_name) |> Macro.underscore(),
-        processor_repo |> Macro.underscore(),
-        "migrations"
-      ])
+    migrations_path = Helpers.migrations_path(processor_name, processor_repo)
 
     Helpers.info("creating migrations directory #{migrations_path}")
     create_directory(migrations_path)
@@ -138,13 +132,7 @@ defmodule Mix.Tasks.Procon.Init do
         :procon_dynamic_topics
       )
 
-    processor_path =
-      Path.join([
-        "lib",
-        "processors",
-        Helpers.processor_type(processor_name) |> Macro.underscore(),
-        processor_name |> String.split(".") |> List.last() |> Macro.underscore()
-      ])
+    processor_path = Helpers.processor_path(processor_name)
 
     Helpers.DefaultRepository.generate_repository(
       app_name,
