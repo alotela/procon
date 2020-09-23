@@ -20,6 +20,9 @@ defmodule Mix.Tasks.Procon.Init do
   end
 
   def run(args) do
+    IO.inspect(__ENV__)
+    IO.inspect(__ENV__.file)
+    Process.sleep(10000)
     app_name = Mix.Project.config()[:app] |> to_string
 
     app_web =
