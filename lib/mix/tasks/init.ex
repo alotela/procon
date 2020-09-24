@@ -173,16 +173,19 @@ defmodule Mix.Tasks.Procon.Init do
     Helpers.info("creating services infra directory #{services_infra_path}")
     services_infra_path |> create_directory()
 
-    Helpers.WebDirectory.generate_web_directory(
-      app_web,
-      processor_name,
-      processor_path,
-      crud,
-      generate_html,
-      public_controller
-    )
+    if Helpers.processor_type(processor_name) !== "Operators" do
+      Helpers.WebDirectory.generate_web_directory(
+        app_web,
+        processor_name,
+        processor_path,
+        crud,
+        generate_html,
+        public_controller
+      )
 
-    Helpers.WebFile.generate_web_file(app_web, processor_name, processor_path)
+      Helpers.WebFile.generate_web_file(app_web, processor_name, processor_path)
+      add_forward_to_router(app_name, processor_name)
+    end
 
     generated_config_files =
       Helpers.ConfigFiles.generate_config_files(app_name, processor_name, processor_repo)
@@ -207,7 +210,6 @@ defmodule Mix.Tasks.Procon.Init do
 
     activate_processor(processor_name, activated_path)
     add_ecto_repos(processor_name, processor_repo)
-    add_forward_to_router(app_name, processor_name)
 
     msg = """
 
