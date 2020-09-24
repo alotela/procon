@@ -44,16 +44,19 @@ defmodule Mix.Tasks.Procon.AddAcls do
     Helpers.info("created migrations file #{migration_file_path}")
     message_controllers_path = add_group_acls_message_controller(processor_name)
     Helpers.info("created group_acls message controller file #{message_controllers_path}")
-    group_acls_serializer_path = add_group_acls_serializer(processor_name, processor_repo)
+
+    [group_acls_serializer_path, topic] =
+      add_group_acls_serializer(processor_name, processor_repo)
+
     Helpers.info("created group_acls message serializer file #{group_acls_serializer_path}")
     repository_file_path = add_group_acls_repository(processor_name, processor_repo)
     Helpers.info("created group_acls message serializer file #{repository_file_path}")
     group_acls_value_object_path = add_value_object_group_acls(processor_name)
     Helpers.info("created group_acls value objbect file #{group_acls_value_object_path}")
-
     router_file_path = add_api_routes(processor_name, processor_repo)
-
     Helpers.info("added plugs and routes to router's file #{router_file_path}")
+
+    Helpers.info("You must add the topic #{topic} to kafka")
   end
 
   def add_value_object_group_acls(processor_name) do
@@ -84,7 +87,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
 
   def add_group_acls_repository(processor_name, processor_repo) do
     file_path =
-      [Helpers.processor_path(processor_name), "message_controllers", "group_acls.ex"]
+      [Helpers.processor_path(processor_name), "repositories", "group_acls.ex"]
       |> Path.join()
 
     create_file(
@@ -138,17 +141,22 @@ defmodule Mix.Tasks.Procon.AddAcls do
       [Helpers.processor_path(processor_name), "events", "serializers", "group_acl.ex"]
       |> Path.join()
 
+    topic =
+      "calions-int-#{processor_name |> Helpers.processor_type() |> Macro.underscore()}-#{
+        processor_name |> Helpers.short_processor_name()
+      }-group_acls"
+
     create_file(
       file_path,
       group_acl_serializer_template(
         processor_name: processor_name,
         processor_repo: processor_repo,
-        topic: "calions-int-evt-#{processor_name |> Helpers.short_processor_name()}-group_acls",
+        topic: topic,
         type: processor_name |> Helpers.short_processor_name()
       )
     )
 
-    file_path
+    [file_path, topic]
   end
 
   embed_template(
@@ -172,21 +180,21 @@ defmodule Mix.Tasks.Procon.AddAcls do
         "entities: [",
         """
         entities: [
-          %{
-            event_version: 1,
-            keys_mapping: %{"id" => :app_group_id, "name" => :group_name},
-            master_key: {:app_group_id, "id"},
-            messages_controller: Calions.Processors.MyProcessor.MessageControllers.GroupAcls,
-            model: Calions.GroupAcls.Schemas.GroupAcl,
-            topic: "calions-int-evt-app_groups"
-          },
-          %{
-            event_version: 1,
-            keys_mapping: %{},
-            master_key: nil,
-            model: Calions.GroupAcls.Schemas.UserAppGroup,
-            topic: "calions-int-evt-user_app_groups"
-          },
+                  %{
+                    event_version: 1,
+                    keys_mapping: %{"id" => :app_group_id, "name" => :group_name},
+                    master_key: {:app_group_id, "id"},
+                    messages_controller: #{processor_name}.MessageControllers.GroupAcls,
+                    model: Calions.GroupAcls.Schemas.GroupAcl,
+                    topic: "calions-int-evt-app_groups"
+                  },
+                  %{
+                    event_version: 1,
+                    keys_mapping: %{},
+                    master_key: nil,
+                    model: Calions.GroupAcls.Schemas.UserAppGroup,
+                    topic: "calions-int-evt-user_app_groups"
+                  },
         """
       )
 
@@ -221,18 +229,15 @@ defmodule Mix.Tasks.Procon.AddAcls do
   def add_api_routes(processor_name, processor_repo) do
     processor_atom = Helpers.short_processor_name(processor_name)
 
-    pipelines = """
-    pipeline :#{processor_atom}_auth do
-        plug(Calions.Plugs.AuthenticatedAccountPlug,
-          repo: #{processor_name}.Repositories.#{processor_repo},
-          schema: Calions.AuthenticatedClients.Schemas.AuthenticatedClient
-        )
-      end
-
-      pipeline :#{processor_atom}_auth_private do
-        plug(Calions.Plugs.EnsureAuthenticatedPlug)
-        plug(Calions.Plugs.EnsureAuthenticatedUserPlug)
-      end
+    forward = """
+        Calions.GroupAcls.Web.Router.forward_acls(
+            "/group_acls",
+            #{processor_name}.Repositories.#{processor_repo},
+            Calions.GroupAcls.Schemas.GroupAcl,
+            #{processor_name}.Repositories.GroupAcls,
+            #{processor_name}.ValueObjects.GroupAcls,
+            #{processor_name}.Events.Serializers.GroupAcl
+          )
     """
 
     router_file_path = Helpers.router_file_path(processor_name)
@@ -241,16 +246,14 @@ defmodule Mix.Tasks.Procon.AddAcls do
     new_content =
       String.replace(
         router_file_content,
-        "scope \"/api\", Calions.Processors",
-        "#{pipelines}\n  scope \"/api\", Calions.Processors"
+        ", :router",
+        ", :router\n  require Calions.GroupAcls.Web.Router",
+        global: false
       )
       |> String.replace(
-        "pipe_through([:api, :jsonapi",
-        "pipe_through([:api, :jsonapi, :#{processor_atom}_auth"
-      )
-      |> String.replace(
-        "scope \"/private\", Private, as: :private do\n",
-        "scope \"/private\", Private, as: :private do\n      pipe_through([:#{processor_atom}_auth_private])\n\n"
+        "pipe_through([:api, :jsonapi, :#{processor_atom}_auth])",
+        "pipe_through([:api, :jsonapi, :#{processor_atom}_auth])\n\n#{forward}",
+        global: false
       )
 
     :ok = File.write(router_file_path, new_content)

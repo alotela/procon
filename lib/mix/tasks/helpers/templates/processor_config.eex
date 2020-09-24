@@ -38,4 +38,5 @@ config :procon, Processors,
     ]
   ]
 
-if [__DIR__, "\#{Mix.env}.exs"] |> Path.join() |> File.exists?(), do: import_config("\#{Mix.env()}.exs")
+if [__DIR__, "#{Mix.env}.exs"] |> Path.join() |> File.exists?(),
+  do: import_config("#{Mix.env()}.exs")

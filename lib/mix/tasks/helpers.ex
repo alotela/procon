@@ -7,7 +7,7 @@ defmodule Mix.Tasks.Procon.Helpers do
     Path.join([
       "lib",
       "processors",
-      processor_type(processor_name),
+      processor_type(processor_name) |> Macro.underscore(),
       short_processor_name(processor_name)
     ])
   end

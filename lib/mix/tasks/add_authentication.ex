@@ -67,7 +67,7 @@ defmodule Mix.Tasks.Procon.AddAuthentication do
     migrations_path = Helpers.migrations_path(processor_name, processor_repo)
 
     create_file(
-      Path.join(migrations_path, "#{migration_time}_add_authX_tables.exs"),
+      Path.join(migrations_path, "#{migration_time}_add_authenticated_clients_table.exs"),
       calions_authentications_migrations_template(
         processor_name: processor_name,
         table: Helpers.processor_to_resource(processor_name)
@@ -112,15 +112,18 @@ defmodule Mix.Tasks.Procon.AddAuthentication do
       String.replace(
         router_file_content,
         "scope \"/api\", Calions.Processors",
-        "#{pipelines}\n  scope \"/api\", Calions.Processors"
+        "#{pipelines}\n  scope \"/api\", Calions.Processors",
+        global: false
       )
       |> String.replace(
         "pipe_through([:api, :jsonapi",
-        "pipe_through([:api, :jsonapi, :#{processor_atom}_auth"
+        "pipe_through([:api, :jsonapi, :#{processor_atom}_auth",
+        global: false
       )
       |> String.replace(
         "scope \"/private\", Private, as: :private do\n",
-        "scope \"/private\", Private, as: :private do\n      pipe_through([:#{processor_atom}_auth_private])\n\n"
+        "scope \"/private\", Private, as: :private do\n      pipe_through([:#{processor_atom}_auth_private])\n",
+        global: false
       )
 
     :ok = File.write(router_file_path, new_content)

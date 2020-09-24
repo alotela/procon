@@ -187,10 +187,10 @@ defmodule Mix.Tasks.Procon.Helpers.WebDirectory do
           controller: processor_name |> Helpers.processor_to_controller(),
           resource_path: """
           #{if public_controller, do: "", else: "scope \"/private\", Private, as: :private do"}
-            resources("/#{processor_name |> Helpers.processor_to_resource()}", #{
+                resources("/#{processor_name |> Helpers.processor_to_resource()}", #{
             processor_name |> Helpers.processor_to_controller()
           }, only: [#{actions |> Enum.join(", ")}])
-          #{if public_controller, do: "", else: "end"}
+          #{if public_controller, do: "", else: "    end"}
           """,
           html: html
         )

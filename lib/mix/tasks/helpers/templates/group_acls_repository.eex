@@ -1,6 +1,6 @@
 defmodule <%= @processor_name %>.Repositories.GroupAcls do
   alias <%= @processor_name %>, as: Processor
-  alias <%= @processor_name %>.Repositories.<%= @processor_repo %>, as: Repo
+  alias Processor.Repositories.<%= @processor_repo %>, as: Repo
 
   use Calions.GroupAcls.Repositories.GroupAcls, repo: Repo
 end

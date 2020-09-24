@@ -205,6 +205,10 @@ defmodule Mix.Tasks.Procon.Init do
     controller_helpers_path = Helpers.ControllersErrors.create_controllers_helpers(app_web)
     [activated_path] = Helpers.Activated.generate_config_activated(processor_name)
 
+    activate_processor(processor_name, activated_path)
+    add_ecto_repos(processor_name, processor_repo)
+    add_forward_to_router(app_name, processor_name)
+
     msg = """
 
     #{processor_name} procon processor added to your project.
@@ -228,12 +232,6 @@ defmodule Mix.Tasks.Procon.Init do
       IMPORTANT!! To finish the setup:
       --------------------------------
 
-      * add this line to lib/web/#{app_name}_web/router.ex:
-
-        forward "/#{Helpers.processor_type(processor_name) |> Macro.underscore()}/#{
-      processor_name |> Helpers.short_processor_name()
-    }", #{processor_name}.Web.Router
-
       * add these lines in ./config/config.exs (if they are not already added):
 
         config :procon,
@@ -244,16 +242,11 @@ defmodule Mix.Tasks.Procon.Init do
           consumers: []
         }
 
-      * add the processor repository #{
-      processor_name |> Helpers.repo_name_to_module(processor_repo)
-    } to "config/config.exs" in "ecto_repos" array
       * if it is not automatically added, add the processor repository #{
       processor_name |> Helpers.repo_name_to_module(processor_repo)
     } to "lib/#{app_name}/application.ex" in children array to start the repo when the application starts.
 
       * configure your processor in #{generated_config_files |> tl()}. This is where you add your kafka listeners.
-
-      * add your processor #{processor_name} to the list of activated processors in config/processors/activated.exs
 
     generate serializers for your resources (data your service is master of and will generate events):
       mix procon.serializer --resource ResourceName
@@ -309,5 +302,57 @@ defmodule Mix.Tasks.Procon.Init do
     end
 
     services_domain_path
+  end
+
+  def activate_processor(processor_name, activated_file_path) do
+    Helpers.info("adding processor to activated processors...")
+    config_file_content = activated_file_path |> File.read!()
+
+    new_content =
+      String.replace(
+        config_file_content,
+        "activated_processors: [",
+        "activated_processors: [\n    #{processor_name},"
+      )
+
+    :ok = File.write(activated_file_path, new_content)
+    Helpers.info("Processor (1 line) added to #{config_file_content}")
+  end
+
+  @spec add_ecto_repos(atom | binary, atom | binary) :: any
+  def add_ecto_repos(processor_name, processor_repo) do
+    Helpers.info("adding processor's repo to :ecto_repos...")
+    main_config_path = ["config", "config.exs"] |> Path.join()
+    config_file_content = main_config_path |> File.read!()
+
+    new_content =
+      String.replace(
+        config_file_content,
+        "ecto_repos: [",
+        "ecto_repos: [\n    #{processor_name |> Helpers.repo_name_to_module(processor_repo)},"
+      )
+
+    :ok = File.write(main_config_path, new_content)
+
+    Helpers.info("Processor's repo (1 line) added to #{main_config_path}")
+  end
+
+  def add_forward_to_router(app_name, processor_name) do
+    Helpers.info("adding forward route...")
+    main_config_path = ["lib", "#{app_name}_web", "router.ex"] |> Path.join()
+    config_file_content = main_config_path |> File.read!()
+
+    new_content =
+      String.replace(
+        config_file_content,
+        "use CalionsWeb, :router\n\n",
+        "use CalionsWeb, :router\n\n  forward \"/#{
+          Helpers.processor_type(processor_name) |> Macro.underscore()
+        }/#{processor_name |> Helpers.short_processor_name()}\", #{processor_name}.Web.Router\n"
+      )
+
+    :ok = File.write(main_config_path, new_content)
+
+    Helpers.info("forward route (1 line) added to #{main_config_path}")
   end
 end

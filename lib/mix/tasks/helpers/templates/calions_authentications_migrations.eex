@@ -1,8 +1,8 @@
-defmodule <%= @processor_name %>.Migrations.AddAuthXTables do
+defmodule <%= @processor_name %>.Migrations.AddAuthenticatedClientsTable do
   use Ecto.Migration
 
   def change do
-    create table(:<%= @table %>, primary_key: false) do
+    create table(:authenticated_clients, primary_key: false) do
       add(:account_id, :uuid, null: false)
       add(:id, :uuid, primary_key: true)
       add(:session_token, :string, null: true)
@@ -11,8 +11,8 @@ defmodule <%= @processor_name %>.Migrations.AddAuthXTables do
       timestamps()
     end
 
-    create(index(:<%= @table %>, [:account_id]))
-    create(index(:<%= @table %>, [:session_token]))
-    create(index(:<%= @table %>, [:user_id]))
+    create(index(:authenticated_clients, [:account_id]))
+    create(index(:authenticated_clients, [:session_token]))
+    create(index(:authenticated_clients, [:user_id]))
   end
 end

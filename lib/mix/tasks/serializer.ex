@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Procon.Serializer do
   @moduledoc ~S"""
   #Usage
   ```
-     mix procon.serializer --processor MyDomain.Processors.ProcessorName --repo ProcessorPg --entity Entity --topic entity-topic
+     mix procon.serializer --processor MyOtpApp.Processors.ProcessorTYpe.ProcessorName --repo ProcessorRepo --entity Entity --topic entity-topic
   ```
   """
 
@@ -22,7 +22,7 @@ defmodule Mix.Tasks.Procon.Serializer do
     info("You need to set --processor, --entity and --repo params :")
 
     info(
-      "mix procon.serializer --processor MyDomain.Processors.ProcessorName --repo ProcessorPg --entity Entity --topic entity-topic"
+      "mix procon.serializer --processor MyOtpApp.Processors.ProcessorType.ProcessorName --repo ProcessorRepo --entity Entity --topic entity-topic"
     )
   end
 
