@@ -101,7 +101,7 @@ defmodule Procon.MessagesControllers.Consumer do
 
     :brod.start_link_group_subscriber_v2(%{
       client: client_name || client_name(processor_config.name),
-      group_id: group_id || processor_config.name |> to_string(),
+      group_id: group_id || "#{processor_config.name}#{Map.get(processor_config, :group_id, "")}",
       topics: topics,
       group_config: [
         offset_commit_policy: :commit_to_kafka_v2,

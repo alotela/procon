@@ -10,6 +10,7 @@ config :procon, Processors,
         datastore: <%= @repository %>,
         # dynamic_topics_autostart_consumers: true | false # autostart dynamic topics when they are stored in datastore
         # dynamic_topics_filters: [%{processor: "origin_processor", entity: "entity_name_from_processor", (optional)autostart: true | false}] # tuples in this list will store in database the dynamic topics created by others processors
+        # group_id: "", # you can add something here to change the consumer group name send to kafka
         name: <%= @processor_name %>,
         entities: [
           # %{
