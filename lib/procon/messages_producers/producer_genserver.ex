@@ -108,7 +108,7 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
                  "",
                  Procon.Parallel.pmap(
                    messages,
-                   fn %{blob: "{" <> blob, id: id} -> {"", "{\"index\":#{id},#{blob}"} end
+                   fn %{blob: blob} -> {"", blob} end
                  )
                ),
              {:ok, :next} <-
