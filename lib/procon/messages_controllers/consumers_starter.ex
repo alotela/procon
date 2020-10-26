@@ -41,7 +41,17 @@ defmodule Procon.MessagesControllers.ConsumersStarter do
   end
 
   defp start_processor_consumers(processor_config) do
-    :ets.new(processor_config.name, [:set, :public, :named_table])
+    :ets.whereis(processor_config.name)
+    |> case do
+      :undefined ->
+        :ets.new(processor_config.name, [:set, :public, :named_table])
+        |> IO.inspect(label: "start_processor_consumers ets table for #{processor_config.name}")
+
+      _ ->
+        IO.inspect(
+          "ets table for #{processor_config.name} already started in procon::start_processor_consumers"
+        )
+    end
 
     Procon.MessagesControllers.Consumer.start(processor_config)
   end

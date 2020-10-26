@@ -411,12 +411,56 @@ defmodule Procon.MessagesControllers.Base do
       body = extract_versioned_body(event, options)
 
       if !is_nil(options.master_key) do
-        options.datastore.get_by(
-          options.model,
-          [{elem(options.master_key, 0), body[elem(options.master_key, 1)]}]
-        )
+        case body[elem(options.master_key, 1)] do
+          nil ->
+            IO.inspect(event,
+              label:
+                "⚠️PROCON ALERT : #{options.processor_name} : the master_key value in event body is nil for key #{
+                  elem(options.master_key, 0)
+                } configured",
+              syntax_colors: [
+                atom: :red,
+                binary: :red,
+                boolean: :red,
+                list: :red,
+                map: :red,
+                number: :red,
+                regex: :red,
+                string: :red,
+                tuple: :red
+              ]
+            )
+
+            nil
+
+          master_key_value ->
+            options.datastore.get_by(
+              options.model,
+              [{elem(options.master_key, 0), master_key_value}]
+            )
+        end
       else
-        options.datastore.get(options.model, body["id"])
+        case Map.get(body, "id") do
+          nil ->
+            IO.inspect(event,
+              label:
+                "⚠️PROCON ALERT : #{options.processor_name} : \"id\" in body is nil to find record in database. Maybe you need to specify master_key in processor config for this entity ?",
+              syntax_colors: [
+                atom: :red,
+                binary: :red,
+                boolean: :red,
+                list: :red,
+                map: :red,
+                number: :red,
+                regex: :red,
+                string: :red,
+                tuple: :red
+              ]
+            )
+
+          id ->
+            options.datastore.get(options.model, id)
+        end
       end
       |> case do
         nil ->

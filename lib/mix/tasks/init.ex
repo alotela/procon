@@ -244,6 +244,9 @@ defmodule Mix.Tasks.Procon.Init do
           consumers: []
         }
 
+        import_config "processors/**/*/config.exs"
+        import_config "processors/activated.exs"
+
       * if it is not automatically added, add the processor repository #{
       processor_name |> Helpers.repo_name_to_module(processor_repo)
     } to "lib/#{app_name}/application.ex" in children array to start the repo when the application starts.
