@@ -99,21 +99,43 @@ defmodule Procon.MessagesControllers.Consumer do
         |> Kernel.++(state)
       end)
 
-    :brod.start_link_group_subscriber_v2(%{
-      client: client_name || client_name(processor_config.name),
-      group_id: group_id || "#{processor_config.name}#{Map.get(processor_config, :group_id, "")}",
-      topics: topics,
-      group_config: [
-        offset_commit_policy: :commit_to_kafka_v2,
-        offset_commit_interval_seconds:
-          Application.get_env(:procon, :offset_commit_interval_seconds)
-      ],
-      consumer_config: [
-        begin_offset: :earliest
-      ],
-      cb_module: __MODULE__,
-      init_data: %{processor_config: processor_config}
-    })
+    case topics do
+      [] ->
+        IO.inspect(
+          "PROCON NOTIFICATION : no topics consumer starter for processor #{processor_config.name}",
+          syntax_colors: [
+            atom: :red,
+            binary: :red,
+            boolean: :red,
+            list: :red,
+            map: :red,
+            number: :red,
+            regex: :red,
+            string: :red,
+            tuple: :red
+          ]
+        )
+
+        nil
+
+      _ ->
+        :brod.start_link_group_subscriber_v2(%{
+          client: client_name || client_name(processor_config.name),
+          group_id:
+            group_id || "#{processor_config.name}#{Map.get(processor_config, :group_id, "")}",
+          topics: topics,
+          group_config: [
+            offset_commit_policy: :commit_to_kafka_v2,
+            offset_commit_interval_seconds:
+              Application.get_env(:procon, :offset_commit_interval_seconds)
+          ],
+          consumer_config: [
+            begin_offset: :earliest
+          ],
+          cb_module: __MODULE__,
+          init_data: %{processor_config: processor_config}
+        })
+    end
 
     {:ok}
   end
