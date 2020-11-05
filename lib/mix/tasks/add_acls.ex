@@ -152,7 +152,10 @@ defmodule Mix.Tasks.Procon.AddAcls do
         processor_name: processor_name,
         processor_repo: processor_repo,
         topic: topic,
-        type: processor_name |> Helpers.short_processor_name()
+        type:
+          "#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{
+            processor_name |> Helpers.short_processor_name()
+          }"
       )
     )
 
@@ -230,7 +233,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
     processor_atom = Helpers.short_processor_name(processor_name)
 
     forward = """
-        Calions.GroupAcls.Web.Router.forward_acls(
+          Calions.GroupAcls.Web.Router.forward_acls(
             "/group_acls",
             #{processor_name}.Repositories.#{processor_repo},
             Calions.GroupAcls.Schemas.GroupAcl,
@@ -251,8 +254,12 @@ defmodule Mix.Tasks.Procon.AddAcls do
         global: false
       )
       |> String.replace(
-        "pipe_through([:api, :jsonapi, :#{processor_atom}_auth])",
-        "pipe_through([:api, :jsonapi, :#{processor_atom}_auth])\n\n#{forward}",
+        "pipe_through([:#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{
+          processor_atom
+        }_auth_private])",
+        "pipe_through([:#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{
+          processor_atom
+        }_auth_private])\n\n#{forward}",
         global: false
       )
 

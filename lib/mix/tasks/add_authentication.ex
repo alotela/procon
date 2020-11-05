@@ -92,14 +92,18 @@ defmodule Mix.Tasks.Procon.AddAuthentication do
     processor_atom = Helpers.short_processor_name(processor_name)
 
     pipelines = """
-    pipeline :#{processor_atom}_auth do
+    pipeline :#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{
+      processor_atom
+    }_auth do
         plug(Calions.Plugs.AuthenticatedAccountPlug,
           repo: #{processor_name}.Repositories.#{processor_repo},
           schema: Calions.AuthenticatedClients.Schemas.AuthenticatedClient
         )
       end
 
-      pipeline :#{processor_atom}_auth_private do
+      pipeline :#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{
+      processor_atom
+    }_auth_private do
         plug(Calions.Plugs.EnsureAuthenticatedPlug)
         plug(Calions.Plugs.EnsureAuthenticatedUserPlug)
       end
@@ -117,12 +121,16 @@ defmodule Mix.Tasks.Procon.AddAuthentication do
       )
       |> String.replace(
         "pipe_through([:api, :jsonapi",
-        "pipe_through([:api, :jsonapi, :#{processor_atom}_auth",
+        "pipe_through([:api, :jsonapi, :#{
+          processor_name |> Helpers.processor_type() |> Macro.underscore()
+        }_#{processor_atom}_auth",
         global: false
       )
       |> String.replace(
         "scope \"/private\", Private, as: :private do\n",
-        "scope \"/private\", Private, as: :private do\n      pipe_through([:#{processor_atom}_auth_private])\n",
+        "scope \"/private\", Private, as: :private do\n      pipe_through([:#{
+          processor_name |> Helpers.processor_type() |> Macro.underscore()
+        }_#{processor_atom}_auth_private])\n",
         global: false
       )
 
