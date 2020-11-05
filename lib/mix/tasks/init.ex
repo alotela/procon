@@ -59,7 +59,7 @@ defmodule Mix.Tasks.Procon.Init do
     processor_default_topic =
       [
         app_name,
-        "int-evt",
+        "int",
         Helpers.processor_type(processor_name) |> Macro.underscore(),
         processor_name |> Helpers.processor_to_resource()
       ]

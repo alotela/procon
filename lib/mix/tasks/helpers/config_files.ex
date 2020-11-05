@@ -32,7 +32,8 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
         processor_config_file,
         processor_config_template(
           processor_name: processor_name,
-          repository: Helpers.repo_name_to_module(processor_name, processor_repo)
+          repository: Helpers.repo_name_to_module(processor_name, processor_repo),
+          entity_name: Helpers.processor_to_resource(processor_name)
         )
       )
     end

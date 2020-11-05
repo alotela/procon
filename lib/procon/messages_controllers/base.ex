@@ -69,6 +69,13 @@ defmodule Procon.MessagesControllers.Base do
                     Map.get(options, :serializer_validation, nil)
                   )
 
+                {:ok, final_event_data} =
+                  enqueue_realtime(
+                    final_event_data,
+                    if(final_event_data.record_from_db, do: :updated, else: :created),
+                    Map.get(options, :send_realtime, nil)
+                  )
+
                 consumer_message_index = update_consumer_message_index(event, options)
 
                 {final_event_data, consumer_message_index}
@@ -87,6 +94,11 @@ defmodule Procon.MessagesControllers.Base do
             {:ok, {final_event_data, consumer_message_index}} ->
               update_consumer_message_index_ets(consumer_message_index, options.processor_name)
               start_forward_production(Map.get(options, :serializer, nil))
+
+              start_realtime_production(
+                Map.get(final_event_data, :entity_realtime_event_serializer, nil)
+              )
+
               controller.after_create_transaction(final_event_data, options)
 
             {:error, error} ->
@@ -196,6 +208,28 @@ defmodule Procon.MessagesControllers.Base do
       end
     end
 
+    def enqueue_realtime(event_data, _type, nil),
+      do:
+        {:ok,
+         event_data
+         |> Map.put(:entity_realtime_event_enqueued, false)
+         |> Map.put(:entity_realtime_event_serializer, nil)}
+
+    def enqueue_realtime(event_data, type, realtime_event) do
+      %{event: event, channel: channel, serializer: serializer} =
+        realtime_event.(type, event_data.record)
+
+      Procon.MessagesEnqueuers.Ecto.enqueue_rtevent(
+        %{channel: channel, event: event},
+        serializer
+      )
+
+      {:ok,
+       event_data
+       |> Map.put(:entity_realtime_event_enqueued, true)
+       |> Map.put(:entity_realtime_event_serializer, serializer)}
+    end
+
     def do_update(controller, event, options) do
       if message_not_already_processed?(event, options) do
         {:ok, {final_event_data, consumer_message_index}} =
@@ -211,6 +245,13 @@ defmodule Procon.MessagesControllers.Base do
                     :updated,
                     Map.get(options, :serializer, nil),
                     Map.get(options, :serializer_validation, nil)
+                  )
+
+                {:ok, final_event_data} =
+                  enqueue_realtime(
+                    final_event_data,
+                    :updated,
+                    Map.get(options, :send_realtime, nil)
                   )
 
                 consumer_message_index = update_consumer_message_index(event, options)
@@ -229,6 +270,11 @@ defmodule Procon.MessagesControllers.Base do
 
         update_consumer_message_index_ets(consumer_message_index, options.processor_name)
         start_forward_production(Map.get(options, :serializer, nil))
+
+        start_realtime_production(
+          Map.get(final_event_data, :entity_realtime_event_serializer, nil)
+        )
+
         controller.after_update_transaction(final_event_data, options)
       end
     end
@@ -236,6 +282,12 @@ defmodule Procon.MessagesControllers.Base do
     def start_forward_production(nil), do: nil
 
     def start_forward_production(serializer) do
+      Procon.MessagesProducers.ProducersStarter.start_topic_production(serializer)
+    end
+
+    def start_realtime_production(nil), do: nil
+
+    def start_realtime_production(serializer) do
       Procon.MessagesProducers.ProducersStarter.start_topic_production(serializer)
     end
 
@@ -279,6 +331,13 @@ defmodule Procon.MessagesControllers.Base do
                     Map.get(options, :serializer_validation, nil)
                   )
 
+                {:ok, final_event_data} =
+                  enqueue_realtime(
+                    final_event_data,
+                    :deleted,
+                    Map.get(options, :send_realtime, nil)
+                  )
+
                 consumer_message_index = update_consumer_message_index(event, options)
                 {final_event_data, consumer_message_index}
 
@@ -295,6 +354,11 @@ defmodule Procon.MessagesControllers.Base do
 
         update_consumer_message_index_ets(consumer_message_index, options.processor_name)
         start_forward_production(Map.get(options, :serializer, nil))
+
+        start_realtime_production(
+          Map.get(final_event_data, :entity_realtime_event_serializer, nil)
+        )
+
         controller.after_delete_transaction(final_event_data, options)
       end
     end
