@@ -473,35 +473,49 @@ defmodule Procon.MessagesControllers.Base do
 
     def record_and_body_from_event(event, return_record, options) do
       body = extract_versioned_body(event, options)
+      master_keys = normalize_master_key(options.master_key)
 
-      if !is_nil(options.master_key) do
-        case body[elem(options.master_key, 1)] do
-          nil ->
-            IO.inspect(event,
-              label:
-                "⚠️PROCON ALERT : #{options.processor_name} : the master_key value in event body is nil for key #{
-                  elem(options.master_key, 0)
-                } configured",
-              syntax_colors: [
-                atom: :red,
-                binary: :red,
-                boolean: :red,
-                list: :red,
-                map: :red,
-                number: :red,
-                regex: :red,
-                string: :red,
-                tuple: :red
-              ]
-            )
+      if length(master_keys) > 0 do
+        query =
+          master_keys
+          |> Enum.map(fn {repo_key, body_key} ->
+            body
+            |> Map.get(body_key, nil)
+            |> case do
+              nil ->
+                IO.inspect(event,
+                  label:
+                    "⚠️PROCON ALERT : #{options.processor_name} : the master_key value in event body is nil for key #{
+                      repo_key
+                    } configured",
+                  syntax_colors: [
+                    atom: :red,
+                    binary: :red,
+                    boolean: :red,
+                    list: :red,
+                    map: :red,
+                    number: :red,
+                    regex: :red,
+                    string: :red,
+                    tuple: :red
+                  ]
+                )
 
+                nil
+
+              value ->
+                {repo_key, value}
+            end
+          end)
+
+        query
+        |> Enum.any?(&is_nil/1)
+        |> case do
+          true ->
             nil
 
-          master_key_value ->
-            options.datastore.get_by(
-              options.model,
-              [{elem(options.master_key, 0), master_key_value}]
-            )
+          false ->
+            options.datastore.get_by(options.model, query)
         end
       else
         case Map.get(body, "id") do
@@ -538,6 +552,14 @@ defmodule Procon.MessagesControllers.Base do
           %{body: body, record_from_db: true, record: struct}
       end
     end
+
+    def normalize_master_key({_repo_key, _body_key} = master_key), do: [master_key]
+
+    def normalize_master_key(master_keys) when is_list(master_keys),
+      do: master_keys
+
+    def normalize_master_key(nil), do: []
+    def normalize_master_key(master_key) when is_map(master_key), do: Map.to_list(master_key)
 
     @spec extract_versioned_body(map, map) :: map
     def extract_versioned_body(event, options) do
