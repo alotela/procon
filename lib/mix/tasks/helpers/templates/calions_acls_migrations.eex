@@ -16,15 +16,17 @@ defmodule <%= @processor_name %>.Migrations.AddAclsTables do
     create(index(:group_acls, [:app_group_id]))
     create(index(:group_acls, [:organization_id]))
 
-    create table(:user_app_groups, primary_key: false) do
-      add(:id, :uuid, primary_key: true)
+    create table(:selected_user_app_groups, primary_key: false) do
       add(:app_group_id, :uuid, null: false)
+      add(:id, :uuid, primary_key: true)
+      add(:organization_id, :uuid, null: false)
       add(:user_id, :uuid, null: false)
 
       timestamps()
     end
 
-    create(index(:user_app_groups, [:app_group_id]))
-    create(index(:user_app_groups, [:user_id]))
+    create(index(:selected_user_app_groups, [:app_group_id]))
+    create(index(:selected_user_app_groups, [:user_id]))
+    create(index(:selected_user_app_groups, [:organization_id]))
   end
 end
