@@ -23,7 +23,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
     info("You need to set --processor and optional --repo param :")
 
     info(
-      "mix procon.add_authentication --processor MyApp.Processors.ProcessorType.ProcessorName [--repo ProcessorNamePg]"
+      "mix procon.add_acls --processor MyApp.Processors.ProcessorType.ProcessorName [--repo ProcessorNamePg]"
     )
   end
 
@@ -195,8 +195,8 @@ defmodule Mix.Tasks.Procon.AddAcls do
                     event_version: 1,
                     keys_mapping: %{},
                     master_key: nil,
-                    model: Calions.GroupAcls.Schemas.UserAppGroup,
-                    topic: "calions-int-evt-user_app_groups"
+                    model: Calions.GroupAcls.Schemas.SelectedUserAppGroup,
+                    topic: "calions-int-operators-selected_user_app_groups"
                   },
         """
       )
