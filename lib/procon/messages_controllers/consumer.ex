@@ -69,6 +69,17 @@ defmodule Procon.MessagesControllers.Consumer do
     end
   end
 
+  def stop(processor_name) do
+    processor_name
+    |> group_subscriber_name()
+    |> Process.whereis()
+    |> :brod_group_subscriber_v2.stop()
+
+    processor_name
+    |> client_name()
+    |> :brod.stop_client()
+  end
+
   def start(processor_config) do
     client_name = client_name(processor_config.name)
 
@@ -135,6 +146,30 @@ defmodule Procon.MessagesControllers.Consumer do
           cb_module: __MODULE__,
           init_data: %{processor_config: processor_config}
         })
+        |> case do
+          {:ok, pid} ->
+            Process.register(pid, group_subscriber_name(processor_config.name))
+
+          {:error, error} ->
+            IO.inspect(error,
+              binaries: :as_strings,
+              label: "PROCON ALERT : unable to start a consumer",
+              limit: :infinity,
+              pretty: true,
+              syntax_colors: [
+                atom: :magenta,
+                binary: :magenta,
+                boolean: :magenta,
+                list: :magenta,
+                map: :magenta,
+                null: :magenta,
+                number: :magenta,
+                regex: :magenta,
+                string: :magenta,
+                tuple: :magenta
+              ]
+            )
+        end
     end
 
     {:ok}
@@ -145,6 +180,15 @@ defmodule Procon.MessagesControllers.Consumer do
     |> to_string()
     |> String.downcase()
     |> String.replace(".", "_")
+    |> String.to_atom()
+  end
+
+  def group_subscriber_name(processor_name) do
+    processor_name
+    |> to_string()
+    |> String.downcase()
+    |> String.replace(".", "_")
+    |> Kernel.<>("_group_subscriber")
     |> String.to_atom()
   end
 end

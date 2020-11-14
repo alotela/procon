@@ -63,4 +63,26 @@ defmodule Procon.MessagesControllers.ConsumersStarter do
     )
     |> Enum.reduce([], &(Keyword.get(elem(&1, 1), :consumers, []) ++ &2))
   end
+
+  def stop_processor(processor_name) do
+    Procon.MessagesControllers.Consumer.stop(processor_name)
+
+    :ets.whereis(processor_name)
+    |> case do
+      :undefined ->
+        nil
+
+      tab ->
+        :ets.delete(tab)
+    end
+  end
+
+  def start_processor_by_name(processor_name) do
+    Application.get_env(:procon, Processors)
+    |> Enum.find(&(elem(&1, 0) == processor_name))
+    |> elem(1)
+    |> Keyword.get(:consumers, [])
+    |> List.first()
+    |> start_processor_consumers()
+  end
 end
