@@ -102,7 +102,7 @@ defmodule Procon.MessagesProducers.ProducerLastIndex do
 
         :ets.insert(:procon_producer_last_index, {{repo, topic, partition}, last_id})
 
-        last_id
+        {:ok, last_id}
 
       :error ->
         :error

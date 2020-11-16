@@ -50,12 +50,19 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
         %{
           brod_client: Application.get_env(:procon, :broker_client_name),
           messages_queue: :queue.new(),
-          producing: false
+          producing: false,
+          recovering_error: false
         }
       )
 
     Logger.metadata(procon_processor_repo: new_initial_state.repo)
     {:ok, new_initial_state}
+  end
+
+  def handle_info(:produce, %{recovering_error: true} = state) do
+    # We are currently recovering from an error, we will retry later
+    Process.send_after(self(), :produce, 100)
+    {:noreply, state}
   end
 
   def handle_info(:produce, state) do
@@ -70,16 +77,44 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
           state.partition,
           message_index
         )
+        |> case do
+          {:ok, _idx} ->
+            send(self(), :produce)
+            {:noreply, state}
 
-        send(self(), :produce)
-        {:noreply, state}
+          :error ->
+            send(self(), {:retry_set_last_index, message_index})
+            {:noreply, %{state | recovering_error: true}}
+        end
 
       {:error, :missing_ids} ->
         Process.send_after(self(), :produce, 100)
         {:noreply, state}
 
+      {:error, :last_index} ->
+        Process.send_after(self(), :produce, 100)
+        {:noreply, state}
+
       _error ->
         {:noreply, %{state | :producing => false}}
+    end
+  end
+
+  def handle_info({:retry_set_last_index, message_index}, state) do
+    ProducerLastIndex.set_last_produced_index(
+      state.repo,
+      state.topic,
+      state.partition,
+      message_index
+    )
+    |> case do
+      {:ok, _idx} ->
+        send(self(), :produce)
+        {:noreply, %{state | recovering_error: false}}
+
+      :error ->
+        Process.send_after(self(), {:retry_set_last_index, message_index}, 100)
+        {:noreply, %{state | recovering_error: true}}
     end
   end
 
@@ -118,7 +153,7 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
         ProducerLastIndex.get_last_produced_index(state.repo, state.topic, state.partition)
         |> case do
           :error ->
-            {}
+            {:error, :last_index}
 
           last_produced_id ->
             do_produce_next_messages(
