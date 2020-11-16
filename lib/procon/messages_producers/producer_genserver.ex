@@ -1,5 +1,6 @@
 defmodule Procon.MessagesProducers.ProducerGenServer do
   use GenServer
+  alias Procon.MessagesProducers.ProducerLastIndex
 
   def via(producer_name), do: {:via, Registry, {Procon.ProducersRegistry, producer_name}}
 
@@ -62,8 +63,19 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
       {:no_more_messages} ->
         {:noreply, %{state | :producing => false}}
 
-      {:ok, _message_index} ->
+      {:ok, message_index} ->
+        ProducerLastIndex.set_last_produced_index(
+          state.repo,
+          state.topic,
+          state.partition,
+          message_index
+        )
+
         send(self(), :produce)
+        {:noreply, state}
+
+      {:error, :missing_ids} ->
+        Process.send_after(self(), :produce, 100)
         {:noreply, state}
 
       _error ->
@@ -99,25 +111,121 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
       [] ->
         {:no_more_messages}
 
-      messages ->
-        with :ok <-
-               :brod.produce_sync(
-                 state.brod_client,
-                 state.topic,
-                 state.partition,
-                 "",
-                 Procon.Parallel.pmap(
-                   messages,
-                   fn %{blob: blob} -> {"", blob} end
-                 )
-               ),
-             {:ok, :next} <-
-               Procon.MessagesProducers.Ecto.delete_rows(state.repo, Enum.map(messages, & &1.id)) do
-          {:ok, messages |> Enum.reverse() |> hd() |> Map.get(:id)}
-        else
-          {:error, error} -> {:error, error}
-          _ -> {:error}
+      msg ->
+        {[first_id | _rest] = ids, messages} = Enum.unzip(msg)
+        last_id = ids |> Enum.reverse() |> hd()
+
+        ProducerLastIndex.get_last_produced_index(state.repo, state.topic, state.partition)
+        |> case do
+          :error ->
+            {}
+
+          last_produced_id ->
+            do_produce_next_messages(
+              first_id,
+              last_id,
+              last_produced_id,
+              ids,
+              messages,
+              length(ids),
+              state
+            )
         end
+    end
+  end
+
+  # The first message to produce is not the one absolutely just after the last produced one
+  def do_produce_next_messages(
+        first_id,
+        _last_id,
+        last_produced_id,
+        ids,
+        _messages,
+        _messages_count,
+        state
+      )
+      when first_id - 1 != last_produced_id do
+    IO.inspect(ids,
+      label:
+        "PROCON ALERT : producer on topic #{state.topic} and partition #{
+          to_string(state.partition)
+        } : missing ids : last produced #{to_string(last_produced_id)}",
+      syntax_colors: [
+        atom: :red,
+        binary: :red,
+        boolean: :red,
+        list: :red,
+        map: :red,
+        number: :red,
+        regex: :red,
+        string: :red,
+        tuple: :red
+      ]
+    )
+
+    {:error, :missing_ids}
+  end
+
+  # The sequence of ids received is not continuous
+  def do_produce_next_messages(
+        first_id,
+        last_id,
+        _last_produced_id,
+        ids,
+        _messages,
+        messages_count,
+        state
+      )
+      when last_id - first_id + 1 != messages_count do
+    IO.inspect(ids,
+      label:
+        "PROCON ALERT : producer on topic #{state.topic} and partition #{
+          to_string(state.partition)
+        } : missing ids : not continuous sequence",
+      syntax_colors: [
+        atom: :red,
+        binary: :red,
+        boolean: :red,
+        list: :red,
+        map: :red,
+        number: :red,
+        regex: :red,
+        string: :red,
+        tuple: :red
+      ]
+    )
+
+    {:error, :missing_ids}
+  end
+
+  def do_produce_next_messages(
+        _first_id,
+        last_id,
+        _last_produced_id,
+        ids,
+        messages,
+        _messages_count,
+        state
+      ) do
+    with :ok <-
+           :brod.produce_sync(
+             state.brod_client,
+             state.topic,
+             state.partition,
+             "",
+             messages
+           ),
+         {:ok, :next} <-
+           Procon.MessagesProducers.Ecto.delete_rows(
+             state.repo,
+             state.topic,
+             state.partition,
+             ids
+           ) do
+      {:ok, last_id}
+    else
+      {:error, error} -> {:error, error}
+      err -> {:error, err}
     end
   end
 end

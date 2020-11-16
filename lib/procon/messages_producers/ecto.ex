@@ -12,8 +12,8 @@ defmodule Procon.MessagesProducers.Ecto do
             pm.topic == ^topic and
               pm.partition == ^partition,
           limit: ^number_of_messages,
-          select: [:id, :blob],
-          order_by: pm.id
+          select: {pm.index, {"", pm.blob}},
+          order_by: pm.index
         )
       )
     rescue
@@ -26,8 +26,11 @@ defmodule Procon.MessagesProducers.Ecto do
     end
   end
 
-  def delete_rows(processor_repo, ids) do
-    q = from(pm in ProconProducerMessage, where: pm.id in ^ids)
+  def delete_rows(processor_repo, topic, partition, ids) do
+    q =
+      from(pm in ProconProducerMessage,
+        where: pm.index in ^ids and pm.partition == ^partition and pm.topic == ^topic
+      )
 
     case processor_repo.delete_all(q) do
       {_, nil} -> {:ok, :next}

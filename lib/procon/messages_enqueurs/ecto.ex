@@ -1,6 +1,5 @@
 defmodule Procon.MessagesEnqueuers.Ecto do
   @type states() :: :created | :updated | :deleted
-  alias Procon.Schemas.Ecto.ProconProducerMessage
   use Bitwise
 
   @spec build_message(map(), states() | String.t(), map()) :: %{
@@ -119,43 +118,7 @@ defmodule Procon.MessagesEnqueuers.Ecto do
     end
   end
 
-  @spec enqueue(String.t(), pos_integer(), String.t(), Ecto.Repo.t()) ::
-          {:ok, Ecto.Schema.t()}
   def enqueue(blob, partition, topic, repo) do
-    #   {:ok,
-    #  %Postgrex.Result{
-    #    columns: ["id", "blob", "is_stopped", "partition", "stopped_error",
-    #     "stopped_message_id", "topic", "inserted_at", "updated_at"],
-    #    command: :insert,
-    #    connection_id: 33389,
-    #    messages: [],
-    #    num_rows: 1,
-    #    rows: [
-    #      [7,
-    #       "{\"body\":{\"1\":{\"account_id\":\"c411a06a-1b96-49de-b389-f17a95d20371\",\"id\":\"a73326e4-a06f-4d5e-9026-fa8dcc198886\",\"session_token\":\"73b2542b-3364-4353-91c3-dd934cd4beda\"}},\"event\":\"created\",\"index\":7}",
-    #       nil, 0, nil, nil, "calions-int-evt-authentications",
-    #       ~N[2020-09-30 11:09:49.000000], ~N[2020-09-30 11:09:49.000000]]
-    #    ]
-    #  }}
-
-    {:ok, %Postgrex.Result{columns: columns, num_rows: 1, rows: [inserted_row]}} =
-      Ecto.Adapters.SQL.query(
-        repo,
-        "INSERT INTO procon_producer_messages (blob, partition, topic, inserted_at, updated_at)
-      VALUES (
-        replace(
-          $1,
-          '\"@@index@@\"',
-          CAST (currval('procon_producer_messages_id_seq'::regclass) AS text)
-        ),
-        $2,
-        $3,
-        NOW(),
-        NOW()
-      ) RETURNING *",
-        [blob, partition, topic]
-      )
-
-    {:ok, repo.load(ProconProducerMessage, {columns, inserted_row})}
+    Procon.MessagesEnqueuers.EnqueuerGenServer.enqueue(blob, partition, topic, repo)
   end
 end

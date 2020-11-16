@@ -5,11 +5,12 @@ defmodule Procon.Schemas.Ecto.ProconProducerMessage do
 
   @type t :: %__MODULE__{}
 
-  @accepted_params ~w(blob partition topic)a
-  @required_params ~w(blob partition topic)a
+  @accepted_params ~w(blob index partition topic)a
+  @required_params ~w(blob index partition topic)a
 
   schema "procon_producer_messages" do
     field(:blob, :string)
+    field(:index, :integer)
     field(:partition, :integer)
     field(:topic, :string)
     timestamps()
