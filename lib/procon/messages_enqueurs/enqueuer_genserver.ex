@@ -58,16 +58,19 @@ defmodule Procon.MessagesEnqueuers.EnqueuerGenServer do
             [{blob, from} | blobs]
         end
       end)
+      |> case do
+        [] ->
+          []
 
-    if length(blobs_to_retry) > 0 do
-      Process.send_after(self(), :retry_enqueue, 100)
-    end
+        blobs_to_retry ->
+          Process.send_after(self(), :retry_enqueue, 100)
+          blobs_to_retry
+      end
 
     {:noreply, %{state | enqueued_blobs: blobs_to_retry}}
   end
 
-  def handle_call({:enqueue, blob}, from, %{enqueued_blobs: enqueued_blobs} = state)
-      when length(enqueued_blobs) > 0 do
+  def handle_call({:enqueue, blob}, from, %{enqueued_blobs: [_ | _rest] = enqueued_blobs} = state) do
     IO.inspect(enqueued_blobs,
       label:
         "PROCON ALERT : new message enqueued on topic #{state.topic} and partition #{
