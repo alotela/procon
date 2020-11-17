@@ -46,14 +46,16 @@ defmodule Procon.MessagesEnqueuers.EnqueuerGenServer do
   def handle_info(:retry_enqueue, %{enqueued_blobs: enqueued_blobs} = state) do
     blobs_to_retry =
       enqueued_blobs
-      |> Enum.reduce([], fn blob, blobs ->
+      |> Enum.reverse()
+      |> Enum.reduce([], fn {blob, from}, blobs ->
         do_enqueue(blob, state.partition, state.topic, state.repo, true)
         |> case do
-          {:ok, _entity} ->
+          {:ok, entity} ->
+            GenServer.reply(from, {:ok, entity})
             blobs
 
           {:error, _err} ->
-            [blob | blobs]
+            [{blob, from} | blobs]
         end
       end)
 
@@ -64,7 +66,32 @@ defmodule Procon.MessagesEnqueuers.EnqueuerGenServer do
     {:noreply, %{state | enqueued_blobs: blobs_to_retry}}
   end
 
-  def handle_call({:enqueue, blob}, _from, state) do
+  def handle_call({:enqueue, blob}, from, %{enqueued_blobs: enqueued_blobs} = state)
+      when length(enqueued_blobs) > 0 do
+    IO.inspect(enqueued_blobs,
+      label:
+        "PROCON ALERT : new message enqueued on topic #{state.topic} and partition #{
+          to_string(state.partition)
+        } because queue was not empty",
+      syntax_colors: [
+        atom: :red,
+        binary: :red,
+        boolean: :red,
+        list: :red,
+        map: :red,
+        number: :red,
+        regex: :red,
+        string: :red,
+        tuple: :red
+      ]
+    )
+
+    Process.send_after(self(), :retry_enqueue, 100)
+
+    {:noreply, %{state | enqueued_blobs: [{blob, from} | enqueued_blobs]}}
+  end
+
+  def handle_call({:enqueue, blob}, from, state) do
     do_enqueue(blob, state.partition, state.topic, state.repo)
     |> case do
       {:ok, entity} ->
@@ -73,7 +100,7 @@ defmodule Procon.MessagesEnqueuers.EnqueuerGenServer do
       {:error, _err} ->
         Process.send_after(self(), :retry_enqueue, 100)
 
-        {:reply, {:ok, :sent_later}, %{state | enqueued_blobs: [blob | state.enqueued_blobs]}}
+        {:noreply, %{state | enqueued_blobs: [{blob, from} | state.enqueued_blobs]}}
     end
   end
 

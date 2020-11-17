@@ -20,8 +20,7 @@ defmodule Procon.Application do
       {DynamicSupervisor,
        name: Procon.MessagesProducers.ProducersSupervisor, strategy: :one_for_one},
       Procon.MessagesControllers.ConsumersStarter,
-      Procon.MessagesProducers.ProducerSequences,
-      Procon.MessagesProducers.ProducerLastIndex,
+      Procon.MessagesProducers.SequencesGenServer,
       {DynamicSupervisor,
        name: Procon.MessagesEnqueuers.EnqueuersSupervisor, strategy: :one_for_one}
       # Starts a worker by calling: Procon.Worker.start_link(arg)

@@ -61,6 +61,24 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
 
   def handle_info(:produce, %{recovering_error: true} = state) do
     # We are currently recovering from an error, we will retry later
+    IO.inspect(state,
+      label:
+        "PROCON ALERT : producer on topic #{state.topic} and partition #{
+          to_string(state.partition)
+        } : recovering from an error. Retrying production later",
+      syntax_colors: [
+        atom: :red,
+        binary: :red,
+        boolean: :red,
+        list: :red,
+        map: :red,
+        number: :red,
+        regex: :red,
+        string: :red,
+        tuple: :red
+      ]
+    )
+
     Process.send_after(self(), :produce, 100)
     {:noreply, state}
   end
@@ -83,6 +101,24 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
             {:noreply, state}
 
           :error ->
+            IO.inspect(message_index,
+              label:
+                "PROCON ALERT : producer on topic #{state.topic} and partition #{
+                  to_string(state.partition)
+                } : error setting last index",
+              syntax_colors: [
+                atom: :red,
+                binary: :red,
+                boolean: :red,
+                list: :red,
+                map: :red,
+                number: :red,
+                regex: :red,
+                string: :red,
+                tuple: :red
+              ]
+            )
+
             send(self(), {:retry_set_last_index, message_index})
             {:noreply, %{state | recovering_error: true}}
         end
@@ -94,6 +130,10 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
       {:error, :last_index} ->
         Process.send_after(self(), :produce, 100)
         {:noreply, state}
+
+      {:error, :deleting_ids, ids} ->
+        send(self(), {:retry_delete_rows, ids})
+        {:noreply, %{state | recovering_error: true}}
 
       _error ->
         {:noreply, %{state | :producing => false}}
@@ -113,7 +153,61 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
         {:noreply, %{state | recovering_error: false}}
 
       :error ->
+        IO.inspect(message_index,
+          label:
+            "PROCON ALERT : producer on topic #{state.topic} and partition #{
+              to_string(state.partition)
+            } : error setting last index",
+          syntax_colors: [
+            atom: :red,
+            binary: :red,
+            boolean: :red,
+            list: :red,
+            map: :red,
+            number: :red,
+            regex: :red,
+            string: :red,
+            tuple: :red
+          ]
+        )
+
         Process.send_after(self(), {:retry_set_last_index, message_index}, 100)
+        {:noreply, %{state | recovering_error: true}}
+    end
+  end
+
+  def handle_info({:retry_delete_rows, ids}, state) do
+    Procon.MessagesProducers.Ecto.delete_rows(
+      state.repo,
+      state.topic,
+      state.partition,
+      ids
+    )
+    |> case do
+      {:ok, :next} ->
+        send(self(), :produce)
+        {:noreply, %{state | recovering_error: false}}
+
+      {:stop, err} ->
+        IO.inspect(err,
+          label:
+            "PROCON ALERT : producer on topic #{state.topic} and partition #{
+              to_string(state.partition)
+            } : error deleting ids",
+          syntax_colors: [
+            atom: :red,
+            binary: :red,
+            boolean: :red,
+            list: :red,
+            map: :red,
+            number: :red,
+            regex: :red,
+            string: :red,
+            tuple: :red
+          ]
+        )
+
+        Process.send_after(self(), {:retry_delete_rows, ids}, 100)
         {:noreply, %{state | recovering_error: true}}
     end
   end
@@ -153,6 +247,24 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
         ProducerLastIndex.get_last_produced_index(state.repo, state.topic, state.partition)
         |> case do
           :error ->
+            IO.inspect(state,
+              label:
+                "PROCON ALERT : producer on topic #{state.topic} and partition #{
+                  to_string(state.partition)
+                } : Getting last production index failed. Retrying production later",
+              syntax_colors: [
+                atom: :red,
+                binary: :red,
+                boolean: :red,
+                list: :red,
+                map: :red,
+                number: :red,
+                regex: :red,
+                string: :red,
+                tuple: :red
+              ]
+            )
+
             {:error, :last_index}
 
           last_produced_id ->
@@ -259,8 +371,68 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
            ) do
       {:ok, last_id}
     else
-      {:error, error} -> {:error, error}
-      err -> {:error, err}
+      {:stop, err} ->
+        IO.inspect(err,
+          label:
+            "PROCON ALERT : producer on topic #{state.topic} and partition #{
+              to_string(state.partition)
+            } : error deleting ids",
+          syntax_colors: [
+            atom: :red,
+            binary: :red,
+            boolean: :red,
+            list: :red,
+            map: :red,
+            number: :red,
+            regex: :red,
+            string: :red,
+            tuple: :red
+          ]
+        )
+
+        {:error, :deleting_ids, ids}
+
+      {:error, error} ->
+        IO.inspect(error,
+          label:
+            "PROCON ALERT : producer on topic #{state.topic} and partition #{
+              to_string(state.partition)
+            } : error in message production",
+          syntax_colors: [
+            atom: :red,
+            binary: :red,
+            boolean: :red,
+            list: :red,
+            map: :red,
+            number: :red,
+            regex: :red,
+            string: :red,
+            tuple: :red
+          ]
+        )
+
+        {:error, error}
+
+      err ->
+        IO.inspect(err,
+          label:
+            "PROCON ALERT : producer on topic #{state.topic} and partition #{
+              to_string(state.partition)
+            } : error in message production",
+          syntax_colors: [
+            atom: :red,
+            binary: :red,
+            boolean: :red,
+            list: :red,
+            map: :red,
+            number: :red,
+            regex: :red,
+            string: :red,
+            tuple: :red
+          ]
+        )
+
+        {:error, err}
     end
   end
 end

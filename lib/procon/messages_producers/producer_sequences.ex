@@ -1,24 +1,4 @@
 defmodule Procon.MessagesProducers.ProducerSequences do
-  use GenServer
-
-  def start_link(default) do
-    GenServer.start_link(__MODULE__, default, name: __MODULE__)
-  end
-
-  @impl true
-  def init(state) do
-    {:ok, state}
-  end
-
-  @impl true
-  def handle_call({:create_sequence, repo, topic, partition, force}, _from, state) do
-    if not has_sequence(repo, topic, partition) || force do
-      do_create_sequence(repo, topic, partition)
-    end
-
-    {:reply, :ok, state}
-  end
-
   def create_table() do
     case :ets.whereis(:procon_producer_sequence) do
       :undefined ->
@@ -36,14 +16,16 @@ defmodule Procon.MessagesProducers.ProducerSequences do
   end
 
   def create_sequence(repo, topic, partition, force) do
-    GenServer.call(__MODULE__, {:create_sequence, repo, topic, partition, force}, :infinity)
+    if not has_sequence(repo, topic, partition) || force do
+      do_create_sequence(repo, topic, partition)
+    end
   end
 
   def do_create_sequence(repo, topic, partition) do
-    Ecto.Adapters.SQL.query(
+    Procon.MessagesProducers.SequencesGenServer.create_sequence(
       repo,
-      "CREATE SEQUENCE IF NOT EXISTS #{get_sequence_name(topic, partition)} INCREMENT BY 1 MINVALUE 1 NO MAXVALUE START WITH 1 NO CYCLE",
-      []
+      get_sequence_name(topic, partition),
+      "INCREMENT BY 1 MINVALUE 1 NO MAXVALUE START WITH 1 NO CYCLE"
     )
     |> case do
       {:ok, %Postgrex.Result{}} ->
@@ -53,7 +35,7 @@ defmodule Procon.MessagesProducers.ProducerSequences do
       err ->
         IO.inspect(err,
           label:
-            "PROCON ALERT : DB error in last index sequence creation for repo #{inspect(repo)}, partition #{
+            "PROCON ALERT : DB error in index sequence creation for repo #{inspect(repo)}, partition #{
               to_string(partition)
             } and topic #{topic}",
           syntax_colors: [

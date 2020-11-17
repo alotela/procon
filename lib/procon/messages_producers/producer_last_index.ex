@@ -1,49 +1,4 @@
 defmodule Procon.MessagesProducers.ProducerLastIndex do
-  use GenServer
-
-  def start_link(default) do
-    GenServer.start_link(__MODULE__, default, name: __MODULE__)
-  end
-
-  @impl true
-  def init(state) do
-    {:ok, state}
-  end
-
-  @impl true
-  def handle_call({:create_sequence, repo, topic, partition}, _from, state) do
-    Ecto.Adapters.SQL.query(
-      repo,
-      "CREATE SEQUENCE IF NOT EXISTS #{get_sequence_name(topic, partition)} MINVALUE 0 NO MAXVALUE START WITH 0 NO CYCLE",
-      []
-    )
-    |> case do
-      {:ok, %Postgrex.Result{}} ->
-        {:reply, :ok, state}
-
-      err ->
-        IO.inspect(err,
-          label:
-            "PROCON ALERT : DB error in last index sequence creation for repo #{inspect(repo)}, partition #{
-              to_string(partition)
-            } and topic #{topic}",
-          syntax_colors: [
-            atom: :red,
-            binary: :red,
-            boolean: :red,
-            list: :red,
-            map: :red,
-            number: :red,
-            regex: :red,
-            string: :red,
-            tuple: :red
-          ]
-        )
-
-        {:reply, :error, state}
-    end
-  end
-
   def create_table() do
     case :ets.whereis(:procon_producer_last_index) do
       :undefined ->
@@ -110,7 +65,36 @@ defmodule Procon.MessagesProducers.ProducerLastIndex do
   end
 
   def do_create_sequence(repo, topic, partition) do
-    GenServer.call(__MODULE__, {:create_sequence, repo, topic, partition}, :infinity)
+    Procon.MessagesProducers.SequencesGenServer.create_sequence(
+      repo,
+      get_sequence_name(topic, partition),
+      "MINVALUE 0 NO MAXVALUE START WITH 0 NO CYCLE"
+    )
+    |> case do
+      {:ok, %Postgrex.Result{}} ->
+        :ok
+
+      err ->
+        IO.inspect(err,
+          label:
+            "PROCON ALERT : DB error in last index sequence creation for repo #{inspect(repo)}, partition #{
+              to_string(partition)
+            } and topic #{topic}",
+          syntax_colors: [
+            atom: :red,
+            binary: :red,
+            boolean: :red,
+            list: :red,
+            map: :red,
+            number: :red,
+            regex: :red,
+            string: :red,
+            tuple: :red
+          ]
+        )
+
+        :error
+    end
   end
 
   def get_sequence_name(topic, partition),

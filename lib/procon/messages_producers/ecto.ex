@@ -32,9 +32,14 @@ defmodule Procon.MessagesProducers.Ecto do
         where: pm.index in ^ids and pm.partition == ^partition and pm.topic == ^topic
       )
 
-    case processor_repo.delete_all(q) do
-      {_, nil} -> {:ok, :next}
-      {:error, error} -> {:stop, error}
+    try do
+      case processor_repo.delete_all(q) do
+        {_, nil} -> {:ok, :next}
+        {:error, error} -> {:stop, error}
+      end
+    rescue
+      e ->
+        {:stop, e}
     end
   end
 
