@@ -39,6 +39,9 @@ defmodule Procon.Application do
     :procon_enqueuers_thresholds =
       :ets.new(:procon_enqueuers_thresholds, [:named_table, :public, :set])
 
+    :procon_consumer_group_subscribers =
+      :ets.new(:procon_consumer_group_subscribers, [:duplicate_bag, :public, :named_table])
+
     Procon.MessagesProducers.SequencesGenServer.start_sequences_genservers()
     Procon.MessagesProducers.ProducersStarter.start_topics_production_from_database_messages()
     Procon.MessagesControllers.ConsumersStarter.start_activated_processors()
