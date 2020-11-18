@@ -148,7 +148,38 @@ defmodule Procon.MessagesControllers.Consumer do
         })
         |> case do
           {:ok, pid} ->
-            Process.register(pid, group_subscriber_name(processor_config.name))
+            process_register_name = group_subscriber_name(processor_config.name)
+
+            case Process.alive?(pid) do
+              false ->
+                IO.inspect(
+                  pid,
+                  label:
+                    "trying to register group_subscriber #{process_register_name} but it is not alive.",
+                  syntax_colors: [string: :magenta]
+                )
+
+              true ->
+                case Process.whereis(process_register_name) do
+                  xpid when is_pid(xpid) ->
+                    IO.inspect(
+                      xpid,
+                      label:
+                        "trying to register group_subscriber #{process_register_name} but another process is already registered for this name",
+                      syntax_colors: [string: :magenta]
+                    )
+
+                  nil ->
+                    IO.inspect(
+                      pid,
+                      label:
+                        "registering group_subscriber #{process_register_name}.....................................",
+                      syntax_colors: [string: :blue]
+                    )
+
+                    Process.register(pid, process_register_name)
+                end
+            end
 
           {:error, error} ->
             IO.inspect(error,
