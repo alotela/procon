@@ -2,8 +2,12 @@ defmodule Procon.MessagesProducers.ProducerSequences do
   def create_table() do
     case :ets.whereis(:procon_producer_sequence) do
       :undefined ->
-        :procon_producer_sequence =
-          :ets.new(:procon_producer_sequence, [:named_table, :public, :set])
+        try do
+          :procon_producer_sequence =
+            :ets.new(:procon_producer_sequence, [:named_table, :public, :set])
+        rescue
+          _e in ArgumentError -> :procon_producer_sequence
+        end
 
       _ ->
         nil

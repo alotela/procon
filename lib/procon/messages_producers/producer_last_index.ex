@@ -2,8 +2,12 @@ defmodule Procon.MessagesProducers.ProducerLastIndex do
   def create_table() do
     case :ets.whereis(:procon_producer_last_index) do
       :undefined ->
-        :procon_producer_last_index =
-          :ets.new(:procon_producer_last_index, [:named_table, :public, :set])
+        try do
+          :procon_producer_last_index =
+            :ets.new(:procon_producer_last_index, [:named_table, :public, :set])
+        rescue
+          _e in ArgumentError -> :procon_producer_last_index
+        end
 
       _ ->
         nil
