@@ -21,11 +21,11 @@ defmodule Procon.MessagesProducers.ProducerSequences do
 
   def create_sequence(repo, topic, partition, force) do
     if not has_sequence(repo, topic, partition) || force do
-      do_create_sequence(repo, topic, partition)
+      do_create_sequence(repo, topic, partition, force)
     end
   end
 
-  def do_create_sequence(repo, topic, partition) do
+  def do_create_sequence(repo, topic, partition, force) do
     Procon.MessagesProducers.SequencesGenServer.create_sequence(
       repo,
       get_sequence_name(topic, partition),
@@ -41,7 +41,7 @@ defmodule Procon.MessagesProducers.ProducerSequences do
           label:
             "PROCON ALERT : DB error in index sequence creation for repo #{inspect(repo)}, partition #{
               to_string(partition)
-            } and topic #{topic}",
+            } and topic #{topic}. Force ? #{inspect(force)}",
           syntax_colors: [
             atom: :red,
             binary: :red,

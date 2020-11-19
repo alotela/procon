@@ -38,17 +38,17 @@ defmodule Mix.Tasks.Procon.AddAcls do
       |> elem(0)
       |> Keyword.get(:repo, "#{Helpers.processor_to_controller(processor_name)}Pg")
 
-    config_path = add_topic_config(processor_name)
+    [group_acls_serializer_path, topic] =
+      add_group_acls_serializer(processor_name, processor_repo)
+
+    Helpers.info("created group_acls message serializer file #{group_acls_serializer_path}")
+
+    config_path = add_topic_config(processor_name, topic)
     Helpers.info("added topics to listen in processor's config file #{config_path}")
     migration_file_path = add_migrations(processor_name, processor_repo)
     Helpers.info("created migrations file #{migration_file_path}")
     message_controllers_path = add_group_acls_message_controller(processor_name)
     Helpers.info("created group_acls message controller file #{message_controllers_path}")
-
-    [group_acls_serializer_path, topic] =
-      add_group_acls_serializer(processor_name, processor_repo)
-
-    Helpers.info("created group_acls message serializer file #{group_acls_serializer_path}")
     repository_file_path = add_group_acls_repository(processor_name, processor_repo)
     Helpers.info("created group_acls message serializer file #{repository_file_path}")
     group_acls_value_object_path = add_value_object_group_acls(processor_name)
@@ -173,7 +173,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
       ])
   )
 
-  def add_topic_config(processor_name) do
+  def add_topic_config(processor_name, topic) do
     config_file_path = [Helpers.config_directory(processor_name), "config.exs"] |> Path.join()
     config_file_content = config_file_path |> File.read!()
 
@@ -199,6 +199,10 @@ defmodule Mix.Tasks.Procon.AddAcls do
                     topic: "calions-int-operators-selected_user_app_groups"
                   },
         """
+      )
+      |> String.replace(
+        "topics: [",
+        "topics: [\"#{topic}\", "
       )
 
     :ok = File.write(config_file_path, new_content)

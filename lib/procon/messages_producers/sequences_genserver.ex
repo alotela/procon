@@ -9,6 +9,7 @@ defmodule Procon.MessagesProducers.SequencesGenServer do
 
   @impl true
   def init(state) do
+    IO.inspect(state.repo, label: "PROCON - creating sequence server")
     {:ok, state}
   end
 
@@ -19,7 +20,7 @@ defmodule Procon.MessagesProducers.SequencesGenServer do
         start:
           {__MODULE__, :start_link,
            [
-             %{process_name: process_name(processor_repo)}
+             %{process_name: process_name(processor_repo), repo: processor_repo}
            ]},
         id: process_name(processor_repo)
       }
@@ -34,9 +35,16 @@ defmodule Procon.MessagesProducers.SequencesGenServer do
   end
 
   def consumers_datastores() do
-    Procon.MessagesControllers.ConsumersStarter.activated_consumers()
-    |> Enum.map(& &1.datastore)
+    Application.get_env(:procon, Processors)
+    |> Enum.filter(
+      &Enum.member?(Application.get_env(:procon, :activated_processors), elem(&1, 0))
+    )
+    |> Enum.reduce([], &(get_producer_info(Keyword.get(elem(&1, 1), :producers, %{})) ++ &2))
   end
+
+  def get_producer_info(%{datastore: repo}), do: [repo]
+
+  def get_producer_info(%{}), do: []
 
   @impl true
   def handle_call({:create_sequence, repo, sequence_name, options}, _from, state) do
@@ -45,6 +53,9 @@ defmodule Procon.MessagesProducers.SequencesGenServer do
         repo,
         "CREATE SEQUENCE IF NOT EXISTS #{sequence_name} #{options}",
         []
+      )
+      |> IO.inspect(
+        label: "PROCON : create_sequence : creating sequence #{sequence_name} for repo #{repo}"
       )
 
     {:reply, res, state}
