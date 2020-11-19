@@ -57,7 +57,7 @@ defmodule Procon.MessagesProducers.ProducersStarter do
 
   def start_activated_processors() do
     activated_producers()
-    |> Enum.each(&start_producer/1)
+    |> Procon.Parallel.pmap(&start_producer/1)
   end
 
   def activated_producers() do

@@ -39,6 +39,9 @@ defmodule Procon.Application do
     :procon_consumer_group_subscribers =
       :ets.new(:procon_consumer_group_subscribers, [:duplicate_bag, :public, :named_table])
 
+    Procon.MessagesProducers.ProducerSequences.create_table()
+    Procon.MessagesProducers.ProducerLastIndex.create_table()
+
     Procon.MessagesProducers.SequencesGenServer.start_sequences_genservers()
     Procon.MessagesProducers.ProducersStarter.start_activated_processors()
     Procon.MessagesControllers.ConsumersStarter.start_activated_processors()
