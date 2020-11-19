@@ -2,7 +2,7 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
   alias Mix.Tasks.Procon.Helpers
   import Mix.Generator
 
-  def generate_config_files(app_name, processor_name, processor_repo) do
+  def generate_config_files(app_name, processor_name, processor_repo, processor_default_topic) do
     processors_config_type_directory =
       Path.join([
         "config",
@@ -33,7 +33,8 @@ defmodule Mix.Tasks.Procon.Helpers.ConfigFiles do
         processor_config_template(
           processor_name: processor_name,
           repository: Helpers.repo_name_to_module(processor_name, processor_repo),
-          entity_name: Helpers.processor_to_resource(processor_name)
+          entity_name: Helpers.processor_to_resource(processor_name),
+          topic: processor_default_topic
         )
       )
     end

@@ -188,7 +188,12 @@ defmodule Mix.Tasks.Procon.Init do
     end
 
     generated_config_files =
-      Helpers.ConfigFiles.generate_config_files(app_name, processor_name, processor_repo)
+      Helpers.ConfigFiles.generate_config_files(
+        app_name,
+        processor_name,
+        processor_repo,
+        processor_default_topic
+      )
 
     Mix.Tasks.Procon.Serializer.run([
       "--processor",

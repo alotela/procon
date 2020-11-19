@@ -41,7 +41,11 @@ config :procon, Processors,
           # }
         ]
       }
-    ]
+    ],
+    producers: %{
+      datastore: <%= @repository %>,
+      topics: ["<%= @topic %>"]
+    }
   ]
 
 if [__DIR__, "#{Mix.env}.exs"] |> Path.join() |> File.exists?(),
