@@ -16,15 +16,12 @@ defmodule Procon.Application do
 
     children = [
       {Registry, keys: :unique, name: Procon.ProducersRegistry},
-      {Registry, keys: :unique, name: Procon.EnqueuersRegistry},
       {Registry, keys: :unique, name: Procon.SequencesRegistry},
       {DynamicSupervisor,
        name: Procon.MessagesProducers.ProducersSupervisor, strategy: :one_for_one},
-      Procon.MessagesControllers.ConsumersStarter,
       {DynamicSupervisor,
-       name: Procon.MessagesEnqueuers.EnqueuersSupervisor, strategy: :one_for_one},
-      {DynamicSupervisor,
-       name: Procon.MessagesProducers.SequencesSupervisor, strategy: :one_for_one}
+       name: Procon.MessagesProducers.SequencesSupervisor, strategy: :one_for_one},
+      Procon.MessagesControllers.ConsumersStarter
       # Starts a worker by calling: Procon.Worker.start_link(arg)
       # {Procon.Worker, arg},
     ]
@@ -43,7 +40,7 @@ defmodule Procon.Application do
       :ets.new(:procon_consumer_group_subscribers, [:duplicate_bag, :public, :named_table])
 
     Procon.MessagesProducers.SequencesGenServer.start_sequences_genservers()
-    Procon.MessagesProducers.ProducersStarter.start_topics_production_from_database_messages()
+    Procon.MessagesProducers.ProducersStarter.start_activated_processors()
     Procon.MessagesControllers.ConsumersStarter.start_activated_processors()
   end
 end

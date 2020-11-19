@@ -1,6 +1,7 @@
 defmodule Procon.MessagesProducers.ProducerGenServer do
   use GenServer
   alias Procon.MessagesProducers.ProducerLastIndex
+  alias Procon.MessagesProducers.ProducerSequences
 
   def via(producer_name), do: {:via, Registry, {Procon.ProducersRegistry, producer_name}}
 
@@ -15,25 +16,95 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
   def start_partition_production(partition, nb_messages, processor_repo, topic) do
     producer_name = :"#{processor_repo}_#{topic}_#{partition}"
 
-    DynamicSupervisor.start_child(
-      Procon.MessagesProducers.ProducersSupervisor,
-      %{
-        start:
-          {__MODULE__, :start_link,
-           [
-             %{
-               nb_messages: nb_messages,
-               partition: partition,
-               producer_name: producer_name,
-               repo: processor_repo,
-               topic: topic
-             }
-           ]},
-        id: producer_name
-      }
-    )
+    if is_nil(GenServer.whereis(producer_name)) do
+      IO.inspect(processor_repo,
+        label:
+          "PROCON : start_partition_production : producer started on topic #{topic} and partition #{
+            to_string(partition)
+          }"
+      )
+
+      DynamicSupervisor.start_child(
+        Procon.MessagesProducers.ProducersSupervisor,
+        %{
+          start:
+            {__MODULE__, :start_link,
+             [
+               %{
+                 nb_messages: nb_messages,
+                 partition: partition,
+                 producer_name: producer_name,
+                 repo: processor_repo,
+                 topic: topic
+               }
+             ]},
+          id: producer_name
+        }
+      )
+    end
 
     GenServer.cast(producer_name, {:start_partition_production})
+  end
+
+  def start_producer(repo, topic, partition) do
+    ProducerSequences.create_sequence(repo, topic, partition, true)
+    |> case do
+      :ok ->
+        :ok
+
+      :error ->
+        IO.inspect(repo,
+          label:
+            "PROCON ALERT : start_producer : producer on topic #{topic} and partition #{
+              to_string(partition)
+            } : error creating sequence",
+          syntax_colors: [
+            atom: :red,
+            binary: :red,
+            boolean: :red,
+            list: :red,
+            map: :red,
+            number: :red,
+            regex: :red,
+            string: :red,
+            tuple: :red
+          ]
+        )
+
+        :error
+    end
+
+    ProducerLastIndex.init_sequence(repo, topic, partition)
+    |> case do
+      :ok ->
+        start_partition_production(
+          partition,
+          Application.get_env(:procon, :nb_simultaneous_messages_to_send),
+          repo,
+          topic
+        )
+
+      :error ->
+        IO.inspect(repo,
+          label:
+            "PROCON ALERT : start_producer : producer on topic #{topic} and partition #{
+              to_string(partition)
+            } : error creating last index sequence",
+          syntax_colors: [
+            atom: :red,
+            binary: :red,
+            boolean: :red,
+            list: :red,
+            map: :red,
+            number: :red,
+            regex: :red,
+            string: :red,
+            tuple: :red
+          ]
+        )
+
+        :error
+    end
   end
 
   def init(initial_state) do
@@ -131,8 +202,8 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
         Process.send_after(self(), :produce, 100)
         {:noreply, state}
 
-      {:error, :deleting_ids, ids} ->
-        send(self(), {:retry_delete_rows, ids})
+      {:error, :deleting_ids, ids, message_index} ->
+        send(self(), {:retry_delete_rows, ids, message_index})
         {:noreply, %{state | recovering_error: true}}
 
       _error ->
@@ -176,7 +247,7 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
     end
   end
 
-  def handle_info({:retry_delete_rows, ids}, state) do
+  def handle_info({:retry_delete_rows, ids, message_index}, state) do
     Procon.MessagesProducers.Ecto.delete_rows(
       state.repo,
       state.topic,
@@ -185,8 +256,8 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
     )
     |> case do
       {:ok, :next} ->
-        send(self(), :produce)
-        {:noreply, %{state | recovering_error: false}}
+        Process.send_after(self(), {:retry_set_last_index, message_index}, 100)
+        {:noreply, %{state | recovering_error: true}}
 
       {:stop, err} ->
         IO.inspect(err,
@@ -207,7 +278,7 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
           ]
         )
 
-        Process.send_after(self(), {:retry_delete_rows, ids}, 100)
+        Process.send_after(self(), {:retry_delete_rows, ids, message_index}, 100)
         {:noreply, %{state | recovering_error: true}}
     end
   end
@@ -390,7 +461,7 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
           ]
         )
 
-        {:error, :deleting_ids, ids}
+        {:error, :deleting_ids, ids, last_id}
 
       {:error, error} ->
         IO.inspect(error,

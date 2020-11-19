@@ -34,8 +34,45 @@ defmodule Procon.MessagesProducers.ProducersStarter do
         nb_messages \\ Application.get_env(:procon, :nb_simultaneous_messages_to_send)
       ) do
     Logger.metadata(procon_processor_repo: processor_repo)
+
     from(pm in ProconProducerMessage, group_by: pm.topic, select: {pm.topic, count(pm.id)})
     |> processor_repo.all()
     |> Enum.each(fn {topic, _} -> start_topic_production(nb_messages, processor_repo, topic) end)
   end
+
+  def start_producer({repo, topic}) do
+    topic
+    |> Procon.KafkaMetadata.partition_ids_for_topic()
+    |> case do
+      nil ->
+        throw("The topic #{topic} does not seem to exists. Program")
+
+      partition_ids ->
+        Enum.each(
+          partition_ids,
+          &MPPG.start_producer(repo, topic, &1)
+        )
+    end
+  end
+
+  def start_activated_processors() do
+    activated_producers()
+    |> Enum.each(&start_producer/1)
+  end
+
+  def activated_producers() do
+    Application.get_env(:procon, Processors)
+    |> Enum.filter(
+      &Enum.member?(Application.get_env(:procon, :activated_processors), elem(&1, 0))
+    )
+    |> Enum.reduce([], &(get_producer_info(Keyword.get(elem(&1, 1), :producers, %{})) ++ &2))
+  end
+
+  def get_producer_info(%{datastore: repo, topics: topics}) when is_list(topics),
+    do: topics |> Enum.map(fn t -> {repo, t} end)
+
+  def get_producer_info(%{datastore: repo, topics: topic}) when is_binary(topic),
+    do: [repo, topic]
+
+  def get_producer_info(%{}), do: []
 end

@@ -23,7 +23,7 @@ defmodule Procon.MessagesProducers.ProducerLastIndex do
         last_id
 
       _ ->
-        do_create_sequence(repo, topic, partition)
+        create_sequence(repo, topic, partition)
         |> case do
           :ok ->
             {:ok, %Postgrex.Result{rows: [[last_id]]}} =
@@ -47,7 +47,7 @@ defmodule Procon.MessagesProducers.ProducerLastIndex do
     create_table()
 
     if :ets.lookup(:procon_producer_last_index, {repo, topic, partition}) == [] do
-      do_create_sequence(repo, topic, partition)
+      create_sequence(repo, topic, partition)
     else
       :ok
     end
@@ -68,7 +68,15 @@ defmodule Procon.MessagesProducers.ProducerLastIndex do
     end
   end
 
-  def do_create_sequence(repo, topic, partition) do
+  def init_sequence(repo, topic, partition) do
+    get_last_produced_index(repo, topic, partition)
+    |> case do
+      :error -> :error
+      _ -> :ok
+    end
+  end
+
+  def create_sequence(repo, topic, partition) do
     Procon.MessagesProducers.SequencesGenServer.create_sequence(
       repo,
       get_sequence_name(topic, partition),

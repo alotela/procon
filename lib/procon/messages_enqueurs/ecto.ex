@@ -1,6 +1,8 @@
 defmodule Procon.MessagesEnqueuers.Ecto do
   @type states() :: :created | :updated | :deleted
   use Bitwise
+  alias Procon.Schemas.Ecto.ProconProducerMessage
+  alias Procon.MessagesProducers.ProducerSequences
 
   @spec build_message(map(), states() | String.t(), map()) :: %{
           :index => binary,
@@ -119,6 +121,68 @@ defmodule Procon.MessagesEnqueuers.Ecto do
   end
 
   def enqueue(blob, partition, topic, repo) do
-    Procon.MessagesEnqueuers.EnqueuerGenServer.enqueue(blob, partition, topic, repo)
+    ProducerSequences.create_sequence(repo, topic, partition, false)
+
+    Ecto.Adapters.SQL.query(
+      repo,
+      "WITH curr_index
+        AS (SELECT nextval('#{ProducerSequences.get_sequence_name(topic, partition)}'::regclass) AS idx)
+        INSERT INTO procon_producer_messages (blob, index, partition, topic, inserted_at, updated_at)
+      SELECT
+        replace(
+          $1,
+          '\"@@index@@\"',
+          idx::text
+        ),
+        idx,
+        $2,
+        $3,
+        NOW(),
+        NOW()
+      FROM curr_index RETURNING *",
+      [blob, partition, topic]
+    )
+    |> case do
+      {:ok, %Postgrex.Result{columns: columns, num_rows: 1, rows: [inserted_row]}} ->
+        {:ok, repo.load(ProconProducerMessage, {columns, inserted_row})}
+
+      {:error, %DBConnection.ConnectionError{} = err} ->
+        IO.inspect(err,
+          label:
+            "PROCON ALERT : enqueue error on topic #{topic} and partition #{to_string(partition)}",
+          syntax_colors: [
+            atom: :red,
+            binary: :red,
+            boolean: :red,
+            list: :red,
+            map: :red,
+            number: :red,
+            regex: :red,
+            string: :red,
+            tuple: :red
+          ]
+        )
+
+        {:error, err}
+
+      {:error, err} ->
+        IO.inspect(err,
+          label:
+            "PROCON ALERT : enqueue error on topic #{topic} and partition #{to_string(partition)}",
+          syntax_colors: [
+            atom: :red,
+            binary: :red,
+            boolean: :red,
+            list: :red,
+            map: :red,
+            number: :red,
+            regex: :red,
+            string: :red,
+            tuple: :red
+          ]
+        )
+
+        {:error, err}
+    end
   end
 end
