@@ -7,7 +7,7 @@ defmodule Mix.Tasks.Procon.Init do
   @moduledoc ~S"""
   #Usage
   ```
-     mix procon.init --processor MyApp.Processors.[Commands|Operators|QueryViews|PushViews].ProcessorName [--repo ProcessorPg] [--crud criud] [--html] [--public]
+     mix procon.init --processor MyApp.Processors.[Commands|Operators|Queries|PushViews].ProcessorName [--repo ProcessorPg] [--crud criud] [--html] [--public]
   ```
   """
 
@@ -15,7 +15,7 @@ defmodule Mix.Tasks.Procon.Init do
     Helpers.info("You need to set --processor with maybe optional params :")
 
     Helpers.info(
-      "mix procon.init --processor MyApp.Processors.[Commands|Operators|QueryViews|PushViews].ProcessorName [--repo ProcessorPg] [--crud criud] [--html] [--public]"
+      "mix procon.init --processor MyApp.Processors.[Commands|Operators|Queries|PushViews].ProcessorName [--repo ProcessorPg] [--crud criud] [--html] [--public]"
     )
   end
 
