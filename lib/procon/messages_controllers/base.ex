@@ -216,18 +216,25 @@ defmodule Procon.MessagesControllers.Base do
          |> Map.put(:entity_realtime_event_serializer, nil)}
 
     def enqueue_realtime(event_data, type, realtime_event) do
-      %{event: event, channel: channel, serializer: serializer} =
-        realtime_event.(type, event_data.record)
+      realtime_event.(type, event_data.record)
+      |> case do
+        nil ->
+          {:ok,
+           event_data
+           |> Map.put(:entity_realtime_event_enqueued, false)
+           |> Map.put(:entity_realtime_event_serializer, nil)}
 
-      Procon.MessagesEnqueuers.Ecto.enqueue_rtevent(
-        %{channel: channel, event: event},
-        serializer
-      )
+        %{event: event, channel: channel, serializer: serializer} ->
+          Procon.MessagesEnqueuers.Ecto.enqueue_rtevent(
+            %{channel: channel, event: event},
+            serializer
+          )
 
-      {:ok,
-       event_data
-       |> Map.put(:entity_realtime_event_enqueued, true)
-       |> Map.put(:entity_realtime_event_serializer, serializer)}
+          {:ok,
+           event_data
+           |> Map.put(:entity_realtime_event_enqueued, true)
+           |> Map.put(:entity_realtime_event_serializer, serializer)}
+      end
     end
 
     def do_update(controller, event, options) do
