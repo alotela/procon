@@ -46,11 +46,6 @@ defmodule Procon.MessagesControllers.Consumer do
           false ->
             Procon.Helpers.inspect("procon stopped processor #{state.processor_config.name}")
 
-            :ets.delete(
-              :procon_consumer_group_subscribers,
-              group_subscriber_name(state.processor_config.name)
-            )
-
             Procon.MessagesControllers.ConsumersStarter.stop_processor(
               state.processor_config.name
             )
