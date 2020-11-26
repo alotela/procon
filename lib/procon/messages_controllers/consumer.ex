@@ -13,30 +13,46 @@ defmodule Procon.MessagesControllers.Consumer do
 
   def handle_message({:kafka_message_set, topic, partition, _high_wm_offset, messages}, state) do
     try do
-      for {:kafka_message, offset, _key, kafka_message_content, _ts_type, _ts, _headers} <- messages do
+      for {:kafka_message, offset, _key, kafka_message_content, _ts_type, _ts, _headers} <-
+            messages do
         try do
           {:ok, procon_message} = Jason.decode(kafka_message_content)
           route_message(procon_message, state.processor_config, topic, partition)
         rescue
           e ->
-            Procon.Helpers.inspect(e, "@@exception in procon handle_message @#{topic}/#{partition}/#{offset}@@")
-            Procon.Helpers.inspect(kafka_message_content, "@@kafka_message_content@#{topic}/#{partition}/#{offset}@@")
+            Procon.Helpers.inspect(
+              e,
+              "@@exception in procon handle_message @#{topic}/#{partition}/#{offset}@@"
+            )
+
+            Procon.Helpers.inspect(
+              kafka_message_content,
+              "@@kafka_message_content@#{topic}/#{partition}/#{offset}@@"
+            )
+
             Procon.Helpers.inspect(Process.info(self()), :process_info)
             Procon.Helpers.inspect(__STACKTRACE__, "__STACKTRACE__")
             throw(:stop_procon)
         end
       end
+
       {:ok, :commit, state}
     catch
       :stop_procon ->
         case Map.get(state.processor_config, :bypass_exception, false) do
           true ->
             {:ok, :commit, state}
+
           false ->
             Procon.Helpers.inspect("procon stopped processor #{state.processor_config.name}")
-            Procon.MessagesControllers.ConsumersStarter.stop_processor(state.processor_config.name)
+
+            Procon.MessagesControllers.ConsumersStarter.stop_processor(
+              state.processor_config.name
+            )
+
             {:ok, state}
         end
+
       _ ->
         {:ok, state}
     end
