@@ -25,7 +25,7 @@ defmodule Procon.MessagesProducers.ProducersStarter do
   end
 
   def consumers_datastores() do
-    Procon.MessagesControllers.ConsumersStarter.activated_consumers()
+    Procon.MessagesControllers.ConsumersStarter.activated_consumers_configs()
     |> Enum.map(& &1.datastore)
   end
 
@@ -34,8 +34,10 @@ defmodule Procon.MessagesProducers.ProducersStarter do
         nb_messages \\ Application.get_env(:procon, :nb_simultaneous_messages_to_send)
       ) do
     Logger.metadata(procon_processor_repo: processor_repo)
-
-    from(pm in ProconProducerMessage, group_by: pm.topic, select: {pm.topic, count(pm.id)})
+    from(pm in ProconProducerMessage,
+      group_by: pm.topic_partition,
+      select: fragment("REGEXP_REPLACE(topic_partition::varchar,'_[^_]*$','')")
+    )
     |> processor_repo.all()
     |> Enum.each(fn {topic, _} -> start_topic_production(nb_messages, processor_repo, topic) end)
   end

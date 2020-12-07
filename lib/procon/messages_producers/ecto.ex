@@ -3,23 +3,28 @@ defmodule Procon.MessagesProducers.Ecto do
   require Logger
   import Ecto.Query
 
-  @spec next_messages_to_send(String.t(), integer, integer, Atom) :: list(tuple)
-  def next_messages_to_send(topic, partition, number_of_messages, processor_repo) do
+  @spec next_messages_to_send(String.t(), integer, Atom) :: list(tuple)
+  def next_messages_to_send(topic_partition, number_of_messages, processor_repo) do
     try do
-      processor_repo.all(
-        from(pm in ProconProducerMessage,
-          where:
-            pm.topic == ^topic and
-              pm.partition == ^partition,
-          limit: ^number_of_messages,
-          select: {pm.index, {"", pm.blob}},
-          order_by: pm.index
+      %Postgrex.Result{rows: rows} =
+        Ecto.Adapters.SQL.query!(
+          processor_repo,
+          "SELECT id, replace(blob, '@procon_batch@', $1)
+        FROM procon_producer_messages
+        WHERE topic_partition=$2
+        ORDER BY id ASC
+        LIMIT $3",
+          [Ecto.ULID.generate(), Atom.to_string(topic_partition), number_of_messages]
         )
-      )
+
+      rows
     rescue
       e ->
-        Logger.warn("Procon.MessagesProduers.Ecto. Return empty list of messages to produce.")
-        IO.inspect(e)
+        Logger.warn(
+          "Procon.MessagesProduers.Ecto. Return from exception with empty list of messages to produce."
+        )
+
+        IO.inspect(e, label: "exception rescued")
         # to prevent DB spamming in case of troubles
         :timer.sleep(1000)
         []
@@ -47,11 +52,8 @@ defmodule Procon.MessagesProducers.Ecto do
     records =
       for n <- 1..10000 do
         %{
-          topic: "refresh_events",
-          partition: 0,
-          blob: "coucou#{n}",
-          inserted_at: DateTime.utc_now(),
-          updated_at: DateTime.utc_now()
+          topic_partition: "refresh_events_0",
+          blob: "coucou#{n}"
         }
       end
 

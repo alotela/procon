@@ -70,18 +70,9 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
     def change do
       create table(:procon_producer_messages) do
         add(:blob, :text, null: false)
-        add(:index, :int8)
-        add(:is_stopped, :boolean)
-        add(:partition, :integer, null: false)
-        add(:stopped_error, :text)
-        add(:stopped_message_id, :integer)
-        add(:topic, :string, null: false)
-        timestamps()
+        add(:topic_partition, :string, null: false)
       end
-      create index(:procon_producer_messages, [:index])
-      create index(:procon_producer_messages, [:is_stopped])
-      create index(:procon_producer_messages, [:partition])
-      create index(:procon_producer_messages, [:topic])
+      create index(:procon_producer_messages, [:topic_partition])
       alter table(:procon_producer_messages) do
         modify :id, :int8
       end

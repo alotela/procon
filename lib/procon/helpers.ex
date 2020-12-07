@@ -16,6 +16,7 @@ defmodule Procon.Helpers do
         regex: color,
         string: color,
         tuple: color
-      ])
+      ]
+    )
   end
 end

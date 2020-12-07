@@ -15,33 +15,24 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
 
   def start_partition_production(partition, nb_messages, processor_repo, topic) do
     producer_name = :"#{processor_repo}_#{topic}_#{partition}"
-
-    if is_nil(GenServer.whereis(producer_name)) do
-      IO.inspect(processor_repo,
-        label:
-          "PROCON : start_partition_production : producer started on topic #{topic} and partition #{
-            to_string(partition)
-          }"
-      )
-
-      DynamicSupervisor.start_child(
-        Procon.MessagesProducers.ProducersSupervisor,
-        %{
-          start:
-            {__MODULE__, :start_link,
-             [
-               %{
-                 nb_messages: nb_messages,
-                 partition: partition,
-                 producer_name: producer_name,
-                 repo: processor_repo,
-                 topic: topic
-               }
-             ]},
-          id: producer_name
-        }
-      )
-    end
+    DynamicSupervisor.start_child(
+      Procon.MessagesProducers.ProducersSupervisor,
+      %{
+        start:
+          {__MODULE__, :start_link,
+           [
+             %{
+                nb_messages: nb_messages,
+                partition: partition,
+                producer_name: producer_name,
+                repo: processor_repo,
+                topic: topic,
+                topic_partition: :"#{topic}_#{partition}"
+             }
+           ]},
+        id: producer_name
+      }
+    )
 
     GenServer.cast(producer_name, {:start_partition_production})
   end
@@ -159,6 +150,7 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
       {:no_more_messages} ->
         {:noreply, %{state | :producing => false}}
 
+<<<<<<< HEAD
       {:ok, message_index} ->
         ProducerLastIndex.set_last_produced_index(
           state.repo,
@@ -200,6 +192,10 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
 
       {:error, :last_index} ->
         Process.send_after(self(), :produce, 100)
+=======
+      :ok ->
+        send(self(), :produce)
+>>>>>>> remove indexes
         {:noreply, state}
 
       {:error, :deleting_ids, ids, message_index} ->
@@ -303,12 +299,12 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
 
   def produce_next_messages(state) do
     case Procon.MessagesProducers.Ecto.next_messages_to_send(
-           state.topic,
-           state.partition,
+           state.topic_partition,
            state.nb_messages,
            state.repo
          ) do
       [] ->
+<<<<<<< HEAD
         {:no_more_messages}
 
       msg ->
@@ -348,6 +344,30 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
               length(ids),
               state
             )
+=======
+        :no_more_messages
+
+      id_blob_list ->
+        {ids, blobs} = Enum.reduce(
+          id_blob_list,
+          {[], []},
+          fn [id, blob], {ids, blobs} -> {[id|ids], [{"", blob}|blobs]} end
+        )
+        with :ok <-
+               :brod.produce_sync(
+                 state.brod_client,
+                 state.topic,
+                 state.partition,
+                 "",
+                 Enum.reverse(blobs)
+               ),
+             {:ok, :next} <-
+               Procon.MessagesProducers.Ecto.delete_rows(state.repo, ids) do
+          :ok
+        else
+          {:error, error} -> {:error, error}
+          _ -> :error
+>>>>>>> remove indexes
         end
     end
   end

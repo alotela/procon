@@ -12,9 +12,9 @@ defmodule Procon.MessagesEnqueuers.Ecto do
         }
   def build_message(message_body, event_type, message_metadata) do
     message = %{
-      index: "@@index@@",
       body: message_body,
-      event: event_type |> to_string()
+      event: event_type |> to_string(),
+      procon_batch: "@procon_batch@"
     }
 
     case message_metadata do
@@ -83,7 +83,7 @@ defmodule Procon.MessagesEnqueuers.Ecto do
   end
 
   @spec enqueue_event(map(), module(), states(), list()) ::
-          {:ok, Ecto.Schema.t()}
+          {:ok, nil}
           | {:error, Ecto.Changeset.t()}
           | {:error, term}
           | {:error, :unknown_topic, String.t()}
@@ -106,13 +106,14 @@ defmodule Procon.MessagesEnqueuers.Ecto do
         |> Jason.encode()
         |> case do
           {:ok, message_blob} ->
-            enqueue(
-              message_blob,
-              event_serializer.build_partition_key(event_data)
-              |> select_partition(nb_partitions),
-              Keyword.get(options, :topic, event_serializer.topic),
-              event_serializer.repo
-            )
+            :ok = enqueue(
+                    message_blob,
+                    Keyword.get(options, :topic, event_serializer.topic)
+                    <> "_"
+                    <> (event_serializer.build_partition_key(event_data) |> select_partition(nb_partitions) |> Integer.to_string()),
+                    event_serializer.repo
+                  )
+            {:ok, nil}
 
           {:error, error} ->
             {:error, error}
@@ -120,6 +121,7 @@ defmodule Procon.MessagesEnqueuers.Ecto do
     end
   end
 
+<<<<<<< HEAD
   def enqueue(blob, partition, topic, repo) do
     ProducerSequences.create_sequence(repo, topic, partition, false)
 
@@ -184,5 +186,33 @@ defmodule Procon.MessagesEnqueuers.Ecto do
 
         {:error, err}
     end
+=======
+  @spec enqueue(String.t(), String.t(), Ecto.Repo.t()) :: :ok
+  def enqueue(blob, topic_partition, repo) do
+    #   {:ok,
+    #  %Postgrex.Result{
+    #    columns: ["id", "blob", "is_stopped", "partition", "stopped_error",
+    #     "stopped_message_id", "topic", "inserted_at", "updated_at"],
+    #    command: :insert,
+    #    connection_id: 33389,
+    #    messages: [],
+    #    num_rows: 1,
+    #    rows: [
+    #      [7,
+    #       "{\"body\":{\"1\":{\"account_id\":\"c411a06a-1b96-49de-b389-f17a95d20371\",\"id\":\"a73326e4-a06f-4d5e-9026-fa8dcc198886\",\"session_token\":\"73b2542b-3364-4353-91c3-dd934cd4beda\"}},\"event\":\"created\",\"index\":7}",
+    #       nil, 0, nil, nil, "calions-int-evt-authentications",
+    #       ~N[2020-09-30 11:09:49.000000], ~N[2020-09-30 11:09:49.000000]]
+    #    ]
+    #  }}
+
+    {:ok, %Postgrex.Result{}} =
+      Ecto.Adapters.SQL.query(
+        repo,
+        "INSERT INTO procon_producer_messages (blob, topic_partition) VALUES ($1,$2)",
+        [blob, topic_partition]
+      )
+
+    :ok
+>>>>>>> remove indexes
   end
 end
