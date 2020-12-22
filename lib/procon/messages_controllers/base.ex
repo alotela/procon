@@ -234,6 +234,17 @@ defmodule Procon.MessagesControllers.Base do
            event_data
            |> Map.put(:entity_realtime_event_enqueued, true)
            |> Map.put(:entity_realtime_event_serializer, serializer)}
+
+        %{event: event, session_id: session_id, serializer: serializer} ->
+          Procon.MessagesEnqueuers.Ecto.enqueue_rtevent(
+            %{session_id: session_id, event: event},
+            serializer
+          )
+
+          {:ok,
+           event_data
+           |> Map.put(:entity_realtime_event_enqueued, true)
+           |> Map.put(:entity_realtime_event_serializer, serializer)}
       end
     end
 
