@@ -54,7 +54,7 @@ defmodule Mix.Tasks.Procon.AddAuthentication do
       String.replace(
         config_file_content,
         "entities: [\n          ",
-        "entities: [\n          %{\n            event_version: 1,\n            keys_mapping: %{},\n            master_key: nil,\n            model: Calions.AuthenticatedClients.Schemas.AuthenticatedClient,\n            topic: \"calions-int-evt-authenticated_clients\"\n          },\n          "
+        "entities: [\n          %{\n            event_version: 1,\n            keys_mapping: %{},\n            master_key: nil,\n            model: Calions.AuthenticatedClients.Schemas.AuthenticatedClient,\n            topic: \"calions-int-operators-authenticated_clients\"\n          },\n          "
       )
 
     :ok = File.write(config_file_path, new_content)

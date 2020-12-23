@@ -7,8 +7,6 @@ defmodule <%= @processor_name %>.Migrations.AddAuthenticatedClientsTable do
       add(:id, :uuid, primary_key: true)
       add(:session_token, :string, null: true)
       add(:user_id, :uuid, null: true)
-
-      timestamps()
     end
 
     create(index(:authenticated_clients, [:account_id]))
