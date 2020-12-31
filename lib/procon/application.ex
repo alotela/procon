@@ -7,21 +7,13 @@ defmodule Procon.Application do
 
   def start(_type, _args) do
     Procon.KafkaMetadata.cache_kafka_metadata()
-    # List all child processes to be supervised
-    :brod.start_client(
-      Application.get_env(:procon, :brokers),
-      Application.get_env(:procon, :broker_client_name),
-      Application.get_env(:procon, :brod_client_config)
-    )
 
     children = [
-      {Registry, keys: :unique, name: Procon.ProducersRegistry},
-      {Registry, keys: :unique, name: Procon.SequencesRegistry},
+      # {Registry, keys: :unique, name: Procon.ProducersRegistry},
       {DynamicSupervisor,
        name: Procon.MessagesProducers.ProducersSupervisor, strategy: :one_for_one},
-      {DynamicSupervisor,
-       name: Procon.MessagesProducers.SequencesSupervisor, strategy: :one_for_one},
-      Procon.MessagesControllers.ConsumersStarter
+      # Procon.MessagesControllers.ConsumersStarter,
+      Procon.MessagesProducers.WalDispatcherSupervisor
       # Starts a worker by calling: Procon.Worker.start_link(arg)
       # {Procon.Worker, arg},
     ]
@@ -36,14 +28,8 @@ defmodule Procon.Application do
     :procon_enqueuers_thresholds =
       :ets.new(:procon_enqueuers_thresholds, [:named_table, :public, :set])
 
-    :procon_consumer_group_subscribers =
-      :ets.new(:procon_consumer_group_subscribers, [:duplicate_bag, :public, :named_table])
-
-    Procon.MessagesProducers.ProducerSequences.create_table()
-    Procon.MessagesProducers.ProducerLastIndex.create_table()
-
-    Procon.MessagesProducers.SequencesGenServer.start_sequences_genservers()
-    Procon.MessagesProducers.ProducersStarter.start_activated_processors()
-    Procon.MessagesControllers.ConsumersStarter.start_activated_processors()
+    # Procon.MessagesProducers.ProducersStarter.start_topics_production_from_database_messages()
+    # Procon.MessagesControllers.ConsumersStarter.start_activated_processors()
+    Procon.MessagesProducers.WalDispatcherSupervisor.start_activated_processors_producers()
   end
 end

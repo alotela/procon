@@ -78,6 +78,9 @@ defmodule Procon.KafkaMetadata do
     end
   end
 
+  def nb_partitions_for_topic!(topic) when is_atom(topic),
+    do: topic |> Atom.to_string() |> nb_partitions_for_topic() |> elem(1)
+
   @doc """
   returns a map with topics names anb partitions id
   %{
