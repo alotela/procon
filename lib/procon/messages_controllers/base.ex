@@ -223,8 +223,11 @@ defmodule Procon.MessagesControllers.Base do
 
     def add_new_attributes(event_data, options) do
       attributes =
-        for {key, val} <- event_data.event.new, into: %{} do
-          {Map.get(options.keys_mapping, key, key), val}
+        for {key, val} <- event_data.event.new,
+            k = Map.get(options.keys_mapping, key, key),
+            !is_nil(k),
+            into: %{} do
+          {k, val}
         end
 
       Map.put(event_data, :new_attributes, attributes)
