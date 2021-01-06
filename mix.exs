@@ -23,10 +23,11 @@ defmodule Procon.MixProject do
   defp deps do
     [
       {:benchee, "~> 1.0", only: :dev},
-      {:brod, "~> 3.9"},
-      {:ecto, "~> 3.0"},
+      {:brod, "~> 3.15"},
+      {:ecto_sql, "~> 3.0"},
       {:ecto_ulid, git: "https://github.com/sztosz/ecto-ulid.git"},
-      {:jason, "~> 1.1"},
+      {:epgsql, "~> 4.5"},
+      {:jason, "~> 1.2"},
       {:inflex, "~> 2.0.0"},
       {:postgrex, ">= 0.0.0"}
     ]

@@ -27,5 +27,12 @@ defmodule Procon.Application do
 
     Procon.MessagesControllers.ConsumersStarter.start_activated_processors()
     Procon.MessagesProducers.WalDispatcherSupervisor.start_activated_processors_producers()
+
+    # a virer apres migration
+    :brod.start_client(
+      Application.get_env(:procon, :brokers),
+      :brod_client,
+      Application.get_env(:procon, :brod_client_config)
+    )
   end
 end

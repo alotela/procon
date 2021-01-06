@@ -58,11 +58,6 @@ defmodule Procon.MessagesProducers.EpgsqlConnector do
     :epgsql.standby_status_update(epgsql, lsn, lsn)
   end
 
-  defp lsn_tuple_to_decimal({xlog, offset}) do
-    <<decimal_lsn::integer-64>> = <<xlog::integer-32, offset::integer-32>>
-    decimal_lsn
-  end
-
   defp create_publication(epgsql_pid, database, tables) when is_list(tables) do
     # {:ok, _, _} =
     :epgsql.squery(

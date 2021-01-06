@@ -102,11 +102,11 @@ defmodule Procon.MessagesControllers.Base do
           )
           |> case do
             true ->
-              start_forward_production(Map.get(options, :serializer, nil))
+              # start_forward_production(Map.get(options, :serializer, nil))
 
-              start_realtime_production(
-                Map.get(final_event_data, :entity_realtime_event_serializer, nil)
-              )
+              # start_realtime_production(
+              # Map.get(final_event_data, :entity_realtime_event_serializer, nil)
+              # )
 
               after_transaction.(final_event_data, options)
 
@@ -200,18 +200,6 @@ defmodule Procon.MessagesControllers.Base do
         end
       end)
       |> case_final_event_data(&controller.after_update_transaction/2, options)
-    end
-
-    def start_forward_production(nil), do: nil
-
-    def start_forward_production(serializer) do
-      Procon.MessagesProducers.ProducersStarter.start_topic_production(serializer)
-    end
-
-    def start_realtime_production(nil), do: nil
-
-    def start_realtime_production(serializer) do
-      Procon.MessagesProducers.ProducersStarter.start_topic_production(serializer)
     end
 
     def process_update(controller, event, options) do
