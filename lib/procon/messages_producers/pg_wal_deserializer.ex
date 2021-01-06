@@ -127,11 +127,48 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
 
   # insert en upsert : normalement on n'utilise pas cette forme
   def process_wal_binary(
-        <<"U", _relation_id::integer-32, "N", _number_of_columns::integer-16,
-          _tuple_data::binary>>,
-        _
-      ),
-      do: {:ok, :upsert, nil}
+        <<"U", relation_id::integer-32, "N", number_of_columns::integer-16,
+          tuple_binary::binary>>,
+        %{
+          column_names_and_types: column_names_and_types,
+          ets_table_state_ref: ets_table_state_ref,
+          ets_messages_queue_ref: ets_messages_queue_ref,
+          end_lsn: end_lsn
+        }
+      ) do
+    {<<>>, new_column_values} = decode_tuple_data(tuple_binary, number_of_columns)
+
+    partition_key_column_index = :ets.lookup_element(ets_table_state_ref, relation_id, 4)
+    topic_atom = :ets.lookup_element(ets_table_state_ref, relation_id, 5)
+
+    target_partition =
+      new_column_values
+      |> Enum.at(partition_key_column_index)
+      |> select_partition(Procon.KafkaMetadata.nb_partitions_for_topic!(topic_atom))
+
+    [[xid, timestamp]] = :ets.match(ets_table_state_ref, {:txn, :"$1", :_, :"$2"})
+
+    :ets.insert(
+      ets_messages_queue_ref,
+      {end_lsn, :"#{topic_atom}_#{target_partition}",
+       %{
+         end_lsn: end_lsn,
+         new:
+           Enum.zip(column_names_and_types, new_column_values)
+           |> Enum.reduce(%{}, &map_value_with_type/2),
+         timestamp: timestamp,
+         xid: xid
+       }, false}
+    )
+
+    {:ok, :upsert,
+     %{
+       relation_id: relation_id,
+       xid: xid,
+       new_column_values: new_column_values,
+       number_of_columns: number_of_columns
+     }}
+  end
 
   def process_wal_binary(
         <<"U", relation_id::integer-32, key_or_old::binary-1, old_number_of_columns::integer-16,
