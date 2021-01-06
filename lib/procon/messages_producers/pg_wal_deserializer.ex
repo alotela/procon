@@ -67,24 +67,27 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
     %{^name_atom => {partition_key_column_atom, topic_atom}} =
       :ets.lookup_element(ets_table_state_ref, :relation_topics, 2)
 
-    column_names = decode_columns(columns)
+    column_names_and_types = decode_columns(columns)
 
     partition_key_index =
-      Enum.find_index(column_names, fn column -> column == partition_key_column_atom end)
+      Enum.find_index(column_names_and_types, fn {column, _data_type_id} ->
+        column == partition_key_column_atom
+      end)
 
     true =
       :ets.insert(
         ets_table_state_ref,
-        {relation_id, name_atom, column_names, partition_key_index, topic_atom}
+        {relation_id, name_atom, column_names_and_types, partition_key_index, topic_atom}
       )
 
-    {:ok, :relation, %{relation_id: relation_id, name: name, column_names: column_names}}
+    {:ok, :relation,
+     %{relation_id: relation_id, name: name, column_names_and_types: column_names_and_types}}
   end
 
   def process_wal_binary(
         <<"I", relation_id::integer-32, "N", number_of_columns::integer-16, tuple_data::binary>>,
         %{
-          column_names: column_names,
+          column_names_and_types: column_names_and_types,
           ets_table_state_ref: ets_table_state_ref,
           ets_messages_queue_ref: ets_messages_queue_ref,
           end_lsn: end_lsn
@@ -108,7 +111,9 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
       ets_messages_queue_ref,
       {end_lsn, :"#{topic_atom}_#{target_partition}",
        %{
-         new: Enum.zip(column_names, column_values) |> Enum.into(%{}),
+         new:
+           Enum.zip(column_names_and_types, column_values)
+           |> Enum.reduce(%{}, &map_value_with_type/2),
          timestamp: timestamp,
          xid: xid,
          end_lsn: end_lsn
@@ -132,7 +137,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
         <<"U", relation_id::integer-32, key_or_old::binary-1, old_number_of_columns::integer-16,
           tuple_data::binary>>,
         %{
-          column_names: column_names,
+          column_names_and_types: column_names_and_types,
           ets_table_state_ref: ets_table_state_ref,
           ets_messages_queue_ref: ets_messages_queue_ref,
           end_lsn: end_lsn
@@ -158,8 +163,12 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
       {end_lsn, :"#{topic_atom}_#{target_partition}",
        %{
          end_lsn: end_lsn,
-         new: Enum.zip(column_names, new_column_values) |> Enum.into(%{}),
-         old: Enum.zip(column_names, old_column_values) |> Enum.into(%{}),
+         new:
+           Enum.zip(column_names_and_types, new_column_values)
+           |> Enum.reduce(%{}, &map_value_with_type/2),
+         old:
+           Enum.zip(column_names_and_types, old_column_values)
+           |> Enum.reduce(%{}, &map_value_with_type/2),
          timestamp: timestamp,
          xid: xid
        }, false}
@@ -172,7 +181,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
         <<"D", relation_id::integer-32, key_or_old::binary-1, number_of_columns::integer-16,
           tuple_data::binary>>,
         %{
-          column_names: column_names,
+          column_names_and_types: column_names_and_types,
           ets_table_state_ref: ets_table_state_ref,
           ets_messages_queue_ref: ets_messages_queue_ref,
           end_lsn: end_lsn
@@ -195,7 +204,9 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
       {end_lsn, :"#{topic_atom}_#{target_partition}",
        %{
          end_lsn: end_lsn,
-         old: Enum.zip(column_names, old_column_values) |> Enum.into(%{}),
+         old:
+           Enum.zip(column_names_and_types, old_column_values)
+           |> Enum.reduce(%{}, &map_value_with_type/2),
          timestamp: timestamp,
          xid: xid
        }, false}
@@ -228,10 +239,10 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
   defp decode_columns(<<>>, accumulator), do: Enum.reverse(accumulator)
 
   defp decode_columns(<<_flags::integer-8, rest::binary>>, accumulator) do
-    [name | [<<_data_type_id::integer-32, _type_modifier::integer-32, columns::binary>>]] =
+    [name | [<<data_type_id::integer-32, _type_modifier::integer-32, columns::binary>>]] =
       String.split(rest, <<0>>, parts: 2)
 
-    decode_columns(columns, [String.to_atom(name) | accumulator])
+    decode_columns(columns, [{String.to_atom(name), data_type_id} | accumulator])
   end
 
   defp decode_tuple_data(binary, columns_remaining, accumulator \\ [])
@@ -262,4 +273,11 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
     |> abs()
     |> rem(nb_partitions)
   end
+
+  # data type 3802 = jsonb (https://github.com/epgsql/epgsql/blob/devel/src/epgsql_binary.erl#L350)
+  def map_value_with_type({{name, 3802}, value}, payload),
+    do: Map.put(payload, name, Jason.decode!(value))
+
+  def map_value_with_type({{name, _data_type_id}, value}, payload),
+    do: Map.put(payload, name, value)
 end
