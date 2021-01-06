@@ -101,6 +101,8 @@ defmodule Procon.MessagesProducers.WalDispatcher do
   def init(%State{} = state) do
     Logger.metadata(procon_wal_dispatcher: state.datastore)
 
+    Logger.notice("PROCON : Starting WalDispatcher for datastore #{state.datastore}")
+
     {:ok, ets_table_identifier} = create_ets_table(state.register_name)
 
     ets_table_state_ref = :ets.new(:ets_state, write_concurrency: true, read_concurrency: true)
@@ -230,6 +232,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
         end_lsn: end_lsn
       }
     )
+    |> IO.inspect(label: "handle_info epgsql")
     |> case do
       {:ok, :relation, %{relation_id: _relation_id, name: _name, column_names: column_names}} ->
         GenServer.cast(self(), :start_broker_producers)

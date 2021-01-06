@@ -15,6 +15,7 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
 
   def start_partition_production(partition, nb_messages, processor_repo, topic) do
     producer_name = :"#{processor_repo}_#{topic}_#{partition}"
+
     DynamicSupervisor.start_child(
       Procon.MessagesProducers.ProducersSupervisor,
       %{
@@ -22,12 +23,12 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
           {__MODULE__, :start_link,
            [
              %{
-                nb_messages: nb_messages,
-                partition: partition,
-                producer_name: producer_name,
-                repo: processor_repo,
-                topic: topic,
-                topic_partition: :"#{topic}_#{partition}"
+               nb_messages: nb_messages,
+               partition: partition,
+               producer_name: producer_name,
+               repo: processor_repo,
+               topic: topic,
+               topic_partition: :"#{topic}_#{partition}"
              }
            ]},
         id: producer_name
@@ -150,52 +151,9 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
       {:no_more_messages} ->
         {:noreply, %{state | :producing => false}}
 
-<<<<<<< HEAD
-      {:ok, message_index} ->
-        ProducerLastIndex.set_last_produced_index(
-          state.repo,
-          state.topic,
-          state.partition,
-          message_index
-        )
-        |> case do
-          {:ok, _idx} ->
-            send(self(), :produce)
-            {:noreply, state}
-
-          :error ->
-            IO.inspect(message_index,
-              label:
-                "PROCON ALERT : producer on topic #{state.topic} and partition #{
-                  to_string(state.partition)
-                } : error setting last index",
-              syntax_colors: [
-                atom: :red,
-                binary: :red,
-                boolean: :red,
-                list: :red,
-                map: :red,
-                number: :red,
-                regex: :red,
-                string: :red,
-                tuple: :red
-              ]
-            )
-
-            send(self(), {:retry_set_last_index, message_index})
-            {:noreply, %{state | recovering_error: true}}
-        end
-
-      {:error, :missing_ids} ->
-        Process.send_after(self(), :produce, 100)
-        {:noreply, state}
-
-      {:error, :last_index} ->
-        Process.send_after(self(), :produce, 100)
-=======
       :ok ->
         send(self(), :produce)
->>>>>>> remove indexes
+
         {:noreply, state}
 
       {:error, :deleting_ids, ids, message_index} ->
@@ -304,55 +262,16 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
            state.repo
          ) do
       [] ->
-<<<<<<< HEAD
-        {:no_more_messages}
-
-      msg ->
-        {[first_id | _rest] = ids, messages} = Enum.unzip(msg)
-        last_id = ids |> Enum.reverse() |> hd()
-
-        ProducerLastIndex.get_last_produced_index(state.repo, state.topic, state.partition)
-        |> case do
-          :error ->
-            IO.inspect(state,
-              label:
-                "PROCON ALERT : producer on topic #{state.topic} and partition #{
-                  to_string(state.partition)
-                } : Getting last production index failed. Retrying production later",
-              syntax_colors: [
-                atom: :red,
-                binary: :red,
-                boolean: :red,
-                list: :red,
-                map: :red,
-                number: :red,
-                regex: :red,
-                string: :red,
-                tuple: :red
-              ]
-            )
-
-            {:error, :last_index}
-
-          last_produced_id ->
-            do_produce_next_messages(
-              first_id,
-              last_id,
-              last_produced_id,
-              ids,
-              messages,
-              length(ids),
-              state
-            )
-=======
         :no_more_messages
 
       id_blob_list ->
-        {ids, blobs} = Enum.reduce(
-          id_blob_list,
-          {[], []},
-          fn [id, blob], {ids, blobs} -> {[id|ids], [{"", blob}|blobs]} end
-        )
+        {ids, blobs} =
+          Enum.reduce(
+            id_blob_list,
+            {[], []},
+            fn [id, blob], {ids, blobs} -> {[id | ids], [{"", blob} | blobs]} end
+          )
+
         with :ok <-
                :brod.produce_sync(
                  state.brod_client,
@@ -367,7 +286,6 @@ defmodule Procon.MessagesProducers.ProducerGenServer do
         else
           {:error, error} -> {:error, error}
           _ -> :error
->>>>>>> remove indexes
         end
     end
   end

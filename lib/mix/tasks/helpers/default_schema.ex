@@ -32,14 +32,13 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultSchema do
       @primary_key {:id, :binary_id, autogenerate: true}
       @derive {Phoenix.Param, key: :id}
       @foreign_key_type Ecto.UUID
-      @api_create_cast_attributes []
+      @api_create_cast_attributes [:metadata]
       @api_create_required_attributes []
-      @api_update_cast_attributes []
+      @api_update_cast_attributes [:metadata]
       @api_update_required_attributes []
 
       schema "<%= @table %>" do
-
-        timestamps()
+        field(:metadata, :map)
       end
 
       def api_create_changeset(entity \\\\ __struct__(), attributes) do

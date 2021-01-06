@@ -38,3 +38,64 @@ improve this readme
 ## changes
 
 - `Procon.MessagesEnqueuers.Ecto.enqueue` now return `:ok`and not anymore `{:ok, schema}`
+
+# changelog
+
+- le format du realtime change:
+
+```
+@type t() :: %Procon.MessagesProducers.Realtime{
+          channel: String.t(),
+          metadata: map(),
+          session_id: String.t()
+        }
+```
+
+- to enqueue a realtime automatically, in the entity config :
+
+  - :send_realtime devient :realtime_builder
+  - in config : :realtime_builder => a function returning a %Procon.MessagesProducers.Realtime{}
+  - realtime_builder prend maintenant l'event_data complet et non plus juste le record enregistré (qui est donc dans event_data.event.new)
+  - :rt_threshold : RT frequency/threshold for automatic rt message (if not specified, default to 1000)
+
+- config des producers:
+
+```
+  producers: %{
+    datastore: Calions.Processors.Accounts.Repositories.AccountsPg,
+    topics: ["calions-int-evt-accounts"]
+  }
+```
+
+devient:
+
+```
+  producers: %{
+    datastore: Calions.Processors.Accounts.Repositories.AccountsPg,
+    relation_topics: %{
+      :accounts => {:id, :"calions-int-evt-accounts"},
+      :procon_realtimes => {:id, :"procon-realtime"}
+    }
+  }
+```
+
+- pour tous les processerus ayant du realtime, ajouter la migration:
+
+```
+create table(:procon_realtimes) do
+  add(:session_id, :string)
+  add(:channel, :string)
+  add(:metadata, :map, null: false, default: %{})
+end
+```
+
+- dans master_key, la clef source est maintenant un atom et non plus une string
+- dans les keys_mapping, tout est en atom aussi
+
+- si aucun keys_mapping n'est spécifié, il n'y a plus de new_attributes dans la map event_data. Les attributs enregistrés sont ceux de l'event directement.
+
+- dans la payload event_data, :attributes devient :new_attributes
+
+```
+
+```

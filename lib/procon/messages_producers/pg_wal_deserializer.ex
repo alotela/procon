@@ -31,6 +31,8 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
         <<decimal_lsn::integer-64>> = txn_end_lsn
         :ets.insert(ets_table_state_ref, {:txn, nil, nil, nil})
 
+        # this is used to commit offset to PG
+        # only "Commit message" lsn can update PG wal log index
         :ets.insert(
           ets_messages_queue_ref,
           {decimal_lsn, :transaction_commit, nil, true}
@@ -89,8 +91,11 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
         }
       ) do
     {<<>>, column_values} = decode_tuple_data(tuple_data, number_of_columns)
+    IO.inspect(column_values, label: "column values")
     partition_key_column_index = :ets.lookup_element(ets_table_state_ref, relation_id, 4)
+    IO.inspect(partition_key_column_index, label: "partition_key_column_index")
     topic_atom = :ets.lookup_element(ets_table_state_ref, relation_id, 5)
+    IO.inspect(topic_atom, label: "topic_atom #{relation_id}")
 
     target_partition =
       column_values
@@ -109,6 +114,8 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
          end_lsn: end_lsn
        }, false}
     )
+
+    IO.inspect(:ets.tab2list(ets_messages_queue_ref))
 
     {:ok, :insert, %{relation_id: relation_id, xid: xid, column_values: column_values}}
   end

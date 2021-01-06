@@ -1,4 +1,10 @@
 defmodule Procon.Helpers do
+  require Logger
+
+  def log(data, options \\ []) do
+    Logger.info(data, options)
+  end
+
   def inspect(data, label \\ "", color \\ :red) do
     IO.inspect(
       data,

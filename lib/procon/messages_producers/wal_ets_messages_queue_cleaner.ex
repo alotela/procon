@@ -40,6 +40,7 @@ defmodule Procon.MessagesProducers.WalDispatcherMessagesQueueCleaner do
     {:noreply, %State{state | run: false}}
   end
 
+  @spec start(Procon.MessagesProducers.WalDispatcherMessagesQueueCleaner.State.t()) :: nil
   def start(state),
     do:
       :ets.first(state.ets_messages_queue_ref)
@@ -54,24 +55,29 @@ defmodule Procon.MessagesProducers.WalDispatcherMessagesQueueCleaner do
   def next(lsn_as_key, state) do
     :ets.match(
       state.ets_messages_queue_ref,
-      {lsn_as_key, :"$1", :_, :"$2"}
+      {lsn_as_key, :"$1", :"$3", :"$2"}
     )
     |> case do
-      [[:transaction_commit, true]] ->
+      [[:transaction_commit, true, data]] ->
+        IO.inspect(data, label: "on ack la data")
+
         EpgsqlConnector.acknowledge_lsn(state.epgsql_pid, lsn_as_key)
+        |> IO.inspect(label: "resultat de ack")
 
         :ets.delete(state.ets_messages_queue_ref, lsn_as_key)
 
         :ets.next(state.ets_messages_queue_ref, lsn_as_key)
         |> next(state)
 
-      [[_, true]] ->
+      [[_, true, data]] ->
+        IO.inspect(data, label: "on n'ack pas la data, mais on efface")
         :ets.delete(state.ets_messages_queue_ref, lsn_as_key)
 
         :ets.next(state.ets_messages_queue_ref, lsn_as_key)
         |> next(state)
 
-      [[_, false]] ->
+      [[_, false, data]] ->
+        IO.inspect(data, label: "on n'ack pas la data")
         start(state)
     end
   end

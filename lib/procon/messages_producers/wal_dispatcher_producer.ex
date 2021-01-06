@@ -13,7 +13,16 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
   def init(state) do
     Logger.metadata(procon_wal_dispatcher_producer: state.name)
 
+    Logger.notice(
+      "PROCON : Starting WalDispatcherProducer for topic/partition #{state.topic}/#{
+        state.partition_index
+      }"
+    )
+
     GenServer.cast(self(), :start_producing)
+
+    Process.put(:message_number, 0)
+    Process.put(:timestamp_in_ms, 0)
 
     {:ok, state}
   end
@@ -22,38 +31,77 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
     :ets.match(state.ets_messages_queue_ref, {:_, state.ets_key, :"$1", false})
     |> case do
       [] ->
+        # sleep to prevent too fast loop when no messages to send
+        Process.sleep(1)
+        GenServer.cast(self(), :start_producing)
         nil
 
       messages ->
-        :ok =
-          :brod.produce_sync(
-            state.broker_client_name,
-            state.topic |> Atom.to_string(),
-            state.partition_index,
-            "",
-            messages
-            |> Enum.map(fn [message] -> {"", Jason.encode!(message)} end)
-          )
+        Logger.notice("received messages", metadata: [state: state])
+        Logger.notice(messages, metadata: [state: state])
 
-        Procon.Parallel.pmap(messages, fn [message] ->
-          true = :ets.update_element(state.ets_messages_queue_ref, message.end_lsn, {4, true})
-        end)
+        :brod.produce_sync(
+          state.broker_client_name,
+          state.topic |> Atom.to_string(),
+          state.partition_index,
+          "",
+          Enum.map(messages, &build_message/1)
+        )
+        |> case do
+          :ok ->
+            Procon.Parallel.pmap(messages, fn [message] ->
+              true = :ets.update_element(state.ets_messages_queue_ref, message.end_lsn, {4, true})
+            end)
+
+            GenServer.cast(self(), :start_producing)
+
+          {
+            :error,
+            {
+              :producer_down,
+              _details
+            }
+          } ->
+            Logger.warning("producer down, on stoppe....", ansi_color: :red)
+            nil
+        end
     end
-
-    GenServer.cast(self(), :start_producing)
 
     {:noreply, state}
   end
 
-  def build_message(message_body, event_type, message_metadata) do
-    message = %{
-      body: message_body,
-      event: event_type |> to_string()
-    }
+  def build_message([message]) do
+    timestamp_in_ms = div(message.timestamp, 1000)
+    # Process.put(_,_) replace and return the PREVIOUS stored value
+    last_timestamp_in_ms = Process.put(:timestamp_in_ms, timestamp_in_ms)
 
-    case message_metadata do
-      nil -> message
-      _ -> Map.put(message, :metadata, message_metadata)
-    end
+    monothonic_sequence =
+      case timestamp_in_ms == last_timestamp_in_ms do
+        true ->
+          Process.get(:message_number) + 1
+
+        false ->
+          0
+      end
+
+    Process.put(:message_number, monothonic_sequence)
+
+    {
+      "",
+      Map.take(message, [:new, :old])
+      |> Map.put(
+        :timestamp,
+        <<
+          timestamp_in_ms::unsigned-size(48),
+          monothonic_sequence::unsigned-integer-size(16),
+          Application.get_env(:procon, :instance_num)::unsigned-integer-size(8),
+          # 72_057_594_037_927_936 = 2^56
+          :rand.uniform(72_057_594_037_927_936)::unsigned-integer-size(56)
+        >>
+        |> Ecto.ULID.load()
+        |> elem(1)
+      )
+      |> Jason.encode!()
+    }
   end
 end

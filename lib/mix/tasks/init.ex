@@ -72,16 +72,6 @@ defmodule Mix.Tasks.Procon.Init do
 
     migration_time = Helpers.Migrations.timestamp()
 
-    procon_producer_messages_migration =
-      Helpers.Migrations.generate_migration(
-        migration_time,
-        "procon_producer_messages",
-        migrations_path,
-        processor_name,
-        processor_repo,
-        :procon_producer_messages
-      )
-
     procon_consumer_indexes_migration =
       Helpers.Migrations.generate_migration(
         migration_time + 1,
@@ -102,16 +92,6 @@ defmodule Mix.Tasks.Procon.Init do
         :procon_producer_balancings
       )
 
-    procon_producer_indexes_migration =
-      Helpers.Migrations.generate_migration(
-        migration_time + 3,
-        "procon_producer_indexes",
-        migrations_path,
-        processor_name,
-        processor_repo,
-        :procon_producer_indexes
-      )
-
     processor_entity_migration =
       Helpers.Migrations.generate_migration(
         migration_time + 4,
@@ -130,6 +110,16 @@ defmodule Mix.Tasks.Procon.Init do
         processor_name,
         processor_repo,
         :procon_dynamic_topics
+      )
+
+    procon_realtimes_migration =
+      Helpers.Migrations.generate_migration(
+        migration_time + 5,
+        "procon_realtimes",
+        migrations_path,
+        processor_name,
+        processor_repo,
+        :procon_realtimes
       )
 
     processor_path = Helpers.processor_path(processor_name)
@@ -224,11 +214,10 @@ defmodule Mix.Tasks.Procon.Init do
         #{processor_path}: the new processor directory, where you put your code
         #{migrations_path}: where you find migration files for this processor
         #{generated_config_files |> hd()}: where you find config files for this processor
-        #{procon_producer_messages_migration}: store messages to send to kafka (auto increment index for exactly once processing on consumer side)
         #{procon_consumer_indexes_migration}: store topic/partition consumed indexes (for exactly once processing)
         #{procon_producer_balancings_migration}: store which app/container produces which topic/partition
-        #{procon_producer_indexes_migration}: store producers indexes for transactional information
         #{procon_dynamic_topics_migration}: store dynamic topics from your system
+        #{procon_realtimes_migration}: store realtimes messages you want to send
         #{processor_entity_migration}: default entity managed by this processor
         #{controller_errors_path}: list of errors for http reponse
         #{controller_helpers_path}: controllers helpers

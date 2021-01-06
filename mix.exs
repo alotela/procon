@@ -22,8 +22,10 @@ defmodule Procon.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:benchee, "~> 1.0", only: :dev},
       {:brod, "~> 3.9"},
       {:ecto, "~> 3.0"},
+      {:ecto_ulid, git: "https://github.com/sztosz/ecto-ulid.git"},
       {:jason, "~> 1.1"},
       {:inflex, "~> 2.0.0"},
       {:postgrex, ">= 0.0.0"}

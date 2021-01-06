@@ -17,6 +17,8 @@ defmodule Procon.MessagesControllers.Consumer do
             messages do
         processing_id = :rand.uniform(99_999_999) + 100_000_000
 
+        IO.inspect(kafka_message_content, label: "message received #{topic}##{partition}")
+
         try do
           (offset >
              Procon.PartitionOffsetHelpers.get_last_processed_offset(
@@ -28,7 +30,7 @@ defmodule Procon.MessagesControllers.Consumer do
              ))
           |> case do
             true ->
-              {:ok, procon_message} = Jason.decode(kafka_message_content)
+              {:ok, procon_message} = Jason.decode(kafka_message_content, keys: :atoms)
 
               route_message(
                 procon_message,
@@ -43,14 +45,6 @@ defmodule Procon.MessagesControllers.Consumer do
                   Procon.Helpers.inspect(
                     kafka_message_content,
                     "#{processing_id}@@PROCON FLOW : unlistened topic : #{
-                      state.processor_consumer_config.name
-                    }/#{topic}/#{partition}/#{offset}."
-                  )
-
-                {:error, :no_event_name} ->
-                  Procon.Helpers.inspect(
-                    kafka_message_content,
-                    "#{processing_id}@@PROCON FLOW : no event name : #{
                       state.processor_consumer_config.name
                     }/#{topic}/#{partition}/#{offset}."
                   )
@@ -91,28 +85,28 @@ defmodule Procon.MessagesControllers.Consumer do
           e ->
             Procon.Helpers.inspect(
               e,
-              "#{processing_id}@@PROCON EXCEPTION : exception in procon handle_message #{
+              "#{processing_id}@@PROCON EXCEPTION#exception in procon handle_message #{
                 state.processor_consumer_config.name
               }/#{topic}/#{partition}/#{offset}"
             )
 
             Procon.Helpers.inspect(
               kafka_message_content,
-              "#{processing_id}@@PROCON EXCEPTION : kafka_message_content #{
+              "#{processing_id}@@PROCON EXCEPTION#kafka_message_content in procon handle_message #{
                 state.processor_consumer_config.name
               }/#{topic}/#{partition}/#{offset}"
             )
 
             Procon.Helpers.inspect(
               Process.info(self()),
-              "#{processing_id}@@PROCON EXCEPTION : Process.info in procon handle_message #{
+              "#{processing_id}@@PROCON EXCEPTION#Process.info in procon handle_message #{
                 state.processor_consumer_config.name
               }/#{topic}/#{partition}/#{offset}"
             )
 
             Procon.Helpers.inspect(
               __STACKTRACE__,
-              "#{processing_id}@@PROCON EXCEPTION : __STACKTRACE__ in procon handle_message #{
+              "#{processing_id}@@PROCON EXCEPTION#__STACKTRACE__ in procon handle_message #{
                 state.processor_consumer_config.name
               }/#{topic}/#{partition}/#{offset}"
             )
@@ -162,38 +156,43 @@ defmodule Procon.MessagesControllers.Consumer do
         {:error, :topic_not_listened}
 
       entity_config ->
-        procon_message
-        |> Map.get("event", :no_event_name)
-        |> case do
-          :no_event_name ->
-            {:error, :no_event_name}
+        event =
+          procon_message
+          |> case do
+            %{old: _, new: _} ->
+              :update
 
-          event_name ->
-            apply(
-              Map.get(entity_config, :messages_controller, Procon.MessagesControllers.Default),
-              case event_name |> String.to_atom() do
-                :created -> :create
-                :deleted -> :delete
-                :updated -> :update
-              end,
-              [
-                procon_message,
-                entity_config
-                |> Map.merge(%{
-                  datastore: processor_consumer_config.datastore,
-                  dynamic_topics_autostart_consumers:
-                    Map.get(processor_consumer_config, :dynamic_topics_autostart_consumers, false),
-                  dynamic_topics_filters:
-                    Map.get(processor_consumer_config, :dynamic_topics_filters, []),
-                  offset: offset,
-                  partition: partition,
-                  processing_id: processing_id,
-                  processor_name: processor_consumer_config.name,
-                  topic: topic
-                })
-              ]
-            )
-        end
+            %{new: _} ->
+              :create
+
+            %{update: _} ->
+              :delete
+          end
+
+        apply(
+          Map.get(entity_config, :messages_controller, Procon.MessagesControllers.Default),
+          event,
+          [
+            procon_message,
+            entity_config
+            |> Map.merge(%{
+              datastore: processor_consumer_config.datastore,
+              dynamic_topics_autostart_consumers:
+                Map.get(
+                  processor_consumer_config,
+                  :dynamic_topics_autostart_consumers,
+                  false
+                ),
+              dynamic_topics_filters:
+                Map.get(processor_consumer_config, :dynamic_topics_filters, []),
+              offset: offset,
+              partition: partition,
+              processing_id: processing_id,
+              processor_name: processor_consumer_config.name,
+              topic: topic
+            })
+          ]
+        )
     end
   end
 

@@ -106,13 +106,17 @@ defmodule Procon.MessagesEnqueuers.Ecto do
         |> Jason.encode()
         |> case do
           {:ok, message_blob} ->
-            :ok = enqueue(
-                    message_blob,
-                    Keyword.get(options, :topic, event_serializer.topic)
-                    <> "_"
-                    <> (event_serializer.build_partition_key(event_data) |> select_partition(nb_partitions) |> Integer.to_string()),
-                    event_serializer.repo
-                  )
+            :ok =
+              enqueue(
+                message_blob,
+                Keyword.get(options, :topic, event_serializer.topic) <>
+                  "_" <>
+                  (event_serializer.build_partition_key(event_data)
+                   |> select_partition(nb_partitions)
+                   |> Integer.to_string()),
+                event_serializer.repo
+              )
+
             {:ok, nil}
 
           {:error, error} ->
@@ -121,72 +125,6 @@ defmodule Procon.MessagesEnqueuers.Ecto do
     end
   end
 
-<<<<<<< HEAD
-  def enqueue(blob, partition, topic, repo) do
-    ProducerSequences.create_sequence(repo, topic, partition, false)
-
-    Ecto.Adapters.SQL.query(
-      repo,
-      "WITH curr_index
-        AS (SELECT nextval('#{ProducerSequences.get_sequence_name(topic, partition)}'::regclass) AS idx)
-        INSERT INTO procon_producer_messages (blob, index, partition, topic, inserted_at, updated_at)
-      SELECT
-        replace(
-          $1,
-          '\"@@index@@\"',
-          idx::text
-        ),
-        idx,
-        $2,
-        $3,
-        NOW(),
-        NOW()
-      FROM curr_index RETURNING *",
-      [blob, partition, topic]
-    )
-    |> case do
-      {:ok, %Postgrex.Result{columns: columns, num_rows: 1, rows: [inserted_row]}} ->
-        {:ok, repo.load(ProconProducerMessage, {columns, inserted_row})}
-
-      {:error, %DBConnection.ConnectionError{} = err} ->
-        IO.inspect(err,
-          label:
-            "PROCON ALERT : enqueue error on topic #{topic} and partition #{to_string(partition)}",
-          syntax_colors: [
-            atom: :red,
-            binary: :red,
-            boolean: :red,
-            list: :red,
-            map: :red,
-            number: :red,
-            regex: :red,
-            string: :red,
-            tuple: :red
-          ]
-        )
-
-        {:error, err}
-
-      {:error, err} ->
-        IO.inspect(err,
-          label:
-            "PROCON ALERT : enqueue error on topic #{topic} and partition #{to_string(partition)}",
-          syntax_colors: [
-            atom: :red,
-            binary: :red,
-            boolean: :red,
-            list: :red,
-            map: :red,
-            number: :red,
-            regex: :red,
-            string: :red,
-            tuple: :red
-          ]
-        )
-
-        {:error, err}
-    end
-=======
   @spec enqueue(String.t(), String.t(), Ecto.Repo.t()) :: :ok
   def enqueue(blob, topic_partition, repo) do
     #   {:ok,
@@ -213,6 +151,5 @@ defmodule Procon.MessagesEnqueuers.Ecto do
       )
 
     :ok
->>>>>>> remove indexes
   end
 end

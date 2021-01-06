@@ -22,7 +22,7 @@ defmodule Procon.MessagesProducers.WalDispatcherSupervisor do
 
   def start_activated_processors_producers() do
     Procon.ProcessorConfigAccessor.activated_processors_config()
-    |> IO.inspect(label: :activated_processors_config)
+    |> IO.inspect(label: "PROCON : starting activated processors for each config")
     |> Enum.map(fn {_processor_name, processor_config} ->
       Keyword.get(processor_config, :producers)
     end)
