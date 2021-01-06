@@ -96,6 +96,4 @@ end
 
 - dans la payload event_data, :attributes devient :new_attributes
 
-```
-
-```
+- ajouter instance_num: System.get_env("PROCON_INSTANCE") || 1234 à la config de procon dans le projet hote (utilisé pour générer l'ULID de trnsaction dans les messages)
