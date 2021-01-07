@@ -272,23 +272,19 @@ defmodule Procon.MessagesControllers.Base do
 
     def add_new_attributes(event_data, options) do
       attributes =
-        for {key, val} <- event_data.event.new,
-            k = Map.get(options.keys_mapping, key, key),
-            !is_nil(k),
+        for {key_in_event, key_in_new_attributes} <- options.keys_mapping,
+            !is_nil(key_in_new_attributes),
             into: %{} do
-          {k, val}
+          case key_in_event do
+            :event_timestamp ->
+              {key_in_new_attributes, event_data.timestamp}
+
+            _ ->
+              {key_in_new_attributes, get_in(event_data.event.new, key_in_event)}
+          end
         end
 
-      attributes =
-        case Map.get(options.keys_mapping, :event_timestamp) do
-          nil ->
-            attributes
-
-          key ->
-            Map.put(attributes, key, event_data.timestamp)
-        end
-
-      Map.put(event_data, :new_attributes, attributes)
+      Map.put(event_data, :new_attributes, Map.merge(event_data.event.new, attributes))
     end
 
     def do_delete(controller, event, options) do
