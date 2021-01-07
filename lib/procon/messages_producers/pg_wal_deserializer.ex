@@ -284,7 +284,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
 
   defp decode_tuple_data(binary, columns_remaining, accumulator \\ [])
 
-  defp decode_tuple_data(remaining_binary, 0, accumulator) when is_binary(remaining_binary),
+  defp decode_tuple_data(<<remaining_binary::binary>>, 0, accumulator),
     do: {remaining_binary, accumulator |> Enum.reverse()}
 
   defp decode_tuple_data(<<"n", rest::binary>>, columns_remaining, accumulator),
