@@ -34,11 +34,15 @@ defmodule Procon.MessagesProducers.WalDispatcherSupervisor do
     #      }
     #   }
     # ]
-    |> Enum.map(fn %{datastore: datastore, relation_topics: relation_topics} ->
-      Procon.MessagesProducers.WalDispatcher.start_wal_dispatcher_for_processor(%{
-        datastore: datastore,
-        relation_topics: relation_topics
-      })
+    |> Enum.map(fn
+      %{datastore: _datastore, relation_topics: relation_topics} when relation_topics == %{} ->
+        nil
+
+      %{datastore: datastore, relation_topics: relation_topics} ->
+        Procon.MessagesProducers.WalDispatcher.start_wal_dispatcher_for_processor(%{
+          datastore: datastore,
+          relation_topics: relation_topics
+        })
     end)
   end
 end

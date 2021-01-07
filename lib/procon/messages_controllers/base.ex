@@ -151,8 +151,8 @@ defmodule Procon.MessagesControllers.Base do
               realtime,
               :metadata,
               Map.merge(
-                Map.get(event_data.recorded_struct, :metadata, %{}),
-                Map.get(realtime, :metadata, %{})
+                Map.get(event_data.recorded_struct, :metadata, %{}) || %{},
+                Map.get(realtime, :metadata, %{}) || %{}
               )
             ),
             options.datastore,
@@ -244,7 +244,7 @@ defmodule Procon.MessagesControllers.Base do
       )
       |> options.datastore.insert_or_update()
       |> case do
-        {:ok, struct} -> {:ok, Map.put(event_data, :record, struct)}
+        {:ok, struct} -> {:ok, Map.put(event_data, :recorded_struct, struct)}
         {:error, ecto_changeset} -> {:error, ecto_changeset}
       end
     end
