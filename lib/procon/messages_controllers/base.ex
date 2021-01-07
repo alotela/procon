@@ -249,11 +249,15 @@ defmodule Procon.MessagesControllers.Base do
       end
     end
 
-    def add_new_attributes(%{event: %{new: _, old: _}} = event_data, %{keys_mapping: %{updated: updated_mapping}}) do
+    def add_new_attributes(%{event: %{new: _, old: _}} = event_data, %{
+          keys_mapping: %{updated: updated_mapping}
+        }) do
       add_new_attributes(event_data, %{keys_mapping: updated_mapping})
     end
 
-    def add_new_attributes(%{event: %{new: _}} = event_data, %{keys_mapping: %{created: created_mapping}}) do
+    def add_new_attributes(%{event: %{new: _}} = event_data, %{
+          keys_mapping: %{created: created_mapping}
+        }) do
       add_new_attributes(event_data, %{keys_mapping: created_mapping})
     end
 
@@ -272,12 +276,16 @@ defmodule Procon.MessagesControllers.Base do
             k = Map.get(options.keys_mapping, key, key),
             !is_nil(k),
             into: %{} do
-          case key do
-            :event_timestamp ->
-              {k, event_data.timestamp}
-            _ ->
-              {k, val}
-          end
+          {k, val}
+        end
+
+      attributes =
+        case Map.get(options.keys_mapping, :event_timestamp) do
+          nil ->
+            attributes
+
+          key ->
+            Map.put(attributes, key, event_data.timestamp)
         end
 
       Map.put(event_data, :new_attributes, attributes)
