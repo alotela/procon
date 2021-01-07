@@ -147,7 +147,14 @@ defmodule Procon.MessagesControllers.Base do
 
         %Procon.Schemas.ProconRealtime{} = realtime ->
           Procon.MessagesProducers.Realtime.send_rtevent(
-            realtime,
+            Map.put(
+              realtime,
+              :metadata,
+              Map.merge(
+                Map.get(event_data.recorded_struct, :metadata, %{}),
+                Map.get(realtime, :metadata, %{})
+              )
+            ),
             options.datastore,
             Map.get(options, :rt_threshold, 1000)
           )
@@ -159,7 +166,14 @@ defmodule Procon.MessagesControllers.Base do
           |> Enum.map(fn
             %Procon.Schemas.ProconRealtime{} = realtime ->
               Procon.MessagesProducers.Realtime.send_rtevent(
-                realtime,
+                Map.put(
+                  realtime,
+                  :metadata,
+                  Map.merge(
+                    Map.get(event_data.recorded_struct, :metadata, %{}),
+                    Map.get(realtime, :metadata, %{})
+                  )
+                ),
                 options.datastore,
                 Map.get(options, :rt_threshold, 1000)
               )
@@ -306,7 +320,7 @@ defmodule Procon.MessagesControllers.Base do
           Logger.info("Deleting #{inspect(options.model)} with id #{event_data.record.id}")
 
           case options.datastore.delete(event_data.record) do
-            {:ok, struct} -> {:ok, Map.put(event_data, :deleted_struct, struct)}
+            {:ok, struct} -> {:ok, Map.put(event_data, :recorded_struct, struct)}
             {:error, ecto_changeset} -> {:error, ecto_changeset}
           end
       end
