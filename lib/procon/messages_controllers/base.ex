@@ -153,6 +153,22 @@ defmodule Procon.MessagesControllers.Base do
           )
 
           {:ok, Map.put(event_data, :entity_realtime_event_enqueued, true)}
+
+        realtime_events when is_list(realtime_events) ->
+          realtime_events
+          |> Enum.map(fn
+            %Procon.Schemas.ProconRealtime{} = realtime ->
+              Procon.MessagesProducers.Realtime.send_rtevent(
+                realtime,
+                options.datastore,
+                Map.get(options, :rt_threshold, 1000)
+              )
+
+            _ ->
+              nil
+          end)
+
+          {:ok, Map.put(event_data, :entity_realtime_event_enqueued, true)}
       end
     end
 
