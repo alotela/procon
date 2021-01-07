@@ -113,6 +113,8 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
         add(:id, :uuid, primary_key: true)
         add(:metadata, :map, null: false, default: %{})
       end
+
+      execute("ALTER TABLE @table REPLICA IDENTITY FULL")
     end
   end
   """)
@@ -127,6 +129,8 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
         add(:channel, :string)
         add(:metadata, :map, null: false, default: %{})
       end
+
+      execute("ALTER TABLE @table REPLICA IDENTITY FULL")
     end
   end
   """)
@@ -146,6 +150,8 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
       end
 
       create(unique_index(:procon_dynamic_topics, [:topic_name], name: :unique_topic))
+
+      execute("ALTER TABLE procon_dynamic_topics REPLICA IDENTITY FULL")
     end
   end
   """)

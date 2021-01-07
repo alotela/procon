@@ -174,7 +174,7 @@ defmodule Procon.MessagesControllers.Base do
               enqueue_realtime(
                 final_event_data,
                 :updated,
-                Map.get(options, :send_realtime, nil)
+                options
               )
 
             :ok =
@@ -208,7 +208,10 @@ defmodule Procon.MessagesControllers.Base do
         |> add_new_attributes(options)
         |> controller.before_update(options)
 
-      options.model.messages_update_changeset(event_data.record, event_data.new_attributes)
+      options.model.messages_update_changeset(
+        event_data.record,
+        Map.get(event_data, :new_attributes, event_data.event.new)
+      )
       |> options.datastore.insert_or_update()
       |> case do
         {:ok, struct} -> {:ok, Map.put(event_data, :record, struct)}
@@ -244,7 +247,7 @@ defmodule Procon.MessagesControllers.Base do
               enqueue_realtime(
                 final_event_data,
                 :deleted,
-                Map.get(options, :send_realtime, nil)
+                options
               )
 
             :ok =
@@ -287,7 +290,7 @@ defmodule Procon.MessagesControllers.Base do
           Logger.info("Deleting #{inspect(options.model)} with id #{event_data.record.id}")
 
           case options.datastore.delete(event_data.record) do
-            {:ok, struct} -> {:ok, Map.put(event_data, :record, struct)}
+            {:ok, struct} -> {:ok, Map.put(event_data, :deleted_struct, struct)}
             {:error, ecto_changeset} -> {:error, ecto_changeset}
           end
       end
