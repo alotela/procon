@@ -17,8 +17,6 @@ defmodule Procon.MessagesControllers.Consumer do
             messages do
         processing_id = :rand.uniform(99_999_999) + 100_000_000
 
-        IO.inspect(kafka_message_content, label: "message received #{topic}##{partition}")
-
         try do
           (offset >
              Procon.PartitionOffsetHelpers.get_last_processed_offset(
