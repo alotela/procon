@@ -334,12 +334,20 @@ defmodule Procon.MessagesControllers.Base do
     def record_from_datastore(event, return_record, options) do
       master_keys = normalize_master_key(options.master_key)
 
+      get_new_or_old = fn
+        :get, %{new: new}, next ->
+          next.(new)
+
+        :get, %{old: old}, next ->
+          next.(old)
+      end
+
       if length(master_keys) > 0 do
         query =
           master_keys
           |> Enum.map(fn {repo_key, body_key} ->
             event
-            |> get_in([:new, body_key])
+            |> get_in([get_new_or_old, body_key])
             |> case do
               nil ->
                 Procon.Helpers.log([
@@ -366,7 +374,7 @@ defmodule Procon.MessagesControllers.Base do
             options.datastore.get_by(options.model, query)
         end
       else
-        case get_in(event, [:new, :id]) do
+        case get_in(event, [get_new_or_old, :id]) do
           nil ->
             Procon.Helpers.log([
               "⚠️PROCON ALERT : #{options.processor_name} : \"id\" in body is nil to find record in database. Maybe you need to specify master_key in processor config for this entity ?",

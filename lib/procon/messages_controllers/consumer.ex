@@ -165,7 +165,7 @@ defmodule Procon.MessagesControllers.Consumer do
             %{new: _} ->
               :create
 
-            %{update: _} ->
+            %{old: _} ->
               :delete
           end
 
