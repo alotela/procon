@@ -315,6 +315,20 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
   def map_value_with_type({{name, 3802}, value}, payload),
     do: Map.put(payload, name, Jason.decode!(value))
 
+  def map_value_with_type({{name, 16}, value}, payload),
+    do:
+      Map.put(
+        payload,
+        name,
+        case value do
+          "t" ->
+            true
+
+          "f" ->
+            false
+        end
+      )
+
   def map_value_with_type({{name, _data_type_id}, value}, payload),
     do: Map.put(payload, name, value)
 end
