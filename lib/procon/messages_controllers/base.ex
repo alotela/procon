@@ -279,12 +279,26 @@ defmodule Procon.MessagesControllers.Base do
             :event_timestamp ->
               {key_in_new_attributes, event_data.timestamp}
 
-            _ ->
+            [_ | _] ->
               {key_in_new_attributes, get_in(event_data.event.new, key_in_event)}
+
+            _ ->
+              {key_in_new_attributes, Map.get(event_data.event.new, key_in_event)}
           end
         end
 
-      Map.put(event_data, :new_attributes, Map.merge(event_data.event.new, attributes))
+      new_attributes = Map.merge(event_data.event.new, attributes)
+
+      new_attributes =
+        case Map.has_key?(options, :drop_event_attributes) do
+          true ->
+            Map.drop(new_attributes, options.drop_event_attributes)
+
+          false ->
+            new_attributes
+        end
+
+      Map.put(event_data, :new_attributes, new_attributes)
     end
 
     def do_delete(controller, event, options) do
