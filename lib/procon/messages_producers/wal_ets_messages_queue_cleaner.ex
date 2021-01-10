@@ -60,10 +60,7 @@ defmodule Procon.MessagesProducers.WalDispatcherMessagesQueueCleaner do
     )
     |> case do
       [[:transaction_commit, true, data]] ->
-        IO.inspect(data, label: "on ack la data")
-
         EpgsqlConnector.acknowledge_lsn(state.epgsql_pid, lsn_as_key)
-        |> IO.inspect(label: "resultat de ack")
 
         :ets.delete(state.ets_messages_queue_ref, lsn_as_key)
 
@@ -71,14 +68,12 @@ defmodule Procon.MessagesProducers.WalDispatcherMessagesQueueCleaner do
         |> next(state)
 
       [[_, true, data]] ->
-        IO.inspect(data, label: "on n'ack pas la data, mais on efface")
         :ets.delete(state.ets_messages_queue_ref, lsn_as_key)
 
         :ets.next(state.ets_messages_queue_ref, lsn_as_key)
         |> next(state)
 
       [[_, false, data]] ->
-        IO.inspect(data, label: "on n'ack pas la data")
         start(state)
     end
   end
