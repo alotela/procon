@@ -9,8 +9,6 @@ defmodule <%= @processor_name %>.Migrations.AddAclsTables do
       add(:group_name, :string)
       add(:organization_id, :uuid, null: false)
       add(:type, :string)
-
-      timestamps()
     end
 
     create(index(:group_acls, [:app_group_id]))
@@ -21,8 +19,6 @@ defmodule <%= @processor_name %>.Migrations.AddAclsTables do
       add(:id, :uuid, primary_key: true)
       add(:organization_id, :uuid, null: false)
       add(:user_id, :uuid, null: false)
-
-      timestamps()
     end
 
     create(index(:selected_user_app_groups, [:app_group_id]))

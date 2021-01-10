@@ -38,10 +38,10 @@ defmodule Mix.Tasks.Procon.AddAcls do
       |> elem(0)
       |> Keyword.get(:repo, "#{Helpers.processor_to_controller(processor_name)}Pg")
 
-    [group_acls_serializer_path, topic] =
-      add_group_acls_serializer(processor_name, processor_repo)
-
-    Helpers.info("created group_acls message serializer file #{group_acls_serializer_path}")
+    topic =
+      "calions-int-#{processor_name |> Helpers.processor_type() |> Macro.underscore()}-#{
+        processor_name |> Helpers.short_processor_name()
+      }-group_acls"
 
     config_path = add_topic_config(processor_name, topic)
     Helpers.info("added topics to listen in processor's config file #{config_path}")
@@ -136,43 +136,6 @@ defmodule Mix.Tasks.Procon.AddAcls do
       ])
   )
 
-  def add_group_acls_serializer(processor_name, processor_repo) do
-    file_path =
-      [Helpers.processor_path(processor_name), "events", "serializers", "group_acl.ex"]
-      |> Path.join()
-
-    topic =
-      "calions-int-#{processor_name |> Helpers.processor_type() |> Macro.underscore()}-#{
-        processor_name |> Helpers.short_processor_name()
-      }-group_acls"
-
-    create_file(
-      file_path,
-      group_acl_serializer_template(
-        processor_name: processor_name,
-        processor_repo: processor_repo,
-        topic: topic,
-        type:
-          "#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{
-            processor_name |> Helpers.short_processor_name()
-          }"
-      )
-    )
-
-    [file_path, topic]
-  end
-
-  embed_template(
-    :group_acl_serializer,
-    from_file:
-      Path.join([
-        __ENV__.file |> Path.dirname(),
-        "helpers",
-        "templates",
-        "group_acl_serializer.eex"
-      ])
-  )
-
   def add_topic_config(processor_name, topic) do
     config_file_path = [Helpers.config_directory(processor_name), "config.exs"] |> Path.join()
     config_file_content = config_file_path |> File.read!()
@@ -185,8 +148,8 @@ defmodule Mix.Tasks.Procon.AddAcls do
         entities: [
                   %{
                     event_version: 1,
-                    keys_mapping: %{"id" => :app_group_id, "name" => :group_name},
-                    master_key: {:app_group_id, "id"},
+                    keys_mapping: %{id: :app_group_id, name: :group_name},
+                    master_key: {:app_group_id, :id},
                     messages_controller: #{processor_name}.MessageControllers.GroupAcls,
                     model: Calions.GroupAcls.Schemas.GroupAcl,
                     topic: "calions-int-evt-app_groups"
@@ -201,8 +164,8 @@ defmodule Mix.Tasks.Procon.AddAcls do
         """
       )
       |> String.replace(
-        "topics: [",
-        "topics: [\"#{topic}\", "
+        "relation_topics: %{",
+        "relation_topics: %{:group_acls => {:id, :\"#{topic}\"}, "
       )
 
     :ok = File.write(config_file_path, new_content)
@@ -242,8 +205,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
             #{processor_name}.Repositories.#{processor_repo},
             Calions.GroupAcls.Schemas.GroupAcl,
             #{processor_name}.Repositories.GroupAcls,
-            #{processor_name}.ValueObjects.GroupAcls,
-            #{processor_name}.Events.Serializers.GroupAcl
+            #{processor_name}.ValueObjects.GroupAcls
           )
     """
 

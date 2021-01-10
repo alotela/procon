@@ -4,7 +4,6 @@ defmodule <%= @processor_name %>.MessageControllers.GroupAcls do
 
   use Calions.GroupAcls.MessageControllers.GroupAcls,
     admin_acls: GroupAcls.all(),
-    serializer: Processor.Events.Serializers.GroupAcl,
     teammate_acls: [
       GroupAcls.can_index(),
       GroupAcls.can_show()
