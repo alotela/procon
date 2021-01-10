@@ -49,6 +49,7 @@ defmodule Procon.MessagesProducers.WalDispatcherMessagesQueueCleaner do
   def next(_lsn_as_key, %State{run: false}), do: nil
 
   def next(:"$end_of_table", state) do
+    Process.sleep(1)
     start(state)
   end
 
