@@ -152,7 +152,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
                     master_key: {:app_group_id, :id},
                     messages_controller: #{processor_name}.MessageControllers.GroupAcls,
                     model: Calions.GroupAcls.Schemas.GroupAcl,
-                    topic: "calions-int-evt-app_groups"
+                    topic: "calions-int-operators-app_groups"
                   },
                   %{
                     event_version: 1,
