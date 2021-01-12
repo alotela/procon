@@ -30,9 +30,6 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
           :procon_enqueur ->
             procon_enqueur_template(args)
 
-          :procon_producer_balancings ->
-            procon_producer_balancings_template(args)
-
           :processor_entity ->
             processor_entity_template(args)
 
@@ -87,23 +84,6 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
 
   """)
 
-  embed_template(:procon_producer_balancings, """
-  defmodule <%= @processor_repo %>.Migrations.ProconProducerBalancings do
-    use Ecto.Migration
-
-    def change do
-      create table(:procon_producer_balancings) do
-        add :id_producer, :integer
-        add :topic, :string
-        add :partition, :integer
-        add :last_presence_at, :utc_datetime
-      end
-      create index(:procon_producer_balancings, [:partition])
-      create index(:procon_producer_balancings, [:topic])
-    end
-  end
-  """)
-
   embed_template(:processor_entity, """
   defmodule <%= @processor_repo %>.Migrations.Add<%= @processor_short_name %>Table do
     use Ecto.Migration
@@ -114,7 +94,7 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
         add(:metadata, :map, null: false, default: %{})
       end
 
-      execute("ALTER TABLE @table REPLICA IDENTITY FULL")
+      execute("ALTER TABLE <%= @table %> REPLICA IDENTITY FULL")
     end
   end
   """)
@@ -124,13 +104,13 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
     use Ecto.Migration
 
     def change do
-      create table(:<%= @table %>) do
+      create table(:procon_realtimes) do
         add(:session_id, :string)
         add(:channel, :string)
         add(:metadata, :map, null: false, default: %{})
       end
 
-      execute("ALTER TABLE @table REPLICA IDENTITY FULL")
+      execute("ALTER TABLE procon_realtimes REPLICA IDENTITY FULL")
     end
   end
   """)

@@ -20,9 +20,6 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultCreator do
             |> String.replace(processor_name, "Processor"),
           schema_module:
             Helpers.default_schema_module(processor_name)
-            |> String.replace(processor_name, "Processor"),
-          serializer_module:
-            Helpers.default_serializer_module(processor_name)
             |> String.replace(processor_name, "Processor")
         )
       )
@@ -35,30 +32,18 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultCreator do
     defmodule <%= @creator_module %> do
       alias <%= @processor_module %>, as: Processor
 
-      def create(%{} = attributes) do
+      def create(%{} = attributes, metadata) do
         Ecto.Multi.new()
         |> Ecto.Multi.insert(
           :created_entity,
           attributes
+          |> Map.put("metadata", metadata)
           |> <%= @schema_module %>.api_create_changeset(),
           returning: true
         )
-        |> Ecto.Multi.run(:created_message, fn _repo, %{created_entity: entity} ->
-          Procon.MessagesEnqueuers.Ecto.enqueue_event(
-            entity,
-            <%= @serializer_module %>,
-            :created
-          )
-
-          {:ok, nil}
-        end)
         |> <%= @processor_repo_module %>.transaction()
         |> case do
           {:ok, %{created_entity: created_entity}} ->
-            Procon.MessagesProducers.ProducersStarter.start_topic_production(
-              <%= @serializer_module %>
-            )
-
             {:ok, created_entity}
 
           {:error, :created_entity, changeset, _changes} ->

@@ -61,12 +61,6 @@ defmodule Mix.Tasks.Procon.Helpers do
     Mix.shell().info([msg])
   end
 
-  def default_serializer_module(processor_name) do
-    "#{processor_name}.Events.Serializers.#{
-      processor_name |> processor_to_controller() |> Inflex.singularize()
-    }"
-  end
-
   def default_service_name(processor_name) do
     "#{processor_name}.Services.Domain.#{processor_name |> processor_to_controller()}"
   end

@@ -50,7 +50,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
     message_controllers_path = add_group_acls_message_controller(processor_name)
     Helpers.info("created group_acls message controller file #{message_controllers_path}")
     repository_file_path = add_group_acls_repository(processor_name, processor_repo)
-    Helpers.info("created group_acls message serializer file #{repository_file_path}")
+    Helpers.info("created group_acls message repository file #{repository_file_path}")
     group_acls_value_object_path = add_value_object_group_acls(processor_name)
     Helpers.info("created group_acls value objbect file #{group_acls_value_object_path}")
     router_file_path = add_api_routes(processor_name, processor_repo)

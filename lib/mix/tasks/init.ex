@@ -51,11 +51,6 @@ defmodule Mix.Tasks.Procon.Init do
       |> elem(0)
       |> Keyword.get(:repo, "#{Helpers.processor_to_controller(processor_name)}Pg")
 
-    processor_default_entity =
-      processor_name
-      |> Helpers.processor_to_controller()
-      |> Inflex.singularize()
-
     processor_default_topic =
       [
         app_name,
@@ -82,16 +77,6 @@ defmodule Mix.Tasks.Procon.Init do
         :procon_consumer_indexes
       )
 
-    procon_producer_balancings_migration =
-      Helpers.Migrations.generate_migration(
-        migration_time + 2,
-        "procon_producer_balancings",
-        migrations_path,
-        processor_name,
-        processor_repo,
-        :procon_producer_balancings
-      )
-
     processor_entity_migration =
       Helpers.Migrations.generate_migration(
         migration_time + 4,
@@ -114,7 +99,7 @@ defmodule Mix.Tasks.Procon.Init do
 
     procon_realtimes_migration =
       Helpers.Migrations.generate_migration(
-        migration_time + 5,
+        migration_time + 6,
         "procon_realtimes",
         migrations_path,
         processor_name,
@@ -140,12 +125,6 @@ defmodule Mix.Tasks.Procon.Init do
 
     Helpers.info("creating processor's message_controllers directory #{message_controllers_path}")
     message_controllers_path |> create_directory()
-
-    serializers_path = [events_path, "serializers"] |> Path.join()
-
-    Helpers.info("creating processor's events serializers directory #{serializers_path}")
-
-    serializers_path |> create_directory()
 
     schemas_path = [processor_path, "schemas"] |> Path.join()
     Helpers.info("creating schemas directory #{schemas_path}")
@@ -185,20 +164,6 @@ defmodule Mix.Tasks.Procon.Init do
         processor_default_topic
       )
 
-    Mix.Tasks.Procon.Serializer.run([
-      "--processor",
-      processor_name,
-      "--repo",
-      processor_repo,
-      "--entity",
-      processor_default_entity,
-      "--topic",
-      processor_default_topic
-    ])
-
-    dynamic_topic_serializer =
-      Helpers.Serializers.create_dynamic_topic(processor_name, processor_repo, serializers_path)
-
     controller_errors_path = Helpers.ControllersErrors.create_default_controllers_errors(app_web)
     controller_helpers_path = Helpers.ControllersErrors.create_controllers_helpers(app_web)
     [activated_path] = Helpers.Activated.generate_config_activated(processor_name)
@@ -215,7 +180,6 @@ defmodule Mix.Tasks.Procon.Init do
         #{migrations_path}: where you find migration files for this processor
         #{generated_config_files |> hd()}: where you find config files for this processor
         #{procon_consumer_indexes_migration}: store topic/partition consumed indexes (for exactly once processing)
-        #{procon_producer_balancings_migration}: store which app/container produces which topic/partition
         #{procon_dynamic_topics_migration}: store dynamic topics from your system
         #{procon_realtimes_migration}: store realtimes messages you want to send
         #{processor_entity_migration}: default entity managed by this processor
@@ -223,7 +187,6 @@ defmodule Mix.Tasks.Procon.Init do
         #{controller_helpers_path}: controllers helpers
         #{activated_path}: list of activated processors
         #{domain_service_path}: default services to manage service entity
-        #{dynamic_topic_serializer}: serializer for dynamic topic creation
 
       IMPORTANT!! To finish the setup:
       --------------------------------
@@ -247,10 +210,6 @@ defmodule Mix.Tasks.Procon.Init do
 
       * configure your processor in #{generated_config_files |> tl()}. This is where you add your kafka listeners.
 
-    generate serializers for your resources (data your service is master of and will generate events):
-      mix procon.serializer --resource ResourceName
-
-
     Now you can produce message :
 
       Procon.MessagesEnqueuers.Ecto.enqueue_event(event_data, EventSerializerModule, event_type)
@@ -259,7 +218,6 @@ defmodule Mix.Tasks.Procon.Init do
     where :
       - event_data: a map/struct of your data for your message
       - event_type: a state (:created or :updated or :deleted)
-      - EventSerializerModule: module serializer you have generated and parameterized
       - nb_messages_to_batch: number of messages to send at the same time (use 1000 to start)
       - ProcessorRepository: the repository module where messages are stored
       - topic: the topic to start production for

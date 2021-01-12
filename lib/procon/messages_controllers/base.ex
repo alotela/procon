@@ -190,8 +190,7 @@ defmodule Procon.MessagesControllers.Base do
       do:
         {:ok,
          event_data
-         |> Map.put(:entity_realtime_event_enqueued, false)
-         |> Map.put(:entity_realtime_event_serializer, nil)}
+         |> Map.put(:entity_realtime_event_enqueued, false)}
 
     def do_update(controller, event, options) do
       options.datastore.transaction(fn ->
