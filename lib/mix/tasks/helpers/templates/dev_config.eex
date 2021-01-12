@@ -1,7 +1,7 @@
 use Mix.Config
 
 config :<%= @app_name%>, <%= @repository %>,
-  database: "<%= @database %>",
+  database: "calions_dev_<%= @database %>",
   hostname: "localhost",
   pool_size: 10,
   priv: "<%= @repo_path %>",

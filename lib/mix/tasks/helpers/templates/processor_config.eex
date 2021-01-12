@@ -28,7 +28,7 @@ config :procon, Processors,
           #   master_key: {:processor_schema_key, :key_from_event}, # optional
           #   messages_controller: MessageControllerToHandleMessage, # optional
           #   model: YourEctoSchemaModule,
-          #   realtime-builder: fn # optional: if specified, will send a realtime event when a message is received
+          #   realtime_builder: fn # optional: if specified, will send a realtime event when a message is received
           #     :created, event_data -> %Procon.Schemas.ProconRealtime{session_id: nil, channel: "<%= @entity_name %>"}
           #     :updated, event_data -> %Procon.Schemas.ProconRealtime{session_id: nil, channel: "<%= @entity_name %>/#{entity.id}"}
           #     :deleted, event_data -> %Procon.Schemas.ProconRealtime{session_id: nil, channel: "<%= @entity_name %>"}
