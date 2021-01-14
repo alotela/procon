@@ -59,12 +59,21 @@ defmodule Procon.MessagesProducers.EpgsqlConnector do
   end
 
   defp create_publication(epgsql_pid, database, tables) when is_list(tables) do
-    # {:ok, _, _} =
     :epgsql.squery(
       epgsql_pid,
-      "CREATE PUBLICATION procon_#{database} FOR TABLE #{tables |> Enum.join(",")};"
+      "CREATE PUBLICATION procon_#{database} FOR TABLE #{tables |> List.first()};"
     )
-    |> IO.inspect(label: "create_publication #{database} / #{tables |> Enum.join(",")}")
+    |> IO.inspect(label: "create_publication #{database} / #{tables |> List.first()}")
+
+    tables
+    |> Enum.map(fn table ->
+      # {:ok, _, _} =
+      :epgsql.squery(
+        epgsql_pid,
+        "ALTER PUBLICATION procon_#{database} ADD TABLE #{table};"
+      )
+      |> IO.inspect(label: "alter_publication #{database} / #{table}")
+    end)
   end
 
   @spec get_primary_key_columns(pid, list()) :: %{String.t() => integer()}

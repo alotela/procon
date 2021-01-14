@@ -94,7 +94,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
         }
       ) do
     {<<>>, column_values} = decode_tuple_data(tuple_data, number_of_columns)
-    IO.inspect(column_values, label: "column values")
+    IO.inspect({column_names_and_types, column_values}, label: "column values")
     partition_key_column_index = :ets.lookup_element(ets_table_state_ref, relation_id, 4)
     IO.inspect(partition_key_column_index, label: "partition_key_column_index")
     topic_atom = :ets.lookup_element(ets_table_state_ref, relation_id, 5)
