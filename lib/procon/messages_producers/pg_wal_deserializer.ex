@@ -112,7 +112,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
       {end_lsn, :"#{topic_atom}_#{target_partition}",
        %{
          new:
-           Enum.zip(column_names_and_types, column_values)
+           Enum.zip(Map.get(column_names_and_types, relation_id, []), column_values)
            |> Enum.reduce(%{}, &map_value_with_type/2),
          timestamp: timestamp,
          xid: xid,
@@ -154,7 +154,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
        %{
          end_lsn: end_lsn,
          new:
-           Enum.zip(column_names_and_types, new_column_values)
+           Enum.zip(Map.get(column_names_and_types, relation_id, []), new_column_values)
            |> Enum.reduce(%{}, &map_value_with_type/2),
          timestamp: timestamp,
          xid: xid
@@ -201,10 +201,10 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
        %{
          end_lsn: end_lsn,
          new:
-           Enum.zip(column_names_and_types, new_column_values)
+           Enum.zip(Map.get(column_names_and_types, relation_id, []), new_column_values)
            |> Enum.reduce(%{}, &map_value_with_type/2),
          old:
-           Enum.zip(column_names_and_types, old_column_values)
+           Enum.zip(Map.get(column_names_and_types, relation_id, []), old_column_values)
            |> Enum.reduce(%{}, &map_value_with_type/2),
          timestamp: timestamp,
          xid: xid
@@ -242,7 +242,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
        %{
          end_lsn: end_lsn,
          old:
-           Enum.zip(column_names_and_types, old_column_values)
+           Enum.zip(Map.get(column_names_and_types, relation_id, []), old_column_values)
            |> Enum.reduce(%{}, &map_value_with_type/2),
          timestamp: timestamp,
          xid: xid
@@ -329,6 +329,68 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
         end
       )
 
-  def map_value_with_type({{name, _data_type_id}, value}, payload),
-    do: Map.put(payload, name, value)
+  def map_value_with_type({{name, data_type_id}, value}, payload) do
+    if not is_list_type(data_type_id) do
+      Map.put(payload, name, value)
+    else
+      IO.inspect({name, data_type_id, value, parse_pg_array(value)}, label: "DECODE - list")
+      Map.put(payload, name, parse_pg_array!(value))
+    end
+  end
+
+  def oids(),
+    do: [
+      {:bool, 16, 1000},
+      {:bpchar, 1042, 1014},
+      {:bytea, 17, 1001},
+      {:char, 18, 1002},
+      {:cidr, 650, 651},
+      {:date, 1082, 1182},
+      {:daterange, 3912, 3913},
+      {:float4, 700, 1021},
+      {:float8, 701, 1022},
+      {:inet, 869, 1041},
+      {:int2, 21, 1005},
+      {:int4, 23, 1007},
+      {:int4range, 3904, 3905},
+      {:int8, 20, 1016},
+      {:int8range, 3926, 3927},
+      {:interval, 1186, 1187},
+      {:json, 114, 199},
+      {:jsonb, 3802, 3807},
+      {:macaddr, 829, 1040},
+      {:macaddr8, 774, 775},
+      {:point, 600, 1017},
+      {:text, 25, 1009},
+      {:time, 1083, 1183},
+      {:timestamp, 1114, 1115},
+      {:timestamptz, 1184, 1185},
+      {:timetz, 1266, 1270},
+      {:tsrange, 3908, 3909},
+      {:tstzrange, 3910, 3911},
+      {:uuid, 2950, 2951},
+      {:varchar, 1043, 1015}
+    ]
+
+  def is_list_type(code), do: Enum.any?(oids(), &(elem(&1, 2) == code))
+
+  def parse_pg_array(str) do
+    with {:ok, tokens, _end_line} <- str |> to_charlist() |> :pg_array_lexer.string(),
+         {:ok, array} <- :pg_array_parser.parse(tokens) do
+      {:ok, array}
+    else
+      {_, reason, _} ->
+        {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def parse_pg_array!(str) do
+    case parse_pg_array(str) do
+      {:ok, array} -> array
+      {:error, err} -> throw(err)
+    end
+  end
 end

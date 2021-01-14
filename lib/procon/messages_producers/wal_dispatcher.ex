@@ -17,7 +17,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
       brokers: [localhost: 9092],
       brod_client_config: [reconnect_cool_down_seconds: 10],
       broker_client_name: :brod_client_default_name,
-      column_names_and_types: [],
+      column_names_and_types: %{},
       epgsql_pid: nil,
       relations: %{},
       slot_name: nil,
@@ -29,7 +29,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
             brokers: keyword({atom(), integer()}),
             broker_client_name: atom(),
             brod_client_config: keyword({atom(), any()}),
-            column_names_and_types: list(),
+            column_names_and_types: map(),
             datastore: atom(),
             epgsql_pid: pid() | nil,
             ets_messages_queue_ref: reference(),
@@ -235,9 +235,15 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     |> IO.inspect(label: "handle_info epgsql")
     |> case do
       {:ok, :relation,
-       %{relation_id: _relation_id, name: _name, column_names_and_types: column_names_and_types}} ->
+       %{relation_id: relation_id, name: _name, column_names_and_types: column_names_and_types}} ->
         GenServer.cast(self(), :start_broker_producers)
-        {:noreply, %State{state | column_names_and_types: column_names_and_types}}
+
+        {:noreply,
+         %State{
+           state
+           | column_names_and_types:
+               Map.put(state.column_names_and_types, relation_id, column_names_and_types)
+         }}
 
       {:ok, _operation, _data} ->
         {:noreply, state}
@@ -307,7 +313,6 @@ defmodule Procon.MessagesProducers.WalDispatcher do
               [
                 %{
                   broker_client_name: state.broker_client_name,
-                  column_names_and_types: state.column_names_and_types,
                   ets_key: :"#{topic}_#{partition_index}",
                   ets_messages_queue_ref: state.ets_messages_queue_ref,
                   ets_table_state_ref: state.ets_table_state_ref,
