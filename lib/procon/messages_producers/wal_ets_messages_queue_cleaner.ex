@@ -59,7 +59,7 @@ defmodule Procon.MessagesProducers.WalDispatcherMessagesQueueCleaner do
       {lsn_as_key, :"$1", :"$3", :"$2"}
     )
     |> case do
-      [[:transaction_commit, true, data]] ->
+      [[:transaction_commit, true, _data]] ->
         EpgsqlConnector.acknowledge_lsn(state.epgsql_pid, lsn_as_key)
 
         :ets.delete(state.ets_messages_queue_ref, lsn_as_key)
@@ -67,13 +67,13 @@ defmodule Procon.MessagesProducers.WalDispatcherMessagesQueueCleaner do
         :ets.next(state.ets_messages_queue_ref, lsn_as_key)
         |> next(state)
 
-      [[_, true, data]] ->
+      [[_, true, _data]] ->
         :ets.delete(state.ets_messages_queue_ref, lsn_as_key)
 
         :ets.next(state.ets_messages_queue_ref, lsn_as_key)
         |> next(state)
 
-      [[_, false, data]] ->
+      [[_, false, _data]] ->
         start(state)
     end
   end
