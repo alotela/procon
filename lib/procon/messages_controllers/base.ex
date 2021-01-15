@@ -170,8 +170,8 @@ defmodule Procon.MessagesControllers.Base do
                   realtime,
                   :metadata,
                   Map.merge(
-                    Map.get(event_data.recorded_struct, :metadata, %{}),
-                    Map.get(realtime, :metadata, %{})
+                    Map.get(event_data.recorded_struct, :metadata, %{}) || %{},
+                    Map.get(realtime, :metadata, %{}) || %{}
                   )
                 ),
                 options.datastore,
