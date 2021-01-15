@@ -116,11 +116,6 @@ defmodule Mix.Tasks.Procon.Init do
       processor_repo
     )
 
-    events_path = [processor_path, "events"] |> Path.join()
-
-    Helpers.info("creating processor's events directory #{events_path}")
-    events_path |> create_directory()
-
     message_controllers_path = [processor_path, "message_controllers"] |> Path.join()
 
     Helpers.info("creating processor's message_controllers directory #{message_controllers_path}")
