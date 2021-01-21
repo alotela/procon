@@ -18,6 +18,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
       brod_client_config: [reconnect_cool_down_seconds: 10],
       broker_client_name: :brod_client_default_name,
       column_names_and_types: %{},
+      delete_metadata: %{},
       epgsql_pid: nil,
       relations: %{},
       slot_name: nil,
@@ -31,6 +32,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
             brod_client_config: keyword({atom(), any()}),
             column_names_and_types: map(),
             datastore: atom(),
+            delete_metadata: map(),
             epgsql_pid: pid() | nil,
             ets_messages_queue_ref: reference(),
             publications: list(),
@@ -153,6 +155,28 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     end
   end
 
+  def handle_call({:add_delete_metadata, key, metadata}, state) do
+    {
+      :reply,
+      :ok,
+      %State{
+        state
+        | delete_metadata: Map.put(state.delete_metadata, key, metadata)
+      }
+    }
+  end
+
+  def handle_call({:get_and_delete_metadata, key}, state) do
+    {
+      :reply,
+      Map.get(state.delete_metadata, key),
+      %State{
+        state
+        | delete_metadata: Map.delete(state.delete_metadata, key)
+      }
+    }
+  end
+
   def handle_call(:ets_state, _from, state) do
     {
       :reply,
@@ -229,7 +253,8 @@ defmodule Procon.MessagesProducers.WalDispatcher do
         column_names_and_types: state.column_names_and_types,
         ets_table_state_ref: state.ets_table_state_ref,
         ets_messages_queue_ref: state.ets_messages_queue_ref,
-        end_lsn: end_lsn
+        end_lsn: end_lsn,
+        metadata: state.delete_metadata
       }
     )
     |> IO.inspect(label: "handle_info epgsql")

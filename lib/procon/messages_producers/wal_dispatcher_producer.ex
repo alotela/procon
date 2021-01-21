@@ -88,7 +88,7 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
 
     {
       "",
-      Map.take(message, [:new, :old])
+      Map.take(message, [:new, :old, :op])
       |> Map.put(
         :timestamp,
         <<

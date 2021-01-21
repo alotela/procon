@@ -154,22 +154,13 @@ defmodule Procon.MessagesControllers.Consumer do
         {:error, :topic_not_listened}
 
       entity_config ->
-        event =
-          procon_message
-          |> case do
-            %{old: _, new: _} ->
-              :update
-
-            %{new: _} ->
-              :create
-
-            %{old: _} ->
-              :delete
-          end
-
         apply(
           Map.get(entity_config, :messages_controller, Procon.MessagesControllers.Default),
-          event,
+          case procon_message.op do
+            "c" -> :create
+            "d" -> :delete
+            "u" -> :update
+          end,
           [
             procon_message,
             entity_config

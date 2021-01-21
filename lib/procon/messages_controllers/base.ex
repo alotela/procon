@@ -151,7 +151,14 @@ defmodule Procon.MessagesControllers.Base do
               realtime,
               :metadata,
               Map.merge(
-                Map.get(event_data.recorded_struct, :metadata, %{}) || %{},
+                case type do
+                  :deleted ->
+                    Map.get(event_data.event.new, :metadata, %{})
+
+                  _ ->
+                    Map.get(event_data.recorded_struct, :metadata, %{})
+                end ||
+                  %{},
                 Map.get(realtime, :metadata, %{}) || %{}
               )
             ),
@@ -320,11 +327,17 @@ defmodule Procon.MessagesControllers.Base do
             {:ok, final_event_data} = controller.after_delete(event_data, options)
 
             {:ok, final_event_data} =
-              enqueue_realtime(
-                final_event_data,
-                :deleted,
-                options
-              )
+              case Map.get(event_data, :record_deleted, true) do
+                true ->
+                  enqueue_realtime(
+                    final_event_data,
+                    :deleted,
+                    options
+                  )
+
+                false ->
+                  {:ok, final_event_data}
+              end
 
             :ok =
               Procon.PartitionOffsetHelpers.update_partition_offset(
@@ -360,7 +373,7 @@ defmodule Procon.MessagesControllers.Base do
         nil ->
           Logger.warn("No match for deleted #{inspect(options.model)} in event #{inspect(event)}")
 
-          {:ok, event_data}
+          {:ok, Map.put(event_data, :record_deleted, false)}
 
         _ ->
           Logger.info("Deleting #{inspect(options.model)} with id #{event_data.record.id}")
@@ -378,10 +391,10 @@ defmodule Procon.MessagesControllers.Base do
             atom | %{master_key: nil | maybe_improper_list | {any, any} | map}
           ) :: %{record: any, record_from_db: boolean}
     def record_from_datastore(event, return_record, options) do
-      master_keys = normalize_master_key(options.master_key)
+      master_keys = normalize_master_key(options.master_key) |> IO.inspect(label: "master_keys")
 
       get_new_or_old = fn
-        :get, %{new: new}, next ->
+        :get, %{op: "c", new: new}, next ->
           next.(new)
 
         :get, %{old: old}, next ->
@@ -420,7 +433,7 @@ defmodule Procon.MessagesControllers.Base do
             options.datastore.get_by(options.model, query)
         end
       else
-        case get_in(event, [get_new_or_old, :id]) do
+        case get_in(event, [get_new_or_old, :id]) |> IO.inspect(label: "gegegeg") do
           nil ->
             Procon.Helpers.log([
               "⚠️PROCON ALERT : #{options.processor_name} : \"id\" in body is nil to find record in database. Maybe you need to specify master_key in processor config for this entity ?",
