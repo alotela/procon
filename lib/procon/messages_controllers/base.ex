@@ -64,6 +64,13 @@ defmodule Procon.MessagesControllers.Base do
                 options
               )
 
+            {:ok, final_event_data} =
+              message_processed_hook(
+                final_event_data,
+                if(final_event_data.record_from_db, do: :updated, else: :created),
+                options
+              )
+
             :ok =
               Procon.PartitionOffsetHelpers.update_partition_offset(
                 options.topic,
@@ -199,6 +206,15 @@ defmodule Procon.MessagesControllers.Base do
          event_data
          |> Map.put(:entity_realtime_event_enqueued, false)}
 
+    def message_processed_hook(
+          event_data,
+          type,
+          %{message_processed_hook: message_processed_hook}
+        ),
+        do: message_processed_hook.(type, event_data) |> IO.inspect(label: :message_processed)
+
+    def message_processed_hook(event_data, _type, _options), do: {:ok, event_data}
+
     def do_update(controller, event, options) do
       options.datastore.transaction(fn ->
         controller.process_update(event, options)
@@ -208,6 +224,13 @@ defmodule Procon.MessagesControllers.Base do
 
             {:ok, final_event_data} =
               enqueue_realtime(
+                final_event_data,
+                :updated,
+                options
+              )
+
+            {:ok, final_event_data} =
+              message_processed_hook(
                 final_event_data,
                 :updated,
                 options
@@ -329,7 +352,14 @@ defmodule Procon.MessagesControllers.Base do
             {:ok, final_event_data} =
               case Map.get(event_data, :record_deleted, true) do
                 true ->
-                  enqueue_realtime(
+                  {:ok, final_event_data} =
+                    enqueue_realtime(
+                      final_event_data,
+                      :deleted,
+                      options
+                    )
+
+                  message_processed_hook(
                     final_event_data,
                     :deleted,
                     options
