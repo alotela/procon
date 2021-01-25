@@ -119,7 +119,18 @@ defmodule Mix.Tasks.Procon.AddAcls do
 
     create_file(
       message_controllers_path,
-      group_acls_template(processor_name: processor_name)
+      group_acls_template(
+        processor_name: processor_name,
+        group_acl_type:
+          "#{
+            processor_name
+            |> Helpers.processor_type()
+            |> Macro.underscore()
+          }_#{
+            processor_name
+            |> Helpers.short_processor_name()
+          }"
+      )
     )
 
     message_controllers_path

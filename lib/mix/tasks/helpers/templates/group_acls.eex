@@ -7,5 +7,6 @@ defmodule <%= @processor_name %>.MessageControllers.GroupAcls do
     teammate_acls: [
       GroupAcls.can_index(),
       GroupAcls.can_show()
-    ]
+    ],
+    type: :<%= @group_acl_type %>
 end
