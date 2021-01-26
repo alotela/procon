@@ -50,6 +50,9 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     GenServer.start_link(__MODULE__, state, name: state.register_name)
   end
 
+  def add_delete_metadata(repo, entity_primary_key, metadata),
+    do: GenServer.call(register_name(repo), {:add_delete_metadata, entity_primary_key, metadata})
+
   @spec register_name(atom()) :: atom()
   def register_name(datastore), do: :"wal_dispatcher_#{datastore}"
 
@@ -155,24 +158,24 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     end
   end
 
-  def handle_call({:add_delete_metadata, key, metadata}, state) do
+  def handle_call({:add_delete_metadata, entity_primary_key, metadata}, state) do
     {
       :reply,
       :ok,
       %State{
         state
-        | delete_metadata: Map.put(state.delete_metadata, key, metadata)
+        | delete_metadata: Map.put(state.delete_metadata, entity_primary_key, metadata)
       }
     }
   end
 
-  def handle_call({:get_and_delete_metadata, key}, state) do
+  def handle_call({:get_and_delete_metadata, entity_primary_key}, state) do
     {
       :reply,
-      Map.get(state.delete_metadata, key),
+      Map.get(state.delete_metadata, entity_primary_key),
       %State{
         state
-        | delete_metadata: Map.delete(state.delete_metadata, key)
+        | delete_metadata: Map.delete(state.delete_metadata, entity_primary_key)
       }
     }
   end

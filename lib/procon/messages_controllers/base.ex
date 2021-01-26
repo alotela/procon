@@ -147,7 +147,6 @@ defmodule Procon.MessagesControllers.Base do
 
     def enqueue_realtime(event_data, type, options = %{realtime_builder: realtime_builder}) do
       realtime_builder.(type, event_data)
-      |> IO.inspect(label: :realtime_builder)
       |> case do
         nil ->
           {:ok, Map.put(event_data, :entity_realtime_event_enqueued, false)}
@@ -421,7 +420,7 @@ defmodule Procon.MessagesControllers.Base do
             atom | %{master_key: nil | maybe_improper_list | {any, any} | map}
           ) :: %{record: any, record_from_db: boolean}
     def record_from_datastore(event, return_record, options) do
-      master_keys = normalize_master_key(options.master_key) |> IO.inspect(label: "master_keys")
+      master_keys = normalize_master_key(options.master_key)
 
       get_new_or_old = fn
         :get, %{op: "c", new: new}, next ->
@@ -463,7 +462,7 @@ defmodule Procon.MessagesControllers.Base do
             options.datastore.get_by(options.model, query)
         end
       else
-        case get_in(event, [get_new_or_old, :id]) |> IO.inspect(label: "gegegeg") do
+        case get_in(event, [get_new_or_old, :id]) do
           nil ->
             Procon.Helpers.log([
               "⚠️PROCON ALERT : #{options.processor_name} : \"id\" in body is nil to find record in database. Maybe you need to specify master_key in processor config for this entity ?",
