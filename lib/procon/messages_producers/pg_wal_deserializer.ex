@@ -386,7 +386,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
   def parse_pg_array(str) do
     with {:ok, tokens, _end_line} <- str |> to_charlist() |> :pg_array_lexer.string(),
          {:ok, array} <- :pg_array_parser.parse(tokens) do
-      {:ok, array}
+      {:ok, parse_array_values(array)}
     else
       {_, reason, _} ->
         {:error, reason}
@@ -402,4 +402,16 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
       {:error, err} -> throw(err)
     end
   end
+
+  def parse_array_values(array) when is_list(array), do: Enum.map(array, &parse_array_values/1)
+
+  def parse_array_values(value) when is_binary(value) do
+    Jason.decode(value)
+    |> case do
+      {:ok, map} -> map
+      _ -> value
+    end
+  end
+
+  def parse_array_values(value) when is_binary(value), do: value
 end
