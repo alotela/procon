@@ -50,6 +50,8 @@ defmodule Procon.MessagesControllers.Base do
     require Logger
     require Record
 
+    @pg_epoch DateTime.from_iso8601("2000-01-01T00:00:00Z")
+
     def do_create(controller, event, options) do
       options.datastore.transaction(fn ->
         controller.process_create(event, options)
@@ -317,7 +319,10 @@ defmodule Procon.MessagesControllers.Base do
             into: %{} do
           case key_in_event do
             :event_timestamp ->
-              {key_in_new_attributes, event_data.timestamp}
+              {key_in_new_attributes, event_data.event.timestamp}
+
+            :event_timestamp_datetime ->
+              {key_in_new_attributes, event_data.event.timestamp |> ulid_to_datetime()}
 
             [_ | _] ->
               {key_in_new_attributes, get_in(event_data.event.new, key_in_event)}
@@ -339,6 +344,22 @@ defmodule Procon.MessagesControllers.Base do
         end
 
       Map.put(event_data, :new_attributes, new_attributes)
+    end
+
+    def pgtimestamp_to_timestamp(microsecond_offset) do
+      {:ok, epoch, 0} = @pg_epoch
+
+      DateTime.add(epoch, microsecond_offset, :millisecond)
+    end
+
+    def ulid_to_datetime(ulid_timestamp) do
+      <<timestamp_in_ms::unsigned-size(48), _rest::binary>> =
+        ulid_timestamp
+        |> Ecto.ULID.dump()
+        |> elem(1)
+
+      timestamp_in_ms
+      |> pgtimestamp_to_timestamp()
     end
 
     def do_delete(controller, event, options) do
