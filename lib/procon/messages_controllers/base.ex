@@ -314,23 +314,46 @@ defmodule Procon.MessagesControllers.Base do
 
     def add_new_attributes(event_data, options) do
       attributes =
-        for {key_in_event, key_in_new_attributes} <- options.keys_mapping,
-            !is_nil(key_in_new_attributes),
-            into: %{} do
-          case key_in_event do
-            :event_timestamp ->
-              {key_in_new_attributes, event_data.event.timestamp}
-
-            :event_timestamp_datetime ->
-              {key_in_new_attributes, event_data.event.timestamp |> ulid_to_datetime()}
-
-            [_ | _] ->
-              {key_in_new_attributes, get_in(event_data.event.new, key_in_event)}
+        Enum.reduce(options.keys_mapping, %{}, fn {key_in_event, key_in_new_attributes},
+                                                  reduced_attributes ->
+          case key_in_new_attributes do
+            nil ->
+              reduced_attributes
 
             _ ->
-              {key_in_new_attributes, Map.get(event_data.event.new, key_in_event)}
+              value =
+                case key_in_event do
+                  :event_timestamp ->
+                    event_data.event.timestamp
+
+                  :event_timestamp_datetime ->
+                    event_data.event.timestamp |> ulid_to_datetime()
+
+                  :create_event_timestamp_datetime ->
+                    case event_data.event.op do
+                      "c" ->
+                        event_data.event.timestamp |> ulid_to_datetime()
+
+                      _ ->
+                        :procon_bypass
+                    end
+
+                  [_ | _] ->
+                    get_in(event_data.event.new, key_in_event)
+
+                  _ ->
+                    Map.get(event_data.event.new, key_in_event)
+                end
+
+              case value do
+                :procon_bypass ->
+                  reduced_attributes
+
+                _ ->
+                  Map.put(reduced_attributes, key_in_new_attributes, value)
+              end
           end
-        end
+        end)
 
       new_attributes = Map.merge(event_data.event.new, attributes)
 
