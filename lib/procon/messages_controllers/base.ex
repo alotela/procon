@@ -472,6 +472,9 @@ defmodule Procon.MessagesControllers.Base do
 
         :get, %{old: old}, next ->
           next.(old)
+
+        :get, %{new: new}, next ->
+          next.(new)
       end
 
       if length(master_keys) > 0 do
