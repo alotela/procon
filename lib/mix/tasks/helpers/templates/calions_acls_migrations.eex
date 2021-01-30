@@ -7,6 +7,7 @@ defmodule <%= @processor_name %>.Migrations.AddAclsTables do
       add(:app_group_id, :uuid, null: false)
       add(:id, :uuid, primary_key: true)
       add(:group_name, :string)
+      add(:metadata, :map, default: %{})
       add(:organization_id, :uuid, null: false)
       add(:type, :string)
     end
