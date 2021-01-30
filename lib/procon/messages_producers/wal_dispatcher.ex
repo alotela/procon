@@ -158,7 +158,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     end
   end
 
-  def handle_call({:add_delete_metadata, entity_primary_key, metadata}, state) do
+  def handle_call({:add_delete_metadata, entity_primary_key, metadata}, _from, state) do
     {
       :reply,
       :ok,
@@ -169,7 +169,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     }
   end
 
-  def handle_call({:get_and_delete_metadata, entity_primary_key}, state) do
+  def handle_call({:get_and_delete_metadata, entity_primary_key}, _from, state) do
     {
       :reply,
       Map.get(state.delete_metadata, entity_primary_key),
