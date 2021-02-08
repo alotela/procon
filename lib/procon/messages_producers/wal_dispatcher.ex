@@ -138,23 +138,25 @@ defmodule Procon.MessagesProducers.WalDispatcher do
 
   defp relation_config_avro_value_schema(nil), do: ""
 
-  defp relation_config_avro_value_schema(relation_config), do:
-    Map.get(relation_config, :avro_value_schema, "#{relation_config.topic}-value")
+  defp relation_config_avro_value_schema(relation_config),
+    do: Map.get(relation_config, :avro_value_schema, "#{relation_config.topic}-value")
 
   defp relation_config_avro_key_schema(nil), do: ""
 
-  defp relation_config_avro_key_schema(relation_config), do:
-    Map.get(relation_config, :avro_key_schema, "#{relation_config.topic}-key")
+  defp relation_config_avro_key_schema(relation_config),
+    do: Map.get(relation_config, :avro_key_schema, "#{relation_config.topic}-key")
 
-  defp relation_config_avro_value_schema_reference(relation_config), do:
-    relation_config_avro_value_schema(relation_config)
-      <> ":"
-      <> Map.get(relation_config, :avro_value_schema_version, "1")
+  defp relation_config_avro_value_schema_reference(relation_config),
+    do:
+      relation_config_avro_value_schema(relation_config) <>
+        ":" <>
+        Map.get(relation_config, :avro_value_schema_version, "1")
 
-  defp relation_config_avro_key_schema_reference(relation_config), do:
-    relation_config_avro_key_schema(relation_config)
-      <> ":"
-      <> Map.get(relation_config, :avro_key_schema_version, "1")
+  defp relation_config_avro_key_schema_reference(relation_config),
+    do:
+      relation_config_avro_key_schema(relation_config) <>
+        ":" <>
+        Map.get(relation_config, :avro_key_schema_version, "1")
 
   defp preload_avro_schema_in_memory(state) do
     state
@@ -167,12 +169,19 @@ defmodule Procon.MessagesProducers.WalDispatcher do
 
         :avro ->
           value_schema_reference = relation_config_avro_value_schema_reference(relation_config)
-          {:ok, %Avrora.Schema{} = value_avro_schema} = Avrora.Resolver.resolve(value_schema_reference)
-          Logger.debug(["PROCON : avro schema #{value_schema_reference} for topic '#{relation_config.topic}' loaded :\n", value_avro_schema])
+
+          {:ok, %Avrora.Schema{} = value_avro_schema} =
+            Avrora.Resolver.resolve(value_schema_reference)
+
+          Logger.debug([
+            "PROCON : avro schema #{value_schema_reference} for topic '#{relation_config.topic}' loaded :\n",
+            value_avro_schema
+          ])
 
           _key_schema_reference = relation_config_avro_key_schema_reference(relation_config)
-          #{:ok, %Avrora.Schema{} = key_avro_schema} = Avrora.Resolver.resolve(key_schema_reference)
-          #Logger.info(["PROCON : avro schema #{key_schema_reference} for topic '#{relation_config.topic}' loaded :\n", key_avro_schema])
+
+          # {:ok, %Avrora.Schema{} = key_avro_schema} = Avrora.Resolver.resolve(key_schema_reference)
+          # Logger.info(["PROCON : avro schema #{key_schema_reference} for topic '#{relation_config.topic}' loaded :\n", key_avro_schema])
       end
     end)
   end
@@ -390,9 +399,15 @@ defmodule Procon.MessagesProducers.WalDispatcher do
                 %{
                   # une fois le remplacement de relation_topics par relation_configs, à remplacer par :
                   # avro_value_schema_name: get_in(state, [:relation_configs, relation]) |> relation_config_avro_value_schema(),
-                  avro_value_schema_name: state.relation_configs |> Map.get(relation, nil) |> relation_config_avro_value_schema(),
+                  avro_value_schema_name:
+                    state.relation_configs
+                    |> Map.get(relation, nil)
+                    |> relation_config_avro_value_schema(),
                   # avro_key_schema_name: get_in(state, [:relation_configs, relation]) |> relation_config_avro_key_schema(),
-                  avro_key_schema_name: state.relation_configs |> Map.get(relation, nil) |> relation_config_avro_key_schema(),
+                  avro_key_schema_name:
+                    state.relation_configs
+                    |> Map.get(relation, nil)
+                    |> relation_config_avro_key_schema(),
                   broker_client_name: state.broker_client_name,
                   ets_key: :"#{topic}_#{partition_index}",
                   ets_messages_queue_ref: state.ets_messages_queue_ref,
@@ -401,11 +416,21 @@ defmodule Procon.MessagesProducers.WalDispatcher do
                   partition_index: partition_index,
                   # une fois le remplacement de relation_topics par relation_configs, à remplacer par :
                   # pkey_column: get_in(state, [:relation_configs, relation, :pkey])
-                  pkey_column: Map.get(state.relation_configs, relation, Map.get(state.relation_topics, relation)) |> IO.inspect(label: "1") |> case do
-                    {pkey, _topic} -> pkey
-                    %{pkey: pkey} -> pkey
-                  end,
-                  serialization: state.relation_configs |> Map.get(relation, %{}) |> Map.get(:serialization, :json),
+                  pkey_column:
+                    Map.get(
+                      state.relation_configs,
+                      relation,
+                      Map.get(state.relation_topics, relation)
+                    )
+                    |> IO.inspect(label: "1")
+                    |> case do
+                      {pkey, _topic} -> pkey
+                      %{pkey: pkey} -> pkey
+                    end,
+                  serialization:
+                    state.relation_configs
+                    |> Map.get(relation, %{})
+                    |> Map.get(:serialization, :json),
                   topic: topic
                 }
               ]

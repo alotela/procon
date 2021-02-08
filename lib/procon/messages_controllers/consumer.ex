@@ -40,14 +40,16 @@ defmodule Procon.MessagesControllers.Consumer do
                   )
 
                 entity_config ->
-                  procon_message = case Map.get(entity_config, :serialization, :json) do
-                    :avro ->
-                      Avrora.decode(kafka_message_content)
-                      |> elem(1)
-                      |> Procon.Helpers.map_keys_to_atom()
-                    :json ->
-                      Jason.decode!(kafka_message_content, keys: :atoms)
-                  end
+                  procon_message =
+                    case Map.get(entity_config, :serialization, :json) do
+                      :avro ->
+                        Avrora.decode(kafka_message_content)
+                        |> elem(1)
+                        |> Procon.Helpers.map_keys_to_atom()
+
+                      :json ->
+                        Jason.decode!(kafka_message_content, keys: :atoms)
+                    end
 
                   route_message(
                     procon_message,
@@ -179,8 +181,7 @@ defmodule Procon.MessagesControllers.Consumer do
               :dynamic_topics_autostart_consumers,
               false
             ),
-          dynamic_topics_filters:
-            Map.get(processor_consumer_config, :dynamic_topics_filters, []),
+          dynamic_topics_filters: Map.get(processor_consumer_config, :dynamic_topics_filters, []),
           offset: offset,
           partition: partition,
           processing_id: processing_id,
