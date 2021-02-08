@@ -28,47 +28,60 @@ defmodule Procon.MessagesControllers.Consumer do
              ))
           |> case do
             true ->
-              {:ok, procon_message} = Jason.decode(kafka_message_content, keys: :atoms)
-
-              route_message(
-                procon_message,
-                state.processor_consumer_config,
-                topic,
-                partition,
-                offset,
-                processing_id
-              )
+              state.processor_consumer_config
+              |> Procon.MessagesControllers.ProcessorConfig.find_entity_for_topic_pattern(topic)
               |> case do
-                {:error, :topic_not_listened} ->
+                nil ->
                   Procon.Helpers.inspect(
                     kafka_message_content,
-                    "#{processing_id}@@PROCON FLOW : unlistened topic : #{
+                    "#{processing_id}@@PROCON FLOW : topic not listened : #{
                       state.processor_consumer_config.name
                     }/#{topic}/#{partition}/#{offset}."
                   )
 
-                {:error, :unable_to_update_offset_in_ets} ->
-                  Procon.Helpers.inspect(
-                    kafka_message_content,
-                    "#{processing_id}@@PROCON FLOW : unable to update offset in ets : #{
-                      state.processor_consumer_config.name
-                    }/#{topic}/#{partition}/#{offset}."
+                entity_config ->
+                  procon_message = case Map.get(entity_config, :serialization, :json) do
+                    :avro ->
+                      Avrora.decode(kafka_message_content)
+                      |> elem(1)
+                      |> Procon.Helpers.map_keys_to_atom()
+                    :json ->
+                      Jason.decode!(kafka_message_content, keys: :atoms)
+                  end
+
+                  route_message(
+                    procon_message,
+                    state.processor_consumer_config,
+                    topic,
+                    partition,
+                    offset,
+                    processing_id,
+                    entity_config
                   )
+                  |> case do
+                    {:error, :unable_to_update_offset_in_ets} ->
+                      Procon.Helpers.inspect(
+                        kafka_message_content,
+                        "#{processing_id}@@PROCON FLOW : unable to update offset in ets : #{
+                          state.processor_consumer_config.name
+                        }/#{topic}/#{partition}/#{offset}."
+                      )
 
-                  throw({:stop_procon, processing_id, offset})
+                      throw({:stop_procon, processing_id, offset})
 
-                {:error, error} ->
-                  Procon.Helpers.inspect(
-                    error,
-                    "#{processing_id}@@PROCON FLOW : error from processing : #{
-                      state.processor_consumer_config.name
-                    }/#{topic}/#{partition}/#{offset}."
-                  )
+                    {:error, error} ->
+                      Procon.Helpers.inspect(
+                        error,
+                        "#{processing_id}@@PROCON FLOW : error from processing : #{
+                          state.processor_consumer_config.name
+                        }/#{topic}/#{partition}/#{offset}."
+                      )
 
-                  throw({:stop_procon, processing_id, offset})
+                      throw({:stop_procon, processing_id, offset})
 
-                :ok ->
-                  nil
+                    :ok ->
+                      nil
+                  end
               end
 
             false ->
@@ -145,44 +158,37 @@ defmodule Procon.MessagesControllers.Consumer do
         topic,
         partition,
         offset,
-        processing_id
+        processing_id,
+        entity_config
       ) do
-    processor_consumer_config
-    |> Procon.MessagesControllers.ProcessorConfig.find_entity_for_topic_pattern(topic)
-    |> case do
-      nil ->
-        {:error, :topic_not_listened}
-
-      entity_config ->
-        apply(
-          Map.get(entity_config, :messages_controller, Procon.MessagesControllers.Default),
-          case procon_message.op do
-            "c" -> :create
-            "d" -> :delete
-            "u" -> :update
-          end,
-          [
-            procon_message,
-            entity_config
-            |> Map.merge(%{
-              datastore: processor_consumer_config.datastore,
-              dynamic_topics_autostart_consumers:
-                Map.get(
-                  processor_consumer_config,
-                  :dynamic_topics_autostart_consumers,
-                  false
-                ),
-              dynamic_topics_filters:
-                Map.get(processor_consumer_config, :dynamic_topics_filters, []),
-              offset: offset,
-              partition: partition,
-              processing_id: processing_id,
-              processor_name: processor_consumer_config.name,
-              topic: topic
-            })
-          ]
-        )
-    end
+    apply(
+      Map.get(entity_config, :messages_controller, Procon.MessagesControllers.Default),
+      case procon_message.op do
+        "c" -> :create
+        "d" -> :delete
+        "u" -> :update
+      end,
+      [
+        procon_message,
+        entity_config
+        |> Map.merge(%{
+          datastore: processor_consumer_config.datastore,
+          dynamic_topics_autostart_consumers:
+            Map.get(
+              processor_consumer_config,
+              :dynamic_topics_autostart_consumers,
+              false
+            ),
+          dynamic_topics_filters:
+            Map.get(processor_consumer_config, :dynamic_topics_filters, []),
+          offset: offset,
+          partition: partition,
+          processing_id: processing_id,
+          processor_name: processor_consumer_config.name,
+          topic: topic
+        })
+      ]
+    )
   end
 
   def stop(processor_name) do

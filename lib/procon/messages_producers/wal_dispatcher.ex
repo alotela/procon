@@ -21,6 +21,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
       delete_metadata: %{},
       epgsql_pid: nil,
       relations: %{},
+      relation_configs: %{},
       slot_name: nil,
       wal_position: {"0", "0"},
       ets_table_state_ref: nil
@@ -37,6 +38,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
             ets_messages_queue_ref: reference(),
             publications: list(),
             register_name: atom(),
+            relation_configs: map(),
             relation_topics: map(),
             replication_slot_name: String.t(),
             relations: map(),
@@ -95,7 +97,8 @@ defmodule Procon.MessagesProducers.WalDispatcher do
                      }"
                    ),
                  register_name: register_name,
-                 relation_topics: processor_producers_config.relation_topics
+                 relation_configs: Map.get(processor_producers_config, :relation_configs, %{}),
+                 relation_topics: Map.get(processor_producers_config, :relation_topics, %{})
                }
              ]},
           id: register_name
@@ -106,7 +109,9 @@ defmodule Procon.MessagesProducers.WalDispatcher do
   def init(%State{} = state) do
     Logger.metadata(procon_wal_dispatcher: state.datastore)
 
-    Logger.notice("PROCON : Starting WalDispatcher for datastore #{state.datastore}")
+    Logger.notice(["PROCON : Starting WalDispatcher for datastore #{state.datastore}", state])
+
+    preload_avro_schema_in_memory(state)
 
     {:ok, ets_table_identifier} = create_ets_table(state.register_name)
 
@@ -129,6 +134,47 @@ defmodule Procon.MessagesProducers.WalDispatcher do
        | ets_messages_queue_ref: ets_table_identifier,
          ets_table_state_ref: ets_table_state_ref
      }}
+  end
+
+  defp relation_config_avro_value_schema(nil), do: ""
+
+  defp relation_config_avro_value_schema(relation_config), do:
+    Map.get(relation_config, :avro_value_schema, "#{relation_config.topic}-value")
+
+  defp relation_config_avro_key_schema(nil), do: ""
+
+  defp relation_config_avro_key_schema(relation_config), do:
+    Map.get(relation_config, :avro_key_schema, "#{relation_config.topic}-key")
+
+  defp relation_config_avro_value_schema_reference(relation_config), do:
+    relation_config_avro_value_schema(relation_config)
+      <> ":"
+      <> Map.get(relation_config, :avro_value_schema_version, "1")
+
+  defp relation_config_avro_key_schema_reference(relation_config), do:
+    relation_config_avro_key_schema(relation_config)
+      <> ":"
+      <> Map.get(relation_config, :avro_key_schema_version, "1")
+
+  defp preload_avro_schema_in_memory(state) do
+    state
+    |> Map.get(:relation_configs, %{})
+    |> Map.values()
+    |> Enum.each(fn relation_config ->
+      case relation_config.serialization do
+        :json ->
+          Logger.debug("PROCON : json serialization for topic '#{relation_config.topic}'")
+
+        :avro ->
+          value_schema_reference = relation_config_avro_value_schema_reference(relation_config)
+          {:ok, %Avrora.Schema{} = value_avro_schema} = Avrora.Resolver.resolve(value_schema_reference)
+          Logger.debug(["PROCON : avro schema #{value_schema_reference} for topic '#{relation_config.topic}' loaded :\n", value_avro_schema])
+
+          _key_schema_reference = relation_config_avro_key_schema_reference(relation_config)
+          #{:ok, %Avrora.Schema{} = key_avro_schema} = Avrora.Resolver.resolve(key_schema_reference)
+          #Logger.info(["PROCON : avro schema #{key_schema_reference} for topic '#{relation_config.topic}' loaded :\n", key_avro_schema])
+      end
+    end)
   end
 
   def start_brod_client(brokers, broker_client_name, brod_client_config) do
@@ -310,10 +356,10 @@ defmodule Procon.MessagesProducers.WalDispatcher do
   def start_producers_for_all_relation_topics(state) do
     Enum.map(
       state.relation_topics,
-      fn {_relation, {_pkey_column, topic_atom}} ->
+      fn {relation, {_pkey_column, topic_atom}} ->
         start_topic_production(state.broker_client_name, topic_atom)
 
-        start_topic_wal_producers(topic_atom, state)
+        start_topic_wal_producers(relation, topic_atom, state)
       end
     )
   end
@@ -323,8 +369,10 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     :ok = :brod.start_producer(broker_client_name, topic |> Atom.to_string(), [])
   end
 
-  def start_topic_wal_producers(topic, state) do
+  def start_topic_wal_producers(relation, topic, state) do
     nb_partitions = Procon.KafkaMetadata.nb_partitions_for_topic!(topic)
+
+    IO.inspect(state, label: "state")
 
     Enum.map(
       0..(nb_partitions - 1),
@@ -340,12 +388,24 @@ defmodule Procon.MessagesProducers.WalDispatcher do
               :start_link,
               [
                 %{
+                  # une fois le remplacement de relation_topics par relation_configs, à remplacer par :
+                  # avro_value_schema_name: get_in(state, [:relation_configs, relation]) |> relation_config_avro_value_schema(),
+                  avro_value_schema_name: state.relation_configs |> Map.get(relation, nil) |> relation_config_avro_value_schema(),
+                  # avro_key_schema_name: get_in(state, [:relation_configs, relation]) |> relation_config_avro_key_schema(),
+                  avro_key_schema_name: state.relation_configs |> Map.get(relation, nil) |> relation_config_avro_key_schema(),
                   broker_client_name: state.broker_client_name,
                   ets_key: :"#{topic}_#{partition_index}",
                   ets_messages_queue_ref: state.ets_messages_queue_ref,
                   ets_table_state_ref: state.ets_table_state_ref,
-                  partition_index: partition_index,
                   name: register_name,
+                  partition_index: partition_index,
+                  # une fois le remplacement de relation_topics par relation_configs, à remplacer par :
+                  # pkey_column: get_in(state, [:relation_configs, relation, :pkey])
+                  pkey_column: Map.get(state.relation_configs, relation, Map.get(state.relation_topics, relation)) |> IO.inspect(label: "1") |> case do
+                    {pkey, _topic} -> pkey
+                    %{pkey: pkey} -> pkey
+                  end,
+                  serialization: state.relation_configs |> Map.get(relation, %{}) |> Map.get(:serialization, :json),
                   topic: topic
                 }
               ]

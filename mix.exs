@@ -22,6 +22,8 @@ defmodule Procon.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:avro_ex, "~> 1.0"},
+      {:avrora, "~> 0.16"},
       {:benchee, "~> 1.0", only: :dev},
       {:brod, "~> 3.15"},
       {:ecto_sql, "~> 3.0"},

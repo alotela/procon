@@ -138,7 +138,7 @@ defmodule Procon.MessagesControllers.Base do
 
       options.model.messages_create_changeset(
         event_data.record,
-        Map.get(event_data, :new_attributes, event_data.event.new)
+        Map.get(event_data, :new_attributes, event_data.event.after)
       )
       |> options.datastore.insert_or_update()
       |> case do
@@ -161,7 +161,7 @@ defmodule Procon.MessagesControllers.Base do
               Map.merge(
                 case type do
                   :deleted ->
-                    Map.get(event_data.event.new, :metadata, %{})
+                    Map.get(event_data.event.after, :metadata, %{})
 
                   _ ->
                     Map.get(event_data.recorded_struct, :metadata, %{})
@@ -270,7 +270,7 @@ defmodule Procon.MessagesControllers.Base do
 
       options.model.messages_update_changeset(
         event_data.record,
-        Map.get(event_data, :new_attributes, event_data.event.new)
+        Map.get(event_data, :new_attributes, event_data.event.after)
       )
       |> options.datastore.insert_or_update()
       |> case do
@@ -339,10 +339,10 @@ defmodule Procon.MessagesControllers.Base do
                     end
 
                   [_ | _] ->
-                    get_in(event_data.event.new, key_in_event)
+                    get_in(event_data.event.after, key_in_event)
 
                   _ ->
-                    Map.get(event_data.event.new, key_in_event)
+                    Map.get(event_data.event.after, key_in_event)
                 end
 
               case value do
@@ -355,7 +355,7 @@ defmodule Procon.MessagesControllers.Base do
           end
         end)
 
-      new_attributes = Map.merge(event_data.event.new, attributes)
+      new_attributes = Map.merge(event_data.event.after, attributes)
 
       new_attributes =
         case Map.has_key?(options, :drop_event_attributes) do
@@ -467,14 +467,11 @@ defmodule Procon.MessagesControllers.Base do
       master_keys = normalize_master_key(options.master_key)
 
       get_new_or_old = fn
-        :get, %{op: "c", new: new}, next ->
+        :get, %{op: "c", after: new}, next ->
           next.(new)
 
-        :get, %{old: old}, next ->
-          next.(old)
-
-        :get, %{new: new}, next ->
-          next.(new)
+        :get, %{before: before}, next ->
+          next.(before)
       end
 
       if length(master_keys) > 0 do

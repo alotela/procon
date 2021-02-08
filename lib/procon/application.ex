@@ -9,6 +9,7 @@ defmodule Procon.Application do
     Procon.KafkaMetadata.cache_kafka_metadata()
 
     children = [
+      Avrora,
       {DynamicSupervisor,
        name: Procon.MessagesProducers.ProducersSupervisor, strategy: :one_for_one},
       Procon.MessagesControllers.ConsumersStarter,

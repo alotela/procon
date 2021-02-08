@@ -25,4 +25,21 @@ defmodule Procon.Helpers do
       ]
     )
   end
+
+  def map_keys_to_atom(map) do
+    Enum.reduce(
+      map,
+      %{},
+      fn {key, value}, atomized_map ->
+        Map.put(
+          atomized_map,
+          String.to_atom(key),
+          case value do
+            %{} -> map_keys_to_atom(value)
+            _ -> value
+          end
+        )
+      end
+    )
+  end
 end

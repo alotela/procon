@@ -37,15 +37,15 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
         nil
 
       messages ->
-        Logger.notice("received messages", metadata: [state: state])
-        Logger.notice(messages, metadata: [state: state])
+        Logger.debug("PROCON > #{__MODULE__} > handle_cast(:start_producing) > received messages", metadata: [state: state])
+        Logger.debug(messages, metadata: [state: state])
 
         :brod.produce_sync(
           state.broker_client_name,
           state.topic |> Atom.to_string(),
           state.partition_index,
           "",
-          Enum.map(messages, &build_message/1)
+          Enum.map(messages, &(build_message(&1, state)))
         )
         |> case do
           :ok ->
@@ -70,10 +70,16 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
     {:noreply, state}
   end
 
-  def build_message([message]) do
+  def build_message([message], state) do
     timestamp_in_ms = div(message.timestamp, 1000)
     # Process.put(_,_) replace and return the PREVIOUS stored value
     last_timestamp_in_ms = Process.put(:timestamp_in_ms, timestamp_in_ms)
+
+    key = Map.get(
+      message.payload,
+      :after,
+      Map.get(message.payload, :before)
+    ) |> Map.get(state.pkey_column)
 
     monothonic_sequence =
       case timestamp_in_ms == last_timestamp_in_ms do
@@ -86,22 +92,50 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
 
     Process.put(:message_number, monothonic_sequence)
 
-    {
-      "",
-      Map.take(message, [:new, :old, :op])
-      |> Map.put(
-        :timestamp,
-        <<
-          timestamp_in_ms::unsigned-size(48),
-          monothonic_sequence::unsigned-integer-size(16),
-          Application.get_env(:procon, :instance_num)::unsigned-integer-size(8),
-          # 72_057_594_037_927_936 = 2^56
-          :rand.uniform(72_057_594_037_927_936)::unsigned-integer-size(56)
-        >>
-        |> Ecto.ULID.load()
-        |> elem(1)
+    payload = Map.get(message, :payload)
+      |> Map.put(:ts_ms,timestamp_in_ms
+        #<<
+        #  timestamp_in_ms::unsigned-size(48),
+        #  monothonic_sequence::unsigned-integer-size(16),
+        #  Application.get_env(:procon, :instance_num)::unsigned-integer-size(8),
+        #  # 72_057_594_037_927_936 = 2^56
+        #  :rand.uniform(72_057_594_037_927_936)::unsigned-integer-size(56)
+        #>>
+        #|> Ecto.ULID.load()
+        #|> elem(1)
       )
-      |> Jason.encode!()
-    }
+      |> Map.put(:source,
+        %{
+            connector: "procon",
+            db: "procon-wal",
+            lsn: 22134567,
+            name: "procon",
+            schema: "public",
+            snapshot: true,
+            table: "calions-payment",
+            txId: 0,
+            ts_ms: 0,
+            version: "1.0.0",
+            xmin: nil
+        }
+      )
+
+    [key, payload] = case state.serialization do
+      :json ->
+        [
+          message.payload.after.id,
+          key
+          |> Jason.encode!()
+        ]
+      :avro ->
+        [
+          AvroEx.encode(AvroEx.parse_schema!("{\"type\":\"string\"}"), key) |> elem(1),
+          payload
+          |> Avrora.encode(schema_name: state.avro_value_schema_name, format: :registry)
+          |> elem(1)
+        ]
+    end
+
+    {<<0::size(8), 4::size(32), key::binary>>, payload}
   end
 end

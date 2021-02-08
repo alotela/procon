@@ -111,10 +111,13 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
       ets_messages_queue_ref,
       {end_lsn, :"#{topic_atom}_#{target_partition}",
        %{
-         new:
-           Enum.zip(Map.get(column_names_and_types, relation_id, []), column_values)
-           |> Enum.reduce(%{}, &map_value_with_type/2),
-         op: :c,
+         payload: %{
+           after:
+             Enum.zip(Map.get(column_names_and_types, relation_id, []), column_values)
+             |> Enum.reduce(%{}, &map_value_with_type/2),
+           source: %{},
+           op: :c
+         },
          timestamp: timestamp,
          xid: xid,
          end_lsn: end_lsn
@@ -154,10 +157,12 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
       {end_lsn, :"#{topic_atom}_#{target_partition}",
        %{
          end_lsn: end_lsn,
-         new:
-           Enum.zip(Map.get(column_names_and_types, relation_id, []), new_column_values)
-           |> Enum.reduce(%{}, &map_value_with_type/2),
-         op: :u,
+         payload: %{
+           after:
+             Enum.zip(Map.get(column_names_and_types, relation_id, []), new_column_values)
+             |> Enum.reduce(%{}, &map_value_with_type/2),
+           op: :u
+         },
          timestamp: timestamp,
          xid: xid
        }, false}
@@ -202,13 +207,15 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
       {end_lsn, :"#{topic_atom}_#{target_partition}",
        %{
          end_lsn: end_lsn,
-         new:
-           Enum.zip(Map.get(column_names_and_types, relation_id, []), new_column_values)
-           |> Enum.reduce(%{}, &map_value_with_type/2),
-         old:
-           Enum.zip(Map.get(column_names_and_types, relation_id, []), old_column_values)
-           |> Enum.reduce(%{}, &map_value_with_type/2),
-         op: :u,
+         payload: %{
+           after:
+             Enum.zip(Map.get(column_names_and_types, relation_id, []), new_column_values)
+             |> Enum.reduce(%{}, &map_value_with_type/2),
+           before:
+             Enum.zip(Map.get(column_names_and_types, relation_id, []), old_column_values)
+             |> Enum.reduce(%{}, &map_value_with_type/2),
+           op: :u
+         },
          timestamp: timestamp,
          xid: xid
        }, false}
@@ -225,7 +232,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
           ets_table_state_ref: ets_table_state_ref,
           ets_messages_queue_ref: ets_messages_queue_ref,
           end_lsn: end_lsn,
-          metadata: delete_metadata
+          metadata: _delete_metadata
         }
       )
       when key_or_old == "K" or key_or_old == "O" do
@@ -245,14 +252,13 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
       {end_lsn, :"#{topic_atom}_#{target_partition}",
        %{
          end_lsn: end_lsn,
-         # add by hand metadata for http_request_id etc etc... since no record in new when deleting
-         new: %{
-           metadata: Map.get(delete_metadata, pkey_value, %{})
+         payload: %{
+           # add by hand metadata for http_request_id etc etc... since no record in new when deleting
+           before:
+             Enum.zip(Map.get(column_names_and_types, relation_id, []), old_column_values)
+             |> Enum.reduce(%{}, &map_value_with_type/2),
+           op: :d
          },
-         old:
-           Enum.zip(Map.get(column_names_and_types, relation_id, []), old_column_values)
-           |> Enum.reduce(%{}, &map_value_with_type/2),
-         op: :d,
          timestamp: timestamp,
          xid: xid
        }, false}
