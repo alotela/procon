@@ -129,14 +129,10 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
         }
       )
 
-    [key, payload] =
+    [serialized_key, serialized_payload] =
       case state.serialization do
         :json ->
-          [
-            message.payload.after.id,
-            key
-            |> Jason.encode!()
-          ]
+          [key, Jason.encode!(payload)]
 
         :avro ->
           [
@@ -147,6 +143,6 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
           ]
       end
 
-    {<<0::size(8), 4::size(32), key::binary>>, payload}
+    {<<0::size(8), 4::size(32), serialized_key::binary>>, serialized_payload}
   end
 end

@@ -170,13 +170,17 @@ defmodule Procon.MessagesProducers.WalDispatcher do
         :avro ->
           value_schema_reference = relation_config_avro_value_schema_reference(relation_config)
 
-          {:ok, %Avrora.Schema{} = value_avro_schema} =
-            Avrora.Resolver.resolve(value_schema_reference)
+          case Avrora.Resolver.resolve(value_schema_reference) do
+            {:error, :unknown_subject} ->
+              {:ok, schema} = Avrora.Storage.File.get(relation_config.local_schema)
+              {:ok, _schema_with_id} = Avrora.Utils.Registrar.register_schema(schema, as: relation_config_avro_value_schema(relation_config))
 
-          Logger.debug([
-            "PROCON : avro schema #{value_schema_reference} for topic '#{relation_config.topic}' loaded :\n",
-            value_avro_schema
-          ])
+            {:ok, %Avrora.Schema{} = value_avro_schema} ->
+              Logger.debug([
+                "PROCON : avro schema #{value_schema_reference} for topic '#{relation_config.topic}' loaded :\n",
+                value_avro_schema
+              ])
+          end
 
           _key_schema_reference = relation_config_avro_key_schema_reference(relation_config)
 

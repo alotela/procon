@@ -97,3 +97,21 @@ end
 - dans la payload event_data, :attributes devient :new_attributes
 
 - ajouter instance_num: System.get_env("PROCON_INSTANCE") || 1234 à la config de procon dans le projet hote (utilisé pour générer l'ULID de trnsaction dans les messages)
+
+## serialiaztion avro
+
+ajouter dans la config (à terme remplacera complètement relation_topics):
+
+```
+relation_configs: %{
+  account_email_validations: %{
+    # avro_value_schema: "name-of-avro-schema-subjet-for-value", # by default this conforms to https://docs.confluent.io/platform/current/schema-registry/serdes-develop/index.html#subject-name-strategy, ie: topic-name-value"
+    # avro_key_schema: "name-of-avro-schema-subjet-for-key", # by default: topic-name-key"
+    # avro_value_schema_version: 1, # value schema version registered in schema registry (not schema id!!!!!)
+    # avro_key_schema_version: 1, # key schema version registered in schema registry (not schema id!!!!!)
+    pkey: :id,
+    serialization: :avro, # :json if you want to output json
+    topic: "topic-name"
+  }
+}
+```
