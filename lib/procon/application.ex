@@ -13,7 +13,8 @@ defmodule Procon.Application do
       {DynamicSupervisor,
        name: Procon.MessagesProducers.ProducersSupervisor, strategy: :one_for_one},
       Procon.MessagesControllers.ConsumersStarter,
-      Procon.MessagesProducers.WalDispatcherSupervisor
+      Procon.MessagesProducers.WalDispatcherSupervisor,
+      Procon.Materialize.Starter
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

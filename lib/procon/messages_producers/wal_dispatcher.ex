@@ -149,14 +149,12 @@ defmodule Procon.MessagesProducers.WalDispatcher do
   defp relation_config_avro_value_schema_reference(relation_config),
     do:
       relation_config_avro_value_schema(relation_config) <>
-        ":" <>
-        Map.get(relation_config, :avro_value_schema_version, "1")
+        ":#{Map.get(relation_config, :avro_value_schema_version, "1")}"
 
   defp relation_config_avro_key_schema_reference(relation_config),
     do:
       relation_config_avro_key_schema(relation_config) <>
-        ":" <>
-        Map.get(relation_config, :avro_key_schema_version, "1")
+        ":#{Map.get(relation_config, :avro_key_schema_version, "1")}"
 
   defp preload_avro_schema_in_memory(state) do
     state
@@ -171,13 +169,27 @@ defmodule Procon.MessagesProducers.WalDispatcher do
           value_schema_reference = relation_config_avro_value_schema_reference(relation_config)
 
           case Avrora.Resolver.resolve(value_schema_reference) do
+            {:error, :unknown_version} ->
+              case Map.get(relation_config, :avro_value_schema_version, 1) do
+                1 ->
+                  register_schema(relation_config)
+
+                _ ->
+                  Logger.warn(
+                    "PROCON : unable to find avro schema version in schema registry ##{
+                      relation_config_avro_value_schema(relation_config)
+                    }"
+                  )
+              end
+
             {:error, :unknown_subject} ->
-              {:ok, schema} = Avrora.Storage.File.get(relation_config.local_schema)
-              {:ok, _schema_with_id} = Avrora.Utils.Registrar.register_schema(schema, as: relation_config_avro_value_schema(relation_config))
+              register_schema(relation_config)
 
             {:ok, %Avrora.Schema{} = value_avro_schema} ->
               Logger.debug([
-                "PROCON : avro schema #{value_schema_reference} for topic '#{relation_config.topic}' loaded :\n",
+                "PROCON : avro schema #{value_schema_reference} for topic '#{
+                  relation_config.topic
+                }' loaded :\n",
                 value_avro_schema
               ])
           end
@@ -188,6 +200,19 @@ defmodule Procon.MessagesProducers.WalDispatcher do
           # Logger.info(["PROCON : avro schema #{key_schema_reference} for topic '#{relation_config.topic}' loaded :\n", key_avro_schema])
       end
     end)
+  end
+
+  defp register_schema(relation_config) do
+    IO.inspect("registering schema from file #{relation_config.local_schema}")
+
+    {:ok, schema} =
+      Avrora.Storage.File.get(relation_config.local_schema)
+      |> IO.inspect(label: "registered schema")
+
+    {:ok, _schema_with_id} =
+      Avrora.Utils.Registrar.register_schema(schema,
+        as: relation_config_avro_value_schema(relation_config)
+      )
   end
 
   def start_brod_client(brokers, broker_client_name, brod_client_config) do

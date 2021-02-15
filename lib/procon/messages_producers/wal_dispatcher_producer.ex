@@ -48,7 +48,7 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
           state.topic |> Atom.to_string(),
           state.partition_index,
           "",
-          Enum.map(messages, &build_message(&1, state))
+          Enum.map(messages, &build_message(&1, state)) |> IO.inspect()
         )
         |> case do
           :ok ->
