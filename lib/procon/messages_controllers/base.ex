@@ -140,7 +140,7 @@ defmodule Procon.MessagesControllers.Base do
         event_data.record,
         Map.get(event_data, :new_attributes, event_data.event.after)
       )
-      |> options.datastore.insert_or_update()
+      |> options.datastore.insert_or_update(returning: true)
       |> case do
         {:ok, struct} -> {:ok, Map.put(event_data, :recorded_struct, struct)}
         {:error, ecto_changeset} -> {:error, ecto_changeset}

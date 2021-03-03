@@ -209,10 +209,16 @@ defmodule Procon.MessagesProducers.WalDispatcher do
       Avrora.Storage.File.get(relation_config.local_schema)
       |> IO.inspect(label: "registered schema")
 
-    {:ok, _schema_with_id} =
-      Avrora.Utils.Registrar.register_schema(schema,
-        as: relation_config_avro_value_schema(relation_config)
-      )
+    Avrora.Utils.Registrar.register_schema(schema,
+      as: relation_config_avro_value_schema(relation_config)
+    )
+    |> case do
+      {:error, :conflict} ->
+        :ok
+
+      {:ok, _schema_with_id} ->
+        :ok
+    end
   end
 
   def start_brod_client(brokers, broker_client_name, brod_client_config) do
