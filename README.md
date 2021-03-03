@@ -115,3 +115,113 @@ relation_configs: %{
   }
 }
 ```
+
+et dans le cas d'un consumer qui a besoin de décoder, ajouter dans le consumer l'attribut `serialization: :avro,` (par défaut il fera du json)
+
+## schémas avro
+
+### syntaxe d'un schéma avro
+
+voici un exemple d'un schema avro :
+
+```
+{
+  "name": "AccountEmailCreationRequest", # nom du schema
+  "namespace": "io.calions", # namespace du schema
+  "type": "record", # c'est un record (pourrait etre aussi un type simple genre string, mais ce n'est pas notre cas ici)
+  "fields": [ # liste des champs du record, c'est un tableau
+    {
+      "default": null, # peut etre null par défaut, si pas présent dans le payload quand on encode
+      "name": "before", # nom du champ, ici c'est un union car null | record
+      "type": [ # type du champs
+        "null", # peut etre null...
+        { # ...mais peut etre aussi un record
+          "name": "row", # nom du record, un record a toujours un nom, et ici le nom sert entre autre pour définir aussi le type du field "after" ci-dessous...
+          "type": "record", # c'est un record aussi
+          "fields": [
+            {
+              "name": "id",
+              "type": { "logicalType": "UUID", "type": "string" } # les types peuvent avoir des attributs, dans ce cas plutôt que de mettre le type simple, on met une map avec les attributs
+            },
+            {
+              "name": "email",
+              "type": "string"
+            },
+            {
+              "name": "metadata",
+              "type": {
+                "name": "proconMetadata",
+                "type": "record",
+                "fields": [
+                  {
+                    "name": "session_token",
+                    "type": { "logicalType": "UUID", "type": "string" }
+                  },
+                  {
+                    "name": "http_request_id",
+                    "type": "string"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    { # 2eme field du schema
+      "default": null,
+      "name": "after",
+      "type": ["null", "row"] # ici le type est encore un union, avec une référence au type "row" qu'on a défini dans le field "before" ci-dessus
+    },
+    {
+      "name": "op",
+      "type": "string"
+    },
+    {
+      "name": "ts_ms",
+      "optional": true,
+      "type": "long"
+    }
+  ]
+}
+```
+
+# confluent schema registry
+
+To start the schema registry, different solutions exist:
+
+- use the landoop image:
+  create a docker file:
+
+```
+version: "1"
+
+services:
+  # this is our kafka cluster.
+  kafka-cluster:
+    image: landoop/fast-data-dev
+    environment:
+      ADV_HOST: 127.0.0.1 # Change to 192.168.99.100 if using Docker Toolbox
+      RUNTESTS: 0 # Disable Running tests so the cluster starts faster
+    ports:
+      - 2181:2181 # Zookeeper
+      - 3030:3030 # Landoop UI
+      - 8081-8083:8081-8083 # REST Proxy, Schema Registry, Kafka Connect ports
+      - 9581-9585:9581-9585 # JMX Ports
+      - 9092:9092 # Kafka Broker
+```
+
+and start it:
+
+```
+docker-compose up kafka-cluster
+```
+
+you can now go to `http://127.0.0.1:3030/` and manage the cluster.
+
+- you can start the schema registry using confluent binary in your confluent platform folder (not kafka archive, but confluent platform):
+  `./bin/schema-registry-start ./etc/schema-registry/schema-registry.properties`
+
+You need to download confluent platform archive (it's free). If you download kafka archive, it won't contain schema registry binary.
+
+You also need confluent archive to have avro producer/consuler binaries.
