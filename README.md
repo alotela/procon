@@ -194,7 +194,7 @@ To start the schema registry, different solutions exist:
   create a docker file:
 
 ```
-version: "1"
+version: "2"
 
 services:
   # this is our kafka cluster.
