@@ -546,5 +546,20 @@ defmodule Procon.MessagesControllers.Base do
     def extract_versioned_body(event, options) do
       get_in(event, ["body", Map.get(options, :event_version) |> to_string()])
     end
+
+    def read_new_attributes(event_data), do: event_data.new_attributes
+
+    def write_new_attributes(event_data, new_attributes_map) do
+      Map.put(event_data, :new_attributes, new_attributes_map)
+    end
+
+    def read_payload(event_data), do: event_data.event.after
+
+    def read_payload_value(event_data, value_path),
+      do: get_in(event_data, [:event, :after | value_path])
+
+    def write_record(event_data, record) do
+      Map.put(event_data, :record, record)
+    end
   end
 end
