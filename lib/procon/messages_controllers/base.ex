@@ -320,37 +320,48 @@ defmodule Procon.MessagesControllers.Base do
             nil ->
               reduced_attributes
 
-            _ ->
-              value =
-                case key_in_event do
-                  :event_timestamp ->
-                    event_data.event.timestamp
+            new_key ->
+              case key_in_event do
+                :event_timestamp ->
+                  event_data.event.timestamp
 
-                  :event_timestamp_datetime ->
-                    event_data.event.timestamp |> ulid_to_datetime()
+                :event_timestamp_datetime ->
+                  event_data.event.timestamp |> ulid_to_datetime()
 
-                  :create_event_timestamp_datetime ->
-                    case event_data.event.op do
-                      "c" ->
-                        event_data.event.timestamp |> ulid_to_datetime()
+                :create_event_timestamp_datetime ->
+                  case event_data.event.op do
+                    "c" ->
+                      event_data.event.timestamp |> ulid_to_datetime()
 
-                      _ ->
-                        :procon_bypass
-                    end
+                    _ ->
+                      :procon_bypass
+                  end
 
-                  [_ | _] ->
-                    get_in(event_data.event.after, key_in_event)
+                :topic ->
+                  options.topic
 
-                  _ ->
-                    Map.get(event_data.event.after, key_in_event)
-                end
+                [_ | _] ->
+                  get_in(event_data.event.after, key_in_event)
 
-              case value do
+                _ ->
+                  Map.get(event_data.event.after, key_in_event)
+              end
+              |> case do
                 :procon_bypass ->
                   reduced_attributes
 
-                _ ->
-                  Map.put(reduced_attributes, key_in_new_attributes, value)
+                value ->
+                  Map.put(
+                    reduced_attributes,
+                    key_in_new_attributes,
+                    case new_key do
+                      f when is_function(f) ->
+                        f.(value)
+
+                      _ ->
+                        value
+                    end
+                  )
               end
           end
         end)
