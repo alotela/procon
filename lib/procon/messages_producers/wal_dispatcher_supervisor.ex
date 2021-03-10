@@ -40,6 +40,9 @@ defmodule Procon.MessagesProducers.WalDispatcherSupervisor do
 
       %{datastore: _datastore, relation_topics: _relation_topics} = producer_config ->
         Procon.MessagesProducers.WalDispatcher.start_wal_dispatcher_for_processor(producer_config)
+
+      nil ->
+        nil
     end)
   end
 end

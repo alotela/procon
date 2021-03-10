@@ -280,19 +280,7 @@ defmodule Procon.MessagesControllers.Base do
     end
 
     def add_new_attributes(
-          %{event: %{new: _, old: _}} = event_data,
-          %{
-            keys_mapping: %{updated: updated_mapping}
-          } = options
-        ) do
-      add_new_attributes(event_data, %{
-        drop_event_attributes: options.drop_event_attributes,
-        keys_mapping: updated_mapping
-      })
-    end
-
-    def add_new_attributes(
-          %{event: %{new: _}} = event_data,
+          %{event: %{after: _, before: nil}} = event_data,
           %{
             keys_mapping: %{created: created_mapping}
           } = options
@@ -300,6 +288,18 @@ defmodule Procon.MessagesControllers.Base do
       add_new_attributes(event_data, %{
         drop_event_attributes: options.drop_event_attributes,
         keys_mapping: created_mapping
+      })
+    end
+
+    def add_new_attributes(
+          %{event: %{after: _, before: _}} = event_data,
+          %{
+            keys_mapping: %{updated: updated_mapping}
+          } = options
+        ) do
+      add_new_attributes(event_data, %{
+        drop_event_attributes: options.drop_event_attributes,
+        keys_mapping: updated_mapping
       })
     end
 

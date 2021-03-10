@@ -13,7 +13,7 @@ defmodule Procon.Materialize.Starter do
 
   ## GenServer callbacks
   def init(initial_state) do
-    Process.sleep(5000)
+    Process.sleep(20000)
     GenServer.cast(__MODULE__, {:start})
     {:ok, initial_state}
   end
@@ -25,7 +25,11 @@ defmodule Procon.Materialize.Starter do
   end
 
   def run_materialize_configs() do
-    Logger.info("PROCON: starting to configure materialize for activated processors")
+    Logger.info(
+      "🎃 PROCON > MATERIALIZE: starting to configure materialize for activated processors",
+      ansi_color: :blue
+    )
+
     Procon.ProcessorConfigAccessor.activated_processors_config()
     |> Procon.Parallel.pmap(fn {processor_name, processor_config} ->
       setup_materialize_for_processor(
@@ -35,25 +39,57 @@ defmodule Procon.Materialize.Starter do
     end)
   end
 
-  def setup_materialize_for_processor(processor_name,  nil) do
-    Logger.info("PROCON: no materialize config for processor #{processor_name}.")
+  def setup_materialize_for_processor(processor_name, nil) do
+    Logger.info("🎃😑 PROCON > MATERIALIZE: no materialize config for processor #{processor_name}.",
+      ansi_color: :blue
+    )
   end
 
-  def setup_materialize_for_processor(processor_name,  materialize_processor_config) do
-    Logger.info("Configure materialize for processor #{processor_name}")
+  def setup_materialize_for_processor(processor_name, materialize_processor_config) do
+    Logger.info("🎃❎ PROCON > MATERIALIZE: Configure materialize for processor #{processor_name}",
+      ansi_color: :blue
+    )
+
     case :epgsql.connect(
-      Map.take(materialize_processor_config, [:database, :host, :port, :username])) do
+           Map.take(materialize_processor_config, [:database, :host, :port, :username])
+         ) do
       {:ok, epgsql_pid} ->
         Enum.map(
-        materialize_processor_config.queries,
-        fn query -> :epgsql.squery(epgsql_pid, query) |> IO.inspect() end)
+          materialize_processor_config.queries,
+          fn query ->
+            :epgsql.squery(epgsql_pid, query)
+            |> IO.inspect(label: query)
+            |> case do
+              {:ok, [], []} ->
+                Logger.info(
+                  "🎃❎🔧 PROCON > MATERIALIZE > QUERY: #{query} executed for processor #{
+                    processor_name
+                  }"
+                )
+
+              {:error, {:error, :error, _reference, :internal_error, error_description, []}} ->
+                Logger.info([
+                  "🎃❌🔧 PROCON > MATERIALIZE > QUERY: unable to execute #{query} for processor #{
+                    processor_name
+                  }",
+                  inspect(error_description)
+                ])
+            end
+          end
+        )
 
         :ok = :epgsql.close(epgsql_pid)
 
         :ok
 
       {:error, reason} ->
-        Logger.warn("Unable to configure materialize for processor #{processor_name}")
+        Logger.warn(
+          "🎃❌ PROCON > MATERIALIZE > epgsql.connect error: Unable to configure materialize for processor #{
+            processor_name
+          }",
+          ansi_color: :blue
+        )
+
         {:error, reason}
     end
   end
