@@ -111,6 +111,8 @@ defmodule Procon.MessagesProducers.WalDispatcher do
 
     Logger.notice(["PROCON : Starting WalDispatcher for datastore #{state.datastore}", state])
 
+    preload_avro_schema_in_memory(state)
+
     {:ok, ets_table_identifier} = create_ets_table(state.register_name)
 
     ets_table_state_ref = :ets.new(:ets_state, write_concurrency: true, read_concurrency: true)
@@ -143,6 +145,81 @@ defmodule Procon.MessagesProducers.WalDispatcher do
 
   defp relation_config_avro_key_schema(relation_config),
     do: Map.get(relation_config, :avro_key_schema, "#{relation_config.topic}-key")
+
+  defp relation_config_avro_value_schema_reference(relation_config),
+    do:
+      relation_config_avro_value_schema(relation_config) <>
+        ":#{Map.get(relation_config, :avro_value_schema_version, "1")}"
+
+  defp relation_config_avro_key_schema_reference(relation_config),
+    do:
+      relation_config_avro_key_schema(relation_config) <>
+        ":#{Map.get(relation_config, :avro_key_schema_version, "1")}"
+
+  defp preload_avro_schema_in_memory(state) do
+    state
+    |> Map.get(:relation_configs, %{})
+    |> Map.values()
+    |> Enum.each(fn relation_config ->
+      case relation_config.serialization do
+        :json ->
+          Logger.debug("PROCON : json serialization for topic '#{relation_config.topic}'")
+
+        :avro ->
+          value_schema_reference = relation_config_avro_value_schema_reference(relation_config)
+
+          case Avrora.Resolver.resolve(value_schema_reference) do
+            {:error, :unknown_version} ->
+              case Map.get(relation_config, :avro_value_schema_version, 1) do
+                1 ->
+                  register_schema(relation_config)
+
+                _ ->
+                  Logger.warn(
+                    "PROCON : unable to find avro schema version in schema registry ##{
+                      relation_config_avro_value_schema(relation_config)
+                    }"
+                  )
+              end
+
+            {:error, :unknown_subject} ->
+              register_schema(relation_config)
+
+            {:ok, %Avrora.Schema{} = value_avro_schema} ->
+              Logger.debug([
+                "PROCON : avro schema #{value_schema_reference} for topic '#{
+                  relation_config.topic
+                }' loaded :\n",
+                value_avro_schema
+              ])
+          end
+
+          _key_schema_reference = relation_config_avro_key_schema_reference(relation_config)
+
+          # {:ok, %Avrora.Schema{} = key_avro_schema} = Avrora.Resolver.resolve(key_schema_reference)
+          # Logger.info(["PROCON : avro schema #{key_schema_reference} for topic '#{relation_config.topic}' loaded :\n", key_avro_schema])
+      end
+    end)
+  end
+
+  defp register_schema(relation_config) do
+    IO.inspect("registering schema from file #{relation_config.local_schema}")
+
+    {:ok, schema} =
+      Avrora.Storage.File.get(relation_config.local_schema)
+      |> IO.inspect(label: "registered schema")
+
+    Avrora.Utils.Registrar.register_schema(schema,
+      as: relation_config_avro_value_schema(relation_config)
+    )
+    |> case do
+      {:error, :conflict} ->
+        :ok
+
+      {:ok, _schema_with_id} ->
+        :ok
+    end
+  end
 
   def start_brod_client(brokers, broker_client_name, brod_client_config) do
     :ok = :brod.start_client(brokers, broker_client_name, brod_client_config)
