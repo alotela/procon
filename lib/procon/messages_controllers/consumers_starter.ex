@@ -34,8 +34,6 @@ defmodule Procon.MessagesControllers.ConsumersStarter do
   end
 
   def handle_cast({:start_activated_processors}, state) do
-    Process.sleep(5000)
-
     activated_consumers_configs()
     |> Enum.each(&start_processor_consumers/1)
 

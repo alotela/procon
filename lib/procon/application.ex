@@ -27,6 +27,8 @@ defmodule Procon.Application do
     :procon_enqueuers_thresholds =
       :ets.new(:procon_enqueuers_thresholds, [:named_table, :public, :set])
 
+    Procon.Avro.ConfluentSchemaRegistry.register_all_avro_schemas()
+
     Procon.MessagesControllers.ConsumersStarter.start_activated_processors()
     Procon.MessagesProducers.WalDispatcherSupervisor.start_activated_processors_producers()
 

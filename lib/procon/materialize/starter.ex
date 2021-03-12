@@ -13,7 +13,6 @@ defmodule Procon.Materialize.Starter do
 
   ## GenServer callbacks
   def init(initial_state) do
-    Process.sleep(20000)
     GenServer.cast(__MODULE__, {:start})
     {:ok, initial_state}
   end
@@ -58,7 +57,6 @@ defmodule Procon.Materialize.Starter do
           materialize_processor_config.queries,
           fn query ->
             :epgsql.squery(epgsql_pid, query)
-            |> IO.inspect(label: query)
             |> case do
               {:ok, [], []} ->
                 Logger.info(
