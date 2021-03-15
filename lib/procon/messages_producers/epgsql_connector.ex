@@ -121,7 +121,17 @@ defmodule Procon.MessagesProducers.EpgsqlConnector do
 
         name when is_atom(name) ->
           # Simple query for replication mode so no prepared statements are supported
-          escaped_name = String.downcase(String.replace(Atom.to_string(name), ".", "_"))
+          [_elixir, scope, _processors, processor_type, processor_name | _rest] =
+            name
+            |> Atom.to_string()
+            |> String.split(".")
+
+          escaped_name =
+            [scope, processor_type |> String.first(), processor_name]
+            |> Enum.join("_")
+            |> String.downcase()
+
+          # escaped_name = String.downcase(String.replace(Atom.to_string(name), ".", "_"))
 
           {:ok, _, [{existing_slot}]} =
             :epgsql.squery(
