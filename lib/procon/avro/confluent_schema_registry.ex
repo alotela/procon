@@ -30,18 +30,21 @@ defmodule Procon.Avro.ConfluentSchemaRegistry do
 
     {:ok, schema} = Avrora.Storage.File.get(schema_ref)
 
+    IO.inspect(schema, label: "schema")
+
     Logger.info(
       "🎃🍾🍾 Procon.Avro.ConfluentSchemaRegistry > register_schema : schema #{schema_ref} loaded from file."
     )
 
-    [_, schema_subject] = String.split(schema_ref, ".")
+    IO.inspect(schema_ref, label: "schema_ref")
 
-    Avrora.Utils.Registrar.register_schema(schema, as: schema_subject)
+    Avrora.Utils.Registrar.register_schema(schema, as: schema_ref)
+    |> IO.inspect(label: "avro registratun")
     |> case do
       {:error, :conflict} ->
         Logger.info(
           "🎃🍾🍾🍾 Procon.Avro.ConfluentSchemaRegistry > register_schema : schema #{schema_ref} already registered in confluent schema registry as #{
-            schema_subject
+            schema_ref
           }."
         )
 
@@ -50,7 +53,7 @@ defmodule Procon.Avro.ConfluentSchemaRegistry do
       {:ok, _schema_with_id} ->
         Logger.info(
           "🎃🍾🍾🍾 Procon.Avro.ConfluentSchemaRegistry > register_schema : schema #{schema_ref} registered in confluent schema registry as #{
-            schema_subject
+            schema_ref
           }."
         )
 

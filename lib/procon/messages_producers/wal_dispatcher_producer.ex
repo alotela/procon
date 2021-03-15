@@ -138,7 +138,10 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
           [
             AvroEx.encode(AvroEx.parse_schema!("{\"type\":\"string\"}"), key) |> elem(1),
             payload
-            |> Avrora.encode(schema_name: state.avro_value_schema_name, format: :registry)
+            |> Avrora.encode(
+              schema_name: state.avro_value_schema_name,
+              format: :registry
+            )
             |> elem(1)
           ]
       end
