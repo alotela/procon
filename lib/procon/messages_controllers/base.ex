@@ -572,5 +572,13 @@ defmodule Procon.MessagesControllers.Base do
     def write_record(event_data, record) do
       Map.put(event_data, :record, record)
     end
+
+    def read_recorded_struct(event_data), do: get_in(event_data, [:recorded_struct])
+
+    def read_metadata(event_data, key),
+      do: read_recorded_struct(event_data) |> Map.get(:metadata, %{}) |> Map.get(key)
+
+    def read_recorded_struct_value(event_data, key),
+      do: read_recorded_struct(event_data) |> Map.get(key)
   end
 end
