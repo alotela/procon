@@ -45,10 +45,10 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
 
         :brod.produce_sync(
           state.broker_client_name,
-          state.topic |> Atom.to_string(),
+          state.topic,
           state.partition_index,
           "",
-          Enum.map(messages, &build_message(&1, state)) |> IO.inspect()
+          Enum.map(messages, &build_message(&1, state))
         )
         |> case do
           :ok ->

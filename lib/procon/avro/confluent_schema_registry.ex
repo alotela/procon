@@ -30,16 +30,11 @@ defmodule Procon.Avro.ConfluentSchemaRegistry do
 
     {:ok, schema} = Avrora.Storage.File.get(schema_ref)
 
-    IO.inspect(schema, label: "schema")
-
     Logger.info(
       "🎃🍾🍾 Procon.Avro.ConfluentSchemaRegistry > register_schema : schema #{schema_ref} loaded from file."
     )
 
-    IO.inspect(schema_ref, label: "schema_ref")
-
     Avrora.Utils.Registrar.register_schema(schema, as: schema_ref)
-    |> IO.inspect(label: "avro registratun")
     |> case do
       {:error, :conflict} ->
         Logger.info(

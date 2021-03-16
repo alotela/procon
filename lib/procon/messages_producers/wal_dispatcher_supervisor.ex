@@ -22,7 +22,6 @@ defmodule Procon.MessagesProducers.WalDispatcherSupervisor do
 
   def start_activated_processors_producers() do
     Procon.ProcessorConfigAccessor.activated_processors_config()
-    |> IO.inspect(label: "PROCON : starting activated processors for each config")
     |> Enum.map(fn {_processor_name, processor_config} ->
       Keyword.get(processor_config, :producers)
     end)
@@ -35,10 +34,10 @@ defmodule Procon.MessagesProducers.WalDispatcherSupervisor do
     #   }
     # ]
     |> Enum.map(fn
-      %{datastore: _datastore, relation_topics: relation_topics} when relation_topics == %{} ->
+      %{datastore: _datastore, relation_configs: relation_configs} when relation_configs == %{} ->
         nil
 
-      %{datastore: _datastore, relation_topics: _relation_topics} = producer_config ->
+      %{datastore: _datastore, relation_configs: _relation_configs} = producer_config ->
         Procon.MessagesProducers.WalDispatcher.start_wal_dispatcher_for_processor(producer_config)
 
       nil ->

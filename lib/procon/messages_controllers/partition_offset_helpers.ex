@@ -8,34 +8,15 @@ defmodule Procon.PartitionOffsetHelpers do
         offset,
         _processing_id \\ "toto"
       ) do
-    # Procon.Helpers.inspect(
-    #  :ets.whereis(processor_name),
-    #  "#{processing_id}@@update_partition_offset_ets WHEREIS #{processor_name} #{topic} #{
-    #    partition
-    #  } #{offset}"
-    # )
-
     :ets.insert(
       processor_name,
       {build_ets_key(topic, partition), offset}
     )
-
-    # |> IO.inspect(
-    #  label:
-    #    "#{processing_id}@@ets.insert #{processor_name} #{build_ets_key(topic, partition)} #{
-    #      offset
-    #    }"
-    # )
   end
 
   def get_last_processed_offset(repo, topic, partition, processor_name, _processing_id) do
     ets_key = build_ets_key(topic, partition)
 
-    # IO.inspect(:ets.whereis(processor_name),
-    #  label: "#{processing_id}@@get_last_processed_offset > whereis(#{processor_name})"
-    # )
-
-    # |> IO.inspect(label: "#{processing_id}@@ets.lookup #{processor_name}")
     case :ets.lookup(processor_name, ets_key) do
       [] ->
         Ecto.Adapters.SQL.query(
@@ -45,7 +26,6 @@ defmodule Procon.PartitionOffsetHelpers do
            AND partition = $2",
           [topic, partition]
         )
-        # |> IO.inspect(label: "#{processing_id}@@SELECT message_id")
         |> case do
           {:ok, %Postgrex.Result{num_rows: 1, rows: [[offset]]}} ->
             offset
@@ -57,10 +37,6 @@ defmodule Procon.PartitionOffsetHelpers do
                 "INSERT INTO procon_consumer_indexes (message_id, topic, partition, inserted_at, updated_at) VALUES (-1, $1, $2, NOW(), NOW())",
                 [topic, partition]
               )
-
-            # |> Procon.Helpers.inspect(
-            #  "#{processing_id}@@@@@@@INSERT FIRST!!! #{topic} #{partition}"
-            # )
 
             -1
 
@@ -91,13 +67,6 @@ defmodule Procon.PartitionOffsetHelpers do
   end
 
   def update_partition_offset(topic, partition, offset, repo, processor_name) do
-    # Procon.Helpers.inspect(
-    #  "UPDATE procon_consumer_indexes SET message_id = #{offset} WHERE topic = #{topic} AND partition = #{
-    #    partition
-    #  }",
-    #  "@@update_partition_offset"
-    # )
-
     Ecto.Adapters.SQL.query(
       repo,
       "UPDATE procon_consumer_indexes
@@ -106,7 +75,6 @@ defmodule Procon.PartitionOffsetHelpers do
        AND partition = $3",
       [offset, topic, partition]
     )
-    # |> IO.inspect(label: "UPDATE procon_consumer_indexes")
     |> case do
       {:ok, %Postgrex.Result{num_rows: 1}} ->
         :ok

@@ -4,7 +4,7 @@ defmodule Procon.MessagesProducers.EpgsqlConnector do
               host: 'localhost',
               password: "",
               replication: "database",
-              slot: "",
+              slot: nil,
               username: ""
 
     @type t() :: %__MODULE__{
@@ -63,7 +63,6 @@ defmodule Procon.MessagesProducers.EpgsqlConnector do
       epgsql_pid,
       "CREATE PUBLICATION procon_#{database} FOR TABLE #{tables |> List.first()};"
     )
-    |> IO.inspect(label: "create_publication #{database} / #{tables |> List.first()}")
 
     tables
     |> Enum.map(fn table ->
@@ -72,7 +71,6 @@ defmodule Procon.MessagesProducers.EpgsqlConnector do
         epgsql_pid,
         "ALTER PUBLICATION procon_#{database} ADD TABLE #{table};"
       )
-      |> IO.inspect(label: "alter_publication #{database} / #{table}")
     end)
   end
 
@@ -112,7 +110,7 @@ defmodule Procon.MessagesProducers.EpgsqlConnector do
 
   defp create_replication_slot(epgsql_pid, slot) do
     {slot_name, start_replication_command} =
-      case slot |> IO.inspect(label: :slot) do
+      case slot do
         :temporary ->
           slot_name = self_as_slot_name()
 
@@ -138,7 +136,6 @@ defmodule Procon.MessagesProducers.EpgsqlConnector do
               epgsql_pid,
               "SELECT COUNT(*) >= 1 FROM pg_replication_slots WHERE slot_name = '#{escaped_name}'"
             )
-            |> IO.inspect(label: :slot_select_result)
 
           case existing_slot do
             "t" ->
@@ -147,13 +144,11 @@ defmodule Procon.MessagesProducers.EpgsqlConnector do
 
             "f" ->
               {escaped_name,
-               "CREATE_REPLICATION_SLOT #{escaped_name} LOGICAL pgoutput NOEXPORT_SNAPSHOT"
-               |> IO.inspect()}
+               "CREATE_REPLICATION_SLOT #{escaped_name} LOGICAL pgoutput NOEXPORT_SNAPSHOT"}
           end
       end
 
-    case :epgsql.squery(epgsql_pid, start_replication_command)
-         |> IO.inspect(label: :replication_slot_query) do
+    case :epgsql.squery(epgsql_pid, start_replication_command) do
       {:ok, _, _} ->
         {:ok, slot_name}
 

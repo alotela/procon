@@ -52,7 +52,8 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
   def process_wal_binary(<<"O", _lsn::binary-8, _name::binary>>, _), do: {:ok, :o, nil}
 
   def process_wal_binary(<<"R", relation_id::integer-32, rest::binary>>, %{
-        ets_table_state_ref: ets_table_state_ref
+        ets_table_state_ref: ets_table_state_ref,
+        relation_configs: relation_configs
       }) do
     [
       _namespace
@@ -64,8 +65,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
 
     name_atom = String.to_atom(name)
 
-    %{^name_atom => {partition_key_column_atom, topic_atom}} =
-      :ets.lookup_element(ets_table_state_ref, :relation_topics, 2)
+    %{^name_atom => %{pkey: partition_key_column_atom, topic: topic_atom}} = relation_configs
 
     column_names_and_types = decode_columns(columns)
 
@@ -94,11 +94,8 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
         }
       ) do
     {<<>>, column_values} = decode_tuple_data(tuple_data, number_of_columns)
-    IO.inspect({column_names_and_types, column_values}, label: "column values")
     partition_key_column_index = :ets.lookup_element(ets_table_state_ref, relation_id, 4)
-    IO.inspect(partition_key_column_index, label: "partition_key_column_index")
     topic_atom = :ets.lookup_element(ets_table_state_ref, relation_id, 5)
-    IO.inspect(topic_atom, label: "topic_atom #{relation_id}")
 
     target_partition =
       column_values
@@ -123,8 +120,6 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
          end_lsn: end_lsn
        }, false}
     )
-
-    IO.inspect(:ets.tab2list(ets_messages_queue_ref))
 
     {:ok, :insert, %{relation_id: relation_id, xid: xid, column_values: column_values}}
   end
