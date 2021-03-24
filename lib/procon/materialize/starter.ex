@@ -4,6 +4,8 @@ defmodule Procon.Materialize.Starter do
   require Logger
 
   def start_link(options) do
+    Procon.Avro.ConfluentSchemaRegistry.register_all_avro_schemas()
+
     GenServer.start_link(
       __MODULE__,
       Keyword.get(options, :initial_state, []),

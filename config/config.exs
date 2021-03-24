@@ -28,4 +28,15 @@ use Mix.Config
 # here (which is why it is important to import them last).
 #
 #     import_config "#{Mix.env}.exs"
-config :procon, messages_repository: "coucou"
+config :avrora,
+  registry_url: "http://localhost:8081",
+  # registry_auth: {:basic, ["username", "password"]}, # optional
+  schemas_path: Path.expand("./priv/avro_schemas"),
+  # optional: if you want manually register schemas
+  registry_schemas_autoreg: false,
+  # optional: if you want to keep decoded `:null` values as is
+  convert_null_values: false,
+  # optional: if you want to restore the old behavior for decoding map-type
+  convert_map_to_proplist: false,
+  # optional: if you want periodic disk reads
+  names_cache_ttl: :timer.minutes(5)

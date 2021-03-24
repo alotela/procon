@@ -112,11 +112,6 @@ defmodule Procon.MessagesProducers.WalDispatcher do
 
     ets_table_state_ref = :ets.new(:ets_state, write_concurrency: true, read_concurrency: true)
 
-    # :ets.insert(
-    #  ets_table_state_ref,
-    #  {:relation_configs, state.relation_configs}
-    # )
-
     start_brod_client(state.brokers, state.broker_client_name, state.brod_client_config)
 
     Process.flag(:trap_exit, true)
@@ -214,7 +209,6 @@ defmodule Procon.MessagesProducers.WalDispatcher do
       slot: state.datastore,
       username: config |> Keyword.get(:username)
     }
-    # |> EpgsqlConnector.connect(state.relation_topics |> Map.keys())
     |> EpgsqlConnector.connect(state.relation_configs |> Map.keys())
     |> case do
       {:ok, %{epgsql_pid: epgsql_pid, replication_slot_name: slot_name}} ->
@@ -272,6 +266,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
         relation_configs: state.relation_configs
       }
     )
+    |> IO.inspect(label: "epgsql log data")
     |> case do
       {:ok, :relation,
        %{relation_id: relation_id, name: _name, column_names_and_types: column_names_and_types}} ->
