@@ -330,8 +330,8 @@ defmodule Procon.MessagesControllers.Base do
                   event_data.event.timestamp |> ulid_to_datetime()
 
                 :create_event_timestamp_datetime ->
-                  case event_data.event.op do
-                    "c" ->
+                  case Map.get(event_data.event, :before, nil) do
+                    nil ->
                       event_data.event.timestamp |> ulid_to_datetime()
 
                     _ ->
@@ -479,7 +479,7 @@ defmodule Procon.MessagesControllers.Base do
       master_keys = normalize_master_key(options.master_key)
 
       get_new_or_old = fn
-        :get, %{op: "c", after: new}, next ->
+        :get, %{before: nil, after: new}, next ->
           next.(new)
 
         :get, %{before: before}, next ->

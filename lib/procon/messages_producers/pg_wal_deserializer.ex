@@ -112,8 +112,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
            after:
              Enum.zip(Map.get(column_names_and_types, relation_id, []), column_values)
              |> Enum.reduce(%{}, &map_value_with_type/2),
-           source: %{},
-           op: :c
+           source: %{}
          },
          timestamp: timestamp,
          xid: xid,
@@ -155,8 +154,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
          payload: %{
            after:
              Enum.zip(Map.get(column_names_and_types, relation_id, []), new_column_values)
-             |> Enum.reduce(%{}, &map_value_with_type/2),
-           op: :u
+             |> Enum.reduce(%{}, &map_value_with_type/2)
          },
          timestamp: timestamp,
          xid: xid
@@ -208,8 +206,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
              |> Enum.reduce(%{}, &map_value_with_type/2),
            before:
              Enum.zip(Map.get(column_names_and_types, relation_id, []), old_column_values)
-             |> Enum.reduce(%{}, &map_value_with_type/2),
-           op: :u
+             |> Enum.reduce(%{}, &map_value_with_type/2)
          },
          timestamp: timestamp,
          xid: xid
@@ -251,8 +248,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
            # add by hand metadata for http_request_id etc etc... since no record in new when deleting
            before:
              Enum.zip(Map.get(column_names_and_types, relation_id, []), old_column_values)
-             |> Enum.reduce(%{}, &map_value_with_type/2),
-           op: :d
+             |> Enum.reduce(%{}, &map_value_with_type/2)
          },
          timestamp: timestamp,
          xid: xid

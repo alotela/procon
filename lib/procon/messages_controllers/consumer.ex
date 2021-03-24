@@ -165,10 +165,15 @@ defmodule Procon.MessagesControllers.Consumer do
       ) do
     apply(
       Map.get(entity_config, :messages_controller, Procon.MessagesControllers.Default),
-      case procon_message.op do
-        "c" -> :create
-        "d" -> :delete
-        "u" -> :update
+      case Map.get(procon_message, :before, nil) do
+        nil -> :create
+        _ ->
+          case Map.get(procon_message, :after, nil) do
+            nil ->
+              :delete
+            _ ->
+              :update
+          end
       end,
       [
         procon_message,

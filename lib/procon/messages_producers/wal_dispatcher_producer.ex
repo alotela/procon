@@ -113,19 +113,9 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
         # |> elem(1)
       )
       |> Map.put(
-        :source,
+        :transaction,
         %{
-          connector: "procon",
-          db: "procon-wal",
-          lsn: 22_134_567,
-          name: "procon",
-          schema: "public",
-          snapshot: true,
-          table: "calions-payment",
-          txId: 0,
-          ts_ms: 0,
-          version: "1.0.0",
-          xmin: nil
+          id: timestamp_in_ms
         }
       )
 
