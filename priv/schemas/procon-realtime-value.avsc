@@ -1,0 +1,108 @@
+{
+  "name": "ProconRealtime",
+  "namespace": "procon",
+  "type": "record",
+  "fields": [
+    {
+      "name": "after",
+      "type": {
+        "name": "row",
+        "type": "record",
+        "fields": [
+          {
+            "default": null,
+            "name": "channel",
+            "type": ["null", { "type": "string" }]
+          },
+          {
+            "default": null,
+            "name": "session_id",
+            "type": ["null", { "type": "string" }]
+          },
+          {
+            "name": "metadata",
+            "type": {
+              "type": "map",
+              "values": [
+                "null",
+                "boolean",
+                "bytes",
+                "double",
+                "float",
+                "int",
+                "long",
+                "string",
+                {
+                  "name": "recordData",
+                  "type": "record",
+                  "fields": [
+                    {
+                      "name": "content",
+                      "type": [
+                        "null",
+                        "boolean",
+                        "bytes",
+                        "double",
+                        "float",
+                        "int",
+                        "long",
+                        "string",
+                        {
+                          "type": "array",
+                          "items": [
+                            "null",
+                            "boolean",
+                            "bytes",
+                            "double",
+                            "float",
+                            "int",
+                            "long",
+                            "string",
+                            "recordData"
+                          ]
+                        },
+                        {
+                          "type": "map",
+                          "values": [
+                            "null",
+                            "boolean",
+                            "bytes",
+                            "double",
+                            "float",
+                            "int",
+                            "long",
+                            "string",
+                            "recordData",
+                            {
+                              "type": "array",
+                              "items": [
+                                "null",
+                                "boolean",
+                                "bytes",
+                                "double",
+                                "float",
+                                "int",
+                                "long",
+                                "string",
+                                "recordData"
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "default": null,
+      "name": "before",
+      "type": "null"
+    }
+  ]
+}

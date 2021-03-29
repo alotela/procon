@@ -9,9 +9,10 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     @enforce_keys [:datastore, :publications, :register_name]
     defstruct [
       :datastore,
-      :register_name,
       :ets_messages_queue_ref,
       :publications,
+      :realtime,
+      :register_name,
       :replication_slot_name,
       brokers: [localhost: 9092],
       brod_client_config: [reconnect_cool_down_seconds: 10],
@@ -36,6 +37,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
             epgsql_pid: pid() | nil,
             ets_messages_queue_ref: reference(),
             publications: list(),
+            realtime: boolean(),
             register_name: atom(),
             relation_configs: map(),
             replication_slot_name: String.t(),
@@ -56,6 +58,12 @@ defmodule Procon.MessagesProducers.WalDispatcher do
   @spec register_name(atom()) :: atom()
   def register_name(datastore), do: :"wal_dispatcher_#{datastore}"
 
+  def broker_client_name(processor_producers_config), do: Map.get(
+    processor_producers_config,
+    :broker_client_name,
+    :"#{processor_producers_config.datastore |> register_name()}_brod_client"
+  )
+
   def start_wal_dispatcher_for_processor(processor_producers_config) do
     register_name = register_name(processor_producers_config.datastore)
 
@@ -73,12 +81,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
                      :brokers,
                      Application.get_env(:procon, :brokers)
                    ),
-                 broker_client_name:
-                   Map.get(
-                     processor_producers_config,
-                     :broker_client_name,
-                     :"#{register_name}_brod_client"
-                   ),
+                 broker_client_name: broker_client_name(processor_producers_config),
                  brod_client_config:
                    Map.get(
                      processor_producers_config,
@@ -94,6 +97,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
                        processor_producers_config.datastore.config() |> Keyword.get(:database)
                      }"
                    ),
+                 realtime: Map.get(processor_producers_config, :procon_realtime, false),
                  register_name: register_name,
                  relation_configs: Map.get(processor_producers_config, :relation_configs, %{})
                }
@@ -113,6 +117,8 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     ets_table_state_ref = :ets.new(:ets_state, write_concurrency: true, read_concurrency: true)
 
     start_brod_client(state.brokers, state.broker_client_name, state.brod_client_config)
+
+    start_realtime_producer(state)
 
     Process.flag(:trap_exit, true)
 
@@ -266,7 +272,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
         relation_configs: state.relation_configs
       }
     )
-    |> IO.inspect(label: "epgsql log data")
+    # |> IO.inspect(label: "epgsql log data")
     |> case do
       {:ok, :relation,
        %{relation_id: relation_id, name: _name, column_names_and_types: column_names_and_types}} ->
@@ -322,6 +328,15 @@ defmodule Procon.MessagesProducers.WalDispatcher do
         start_topic_wal_producers(relation, topic_atom, state)
       end
     )
+  end
+
+  def start_realtime_producer(state) do
+    case state.realtime do
+      true ->
+        start_topic_production(state.broker_client_name, Procon.MessagesProducers.Realtime.realtime_topic())
+      false ->
+        nil
+    end
   end
 
   @spec start_topic_production(any, any) :: :error | :ok | {:error, :unkown_topic_in_broker}

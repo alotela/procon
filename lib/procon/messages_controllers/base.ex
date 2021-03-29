@@ -213,7 +213,7 @@ defmodule Procon.MessagesControllers.Base do
           type,
           %{message_processed_hook: message_processed_hook}
         ),
-        do: message_processed_hook.(type, event_data) |> IO.inspect(label: :message_processed)
+        do: message_processed_hook.(type, event_data)
 
     def message_processed_hook(event_data, _type, _options), do: {:ok, event_data}
 
@@ -560,3 +560,6 @@ defmodule Procon.MessagesControllers.Base do
     end
   end
 end
+
+
+# Procon.MessagesProducers.Realtime.send_rtevent(%Procon.Schemas.ProconRealtime{channel: "coco", metadata: %{key1: "value1"}}, Calions.Processors.Queries.Accounts.Repositories.AccountsPg)

@@ -339,7 +339,6 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
     if not is_list_type(data_type_id) do
       Map.put(payload, name, value)
     else
-      IO.inspect({name, data_type_id, value, parse_pg_array(value)}, label: "DECODE - list")
       Map.put(payload, name, parse_pg_array!(value))
     end
   end

@@ -3,7 +3,15 @@ defmodule Procon.Avro.ConfluentSchemaRegistry do
 
   def register_all_avro_schemas() do
     Logger.info("Registering all avro schema in confluent schema registry")
+    copy_procon_avro_schemas_to_priv_dir()
     do_registration()
+  end
+
+  def copy_procon_avro_schemas_to_priv_dir() do
+    Application.app_dir(:procon, ["priv", "schemas"])
+    |> File.cp_r!(
+      Path.join([File.cwd!(), "priv", "schemas"])
+    )
   end
 
   def do_registration() do
@@ -55,4 +63,6 @@ defmodule Procon.Avro.ConfluentSchemaRegistry do
         :ok
     end
   end
+
+  def topic_to_avro_value_schema(topic), do: "#{topic}-value"
 end

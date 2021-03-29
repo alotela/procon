@@ -34,6 +34,9 @@ defmodule Procon.MessagesProducers.WalDispatcherSupervisor do
     #   }
     # ]
     |> Enum.map(fn
+      %{datastore: _datastore, procon_realtime: true} = producer_config ->
+        Procon.MessagesProducers.WalDispatcher.start_wal_dispatcher_for_processor(producer_config)
+
       %{datastore: _datastore, relation_configs: relation_configs} when relation_configs == %{} ->
         nil
 
