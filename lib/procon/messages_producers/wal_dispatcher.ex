@@ -204,6 +204,8 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     }
   end
 
+  def handle_info({:start_wal_stream}, %State{relation_configs: relation_configs} = state) when relation_configs == %{}, do: {:noreply, state}
+
   def handle_info({:start_wal_stream}, %State{} = state) do
     config = state.datastore.config()
 
