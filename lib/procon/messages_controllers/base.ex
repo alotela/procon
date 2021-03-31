@@ -177,7 +177,11 @@ defmodule Procon.MessagesControllers.Base do
 
           {:ok, Map.put(event_data, :entity_realtime_event_enqueued, true)}
 
-        realtime_events when is_list(realtime_events) ->
+        [] ->
+          Logger.info("👹🤡 Procon > Base > enqueue_realtime : empty list returned > type : #{type}, event_data: #{inspect event_data}")
+          {:ok, Map.put(event_data, :entity_realtime_event_enqueued, false)}
+
+        [_ | _] = realtime_events ->
           realtime_events
           |> Enum.map(fn
             %Procon.Schemas.ProconRealtime{} = realtime ->
