@@ -374,12 +374,12 @@ defmodule Procon.MessagesControllers.Base do
       new_attributes = Map.merge(event_data.event.after, attributes)
 
       new_attributes =
-        case Map.has_key?(options, :drop_event_attributes) do
+        case Map.has_key?(options, :drop_event_attributes) && Kernel.map_size(options.drop_event_attributes) > 0 do
           true ->
             Map.drop(
               new_attributes,
               [
-                options.drop_event_attributes |
+                Map.get(options.drop_event_attributes, :always, []) |
                   Map.get(
                     options.drop_event_attributes,
                     (
