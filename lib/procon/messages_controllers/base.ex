@@ -376,7 +376,22 @@ defmodule Procon.MessagesControllers.Base do
       new_attributes =
         case Map.has_key?(options, :drop_event_attributes) do
           true ->
-            Map.drop(new_attributes, options.drop_event_attributes)
+            Map.drop(
+              new_attributes,
+              [
+                options.drop_event_attributes |
+                  Map.get(
+                    options.drop_event_attributes,
+                    (
+                      case event_data.event.before do
+                        nil -> :on_create
+                        _ -> :on_update
+                      end
+                    ),
+                    []
+                  )
+              ]
+            )
 
           false ->
             new_attributes
