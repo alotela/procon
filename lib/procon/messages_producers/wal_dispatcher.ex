@@ -325,7 +325,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     Enum.map(
       state.relation_configs,
       fn {relation, %{topic: topic_atom}} ->
-        start_topic_production(state.broker_client_name, topic_atom)
+        :ok = start_topic_production(state.broker_client_name, topic_atom)
 
         start_topic_wal_producers(relation, topic_atom, state)
       end
@@ -335,7 +335,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
   def start_realtime_producer(state) do
     case state.realtime do
       true ->
-        start_topic_production(state.broker_client_name, Procon.MessagesProducers.Realtime.realtime_topic())
+        :ok = start_topic_production(state.broker_client_name, Procon.MessagesProducers.Realtime.realtime_topic())
       false ->
         nil
     end
@@ -343,7 +343,14 @@ defmodule Procon.MessagesProducers.WalDispatcher do
 
   @spec start_topic_production(any, any) :: :error | :ok | {:error, :unkown_topic_in_broker}
   def start_topic_production(broker_client_name, topic) do
-    :ok = :brod.start_producer(broker_client_name, topic, [])
+    :brod.start_producer(broker_client_name, topic, [])
+    |> case do
+      :ok ->
+        :ok
+      {:error, {{:badmatch, {:error, :unknown_topic_or_partition}}, _}} = error ->
+        Logger.warn("unable to start wal dispatcher for #{broker_client_name} : topic #{topic} does not exist.")
+        error
+    end
   end
 
   def start_topic_wal_producers(relation, topic, state) do

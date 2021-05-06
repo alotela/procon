@@ -14,6 +14,7 @@ defmodule Procon.Topics do
       ],
       %{timeout: Keyword.get(options, :timeout, 5000)}
     )
+    |> IO.inspect(label: "topic creation")
   end
 
   @spec create_topic(
@@ -48,5 +49,10 @@ defmodule Procon.Topics do
       Map.get(config, :topics),
       Map.get(config, :tiemout, 1000)
     )
+  end
+
+  def reset_topic_for_test(topic) do
+    Procon.Topics.delete_topic(%{topics: [topic]})
+    Procon.Topics.create_topic(topic, 1)
   end
 end

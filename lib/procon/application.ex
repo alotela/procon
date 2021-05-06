@@ -3,6 +3,8 @@ defmodule Procon.Application do
   # for more information on OTP Applications
   @moduledoc false
 
+  require Logger
+
   use Application
 
   def start(_type, _args) do
@@ -24,6 +26,17 @@ defmodule Procon.Application do
   end
 
   def after_start() do
+    Application.get_env(:procon, :autostart)
+    |> case do
+      false ->
+        nil
+      _ ->
+        do_start()
+    end
+  end
+
+  def do_start() do
+    IO.inspect("👁 👁 starting procon")
     :procon_enqueuers_thresholds =
       :ets.new(:procon_enqueuers_thresholds, [:named_table, :public, :set])
 

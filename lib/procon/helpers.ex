@@ -42,4 +42,26 @@ defmodule Procon.Helpers do
       end
     )
   end
+
+  def fetch_last_message(brod_client, topic, partition) do
+    :brod.fetch(
+      brod_client,
+      topic,
+      partition,
+      (
+        :brod.resolve_offset(brod_client, topic, partition)
+        |> elem(1)
+      ) - 1
+    )
+    |> elem(1)
+    |> elem(1)
+    |> List.first()
+    |> elem(3)
+    |> Avrora.decode()
+    |> elem(1)
+  end
+
+  def is_debezium_create(message) do
+    Map.get(message, "before") == nil && is_map(Map.get(message, "after"))
+  end
 end
