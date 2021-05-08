@@ -3,27 +3,20 @@ defmodule Procon.Application do
   # for more information on OTP Applications
   @moduledoc false
 
+  require Logger
+
   use Application
 
   def start(_type, _args) do
     Procon.KafkaMetadata.cache_kafka_metadata()
-    # List all child processes to be supervised
-    :brod.start_client(
-      Application.get_env(:procon, :brokers),
-      Application.get_env(:procon, :broker_client_name),
-      Application.get_env(:procon, :brod_client_config)
-    )
 
     children = [
-      {Registry, keys: :unique, name: Procon.ProducersRegistry},
-      {Registry, keys: :unique, name: Procon.SequencesRegistry},
+      Avrora,
       {DynamicSupervisor,
        name: Procon.MessagesProducers.ProducersSupervisor, strategy: :one_for_one},
-      {DynamicSupervisor,
-       name: Procon.MessagesProducers.SequencesSupervisor, strategy: :one_for_one},
-      Procon.MessagesControllers.ConsumersStarter
-      # Starts a worker by calling: Procon.Worker.start_link(arg)
-      # {Procon.Worker, arg},
+      Procon.MessagesControllers.ConsumersStarter,
+      Procon.MessagesProducers.WalDispatcherSupervisor,
+      Procon.Materialize.Starter
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
@@ -33,17 +26,28 @@ defmodule Procon.Application do
   end
 
   def after_start() do
+    Application.get_env(:procon, :autostart)
+    |> case do
+      false ->
+        nil
+      _ ->
+        do_start()
+    end
+  end
+
+  def do_start() do
+    IO.inspect("👁 👁 starting procon")
     :procon_enqueuers_thresholds =
       :ets.new(:procon_enqueuers_thresholds, [:named_table, :public, :set])
 
-    :procon_consumer_group_subscribers =
-      :ets.new(:procon_consumer_group_subscribers, [:duplicate_bag, :public, :named_table])
-
-    Procon.MessagesProducers.ProducerSequences.create_table()
-    Procon.MessagesProducers.ProducerLastIndex.create_table()
-
-    Procon.MessagesProducers.SequencesGenServer.start_sequences_genservers()
-    Procon.MessagesProducers.ProducersStarter.start_activated_processors()
     Procon.MessagesControllers.ConsumersStarter.start_activated_processors()
+    Procon.MessagesProducers.WalDispatcherSupervisor.start_activated_processors_producers()
+
+    # a virer apres migration
+    :brod.start_client(
+      Application.get_env(:procon, :brokers),
+      :brod_client,
+      Application.get_env(:procon, :brod_client_config)
+    )
   end
 end

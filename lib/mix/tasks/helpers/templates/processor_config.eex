@@ -14,29 +14,28 @@ config :procon, Processors,
         name: <%= @processor_name %>,
         entities: [
           # %{
-          # bypass_message_index: true,
           # event_version: 1,
           # keys_mapping: %{},
-          # master_key: {:topic_name, "topic_name"},
+          # master_key: {:topic_name, :topic_name},
           # messages_controller: Procon.MessagesController.DynamicTopics,
           # model: Procon.Schemas.DynamicTopic,
           # topic: "procon-dynamic-topics"
           # },
           # %{
-          #   bypass_message_index: true, # optional
           #   dynamic_topic: true, # optional: use it if you need to listen topics by pattern
           #   event_version: 1,
-          #   keys_mapping: %{"key_from_event" => :key_in_your_schema}, # optional
-          #   master_key: {:processor_schema_key, "key_from_event"}, # optional
+          #   keys_mapping: %{key_from_event: :key_in_your_schema}, # optional
+          #   master_key: {:processor_schema_key, :key_from_event}, # optional
           #   messages_controller: MessageControllerToHandleMessage, # optional
           #   model: YourEctoSchemaModule,
-          #   send_realtime: fn # optional: if specified, will send a realtime event when a message is received
-          #     :created, entity -> %{event: "index", channel: "<%= @entity_name %>", serializer: <%= @processor_name %>.Events.Serializers.Realtime}
-          #     :updated, entity -> %{event: "show", channel: "<%= @entity_name %>/#{entity.id}", serializer: <%= @processor_name %>.Events.Serializers.Realtime}
-          #     :deleted, entity -> %{event: "index", channel: "<%= @entity_name %>", serializer: <%= @processor_name %>.Events.Serializers.Realtime}
+          #   realtime_builder: fn # optional: if specified, will send a realtime event when a message is received
+          #     :created, event_data -> %Procon.Schemas.ProconRealtime{session_id: nil, channel: "<%= @entity_name %>"}
+          #     :updated, event_data -> %Procon.Schemas.ProconRealtime{session_id: nil, channel: "<%= @entity_name %>/#{entity.id}"}
+          #     :deleted, event_data -> %Procon.Schemas.ProconRealtime{session_id: nil, channel: "<%= @entity_name %>"}
           #   end,
-          #   serializer: SerializerModule, # optional: if specified, forward the entity to broker directly at the end of transaction with this serializer
-          #   serializer_validation: CheckSerializationAllowedModule # optional: a module with "run" method to check if entity must be sent to broker
+          #   message_processed_hook: fn # optional: if specified, will be called when the message is processed
+          #     action_type, event_data -> {:ok, event_data}
+          #   end,
           #   topic: "the_topic_to_listen" # if "dynamic_topic: true", procon will start all topics in procon_dynamic_topics table starting with this string
           # }
         ]
@@ -44,7 +43,10 @@ config :procon, Processors,
     ],
     producers: %{
       datastore: <%= @repository %>,
-      topics: ["<%= @topic %>"]
+      relation_topics: %{
+        :<%= @entity_name %> =>
+        {:id, :"<%= @topic %>"}
+      }
     }
   ]
 

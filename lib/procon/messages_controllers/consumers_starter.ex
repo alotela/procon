@@ -34,29 +34,31 @@ defmodule Procon.MessagesControllers.ConsumersStarter do
   end
 
   def handle_cast({:start_activated_processors}, state) do
-    activated_consumers()
+    activated_consumers_configs()
     |> Enum.each(&start_processor_consumers/1)
 
     {:noreply, state}
   end
 
-  defp start_processor_consumers(processor_config) do
-    :ets.whereis(processor_config.name)
+  defp start_processor_consumers(processor_consumer_config) do
+    :ets.whereis(processor_consumer_config.name)
     |> case do
       :undefined ->
-        :ets.new(processor_config.name, [:set, :public, :named_table])
-        |> IO.inspect(label: "start_processor_consumers ets table for #{processor_config.name}")
+        :ets.new(processor_consumer_config.name, [:set, :public, :named_table])
+        |> IO.inspect(
+          label: "start_processor_consumers ets table for #{processor_consumer_config.name}"
+        )
 
       _ ->
         IO.inspect(
-          "ets table for #{processor_config.name} already started in procon::start_processor_consumers"
+          "ets table for #{processor_consumer_config.name} already started in procon::start_processor_consumers"
         )
     end
 
-    Procon.MessagesControllers.Consumer.start(processor_config)
+    Procon.MessagesControllers.Consumer.start(processor_consumer_config)
   end
 
-  def activated_consumers() do
+  def activated_consumers_configs() do
     Application.get_env(:procon, Processors)
     |> Enum.filter(
       &Enum.member?(Application.get_env(:procon, :activated_processors), elem(&1, 0))

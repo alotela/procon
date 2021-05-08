@@ -22,9 +22,14 @@ defmodule Procon.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:brod, "~> 3.9"},
-      {:ecto, "~> 3.0"},
-      {:jason, "~> 1.1"},
+      {:avro_ex, "~> 1.0"},
+      {:avrora, "~> 0.16"},
+      {:benchee, "~> 1.0", only: :dev},
+      {:brod, "~> 3.15"},
+      {:ecto_sql, "~> 3.0"},
+      {:ecto_ulid, git: "https://github.com/sztosz/ecto-ulid.git"},
+      {:epgsql, "~> 4.5"},
+      {:jason, "~> 1.2"},
       {:inflex, "~> 2.0.0"},
       {:postgrex, ">= 0.0.0"}
     ]

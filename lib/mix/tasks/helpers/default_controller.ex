@@ -39,7 +39,7 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
 
       def create(conn, %{"data" => %{"attributes" => attributes, "type" => "<%= @resources %>"}}) do
         attributes
-        |> <%= @default_service_module %>.Creator.create()
+        |> <%= @default_service_module %>.Creator.create(CalionsWeb.Controllers.Helpers.make_metadata(conn))
         |> case do
           {:error, error_code, data} ->
             <%= @app_web_module %>.Controllers.Helpers.render_error(conn, <%= @app_web_module  %>.Controllers.Errors.error_to_http_code(error_code), data)
@@ -92,7 +92,7 @@ defmodule Mix.Tasks.Procon.Helpers.DefaultController do
     <% end %><%= if String.contains?(@crud, "u") do %>
 
       def update(conn, %{"id" => id, "data" => %{"attributes" => attributes, "type" => "<%= @resources %>"}}) do
-        <%= @default_service_module %>.Updater.update(id, attributes, conn.assigns)
+        <%= @default_service_module %>.Updater.update(id, attributes, CalionsWeb.Controllers.Helpers.make_metadata(conn), conn.assigns)
         |> case do
           {:error, error_code, data} ->
             <%= @app_web_module %>.Controllers.Helpers.render_error(conn, <%= @app_web_module %>.Controllers.Errors.error_to_http_code(error_code), data)

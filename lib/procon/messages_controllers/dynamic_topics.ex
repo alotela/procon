@@ -29,7 +29,10 @@ defmodule Procon.MessagesController.DynamicTopics do
                       Map.get(dynamic_topics_filter_config, :autostart) !== false) do
               true ->
                 PMC.ProcessorConfig.build_processor_config_for_topic_name(
-                  options.processor_config,
+                  Application.get_env(:procon, Processors)
+                  |> Keyword.get(options.processor_name)
+                  |> Keyword.get(:consumers)
+                  |> Enum.find(&(&1.name == options.processor_name)),
                   Map.get(event_data, "topic_name")
                 )
                 |> PMC.ConsumersStarter.start_consumer_for_topic()

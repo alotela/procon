@@ -15,39 +15,135 @@ defmodule Procon.MessagesControllers.Consumer do
     try do
       for {:kafka_message, offset, _key, kafka_message_content, _ts_type, _ts, _headers} <-
             messages do
+        processing_id = :rand.uniform(99_999_999) + 100_000_000
+
         try do
-          {:ok, procon_message} = Jason.decode(kafka_message_content)
-          route_message(procon_message, state.processor_config, topic, partition)
+          (offset >
+             Procon.PartitionOffsetHelpers.get_last_processed_offset(
+               state.processor_consumer_config.datastore,
+               topic,
+               partition,
+               state.processor_consumer_config.name,
+               processing_id
+             ))
+          |> case do
+            true ->
+              state.processor_consumer_config
+              |> Procon.MessagesControllers.ProcessorConfig.find_entity_for_topic_pattern(topic)
+              |> case do
+                nil ->
+                  Procon.Helpers.inspect(
+                    kafka_message_content,
+                    "#{processing_id}@@PROCON FLOW : topic not listened : #{
+                      state.processor_consumer_config.name
+                    }/#{topic}/#{partition}/#{offset}."
+                  )
+
+                entity_config ->
+                  procon_message =
+                    case Map.get(entity_config, :serialization, :json) do
+                      :avro ->
+                        Avrora.decode(kafka_message_content)
+                        |> elem(1)
+                        |> Procon.Helpers.map_keys_to_atom()
+
+                      :json ->
+                        Jason.decode!(kafka_message_content, keys: :atoms)
+                    end
+
+                  route_message(
+                    procon_message,
+                    state.processor_consumer_config,
+                    topic,
+                    partition,
+                    offset,
+                    processing_id,
+                    entity_config
+                  )
+                  |> case do
+                    {:error, :unable_to_update_offset_in_ets} ->
+                      Procon.Helpers.inspect(
+                        kafka_message_content,
+                        "#{processing_id}@@PROCON FLOW : unable to update offset in ets : #{
+                          state.processor_consumer_config.name
+                        }/#{topic}/#{partition}/#{offset}."
+                      )
+
+                      throw({:stop_procon, processing_id, offset})
+
+                    {:error, error} ->
+                      Procon.Helpers.inspect(
+                        error,
+                        "#{processing_id}@@PROCON FLOW : error from processing : #{
+                          state.processor_consumer_config.name
+                        }/#{topic}/#{partition}/#{offset}."
+                      )
+
+                      throw({:stop_procon, processing_id, offset})
+
+                    :ok ->
+                      nil
+                  end
+              end
+
+            false ->
+              Procon.Helpers.inspect(
+                kafka_message_content,
+                "#{processing_id}@@PROCON FLOW : message already processed : #{
+                  state.processor_consumer_config.name
+                }/#{topic}/#{partition}/#{offset}."
+              )
+          end
         rescue
           e ->
             Procon.Helpers.inspect(
               e,
-              "@@exception in procon handle_message @#{topic}/#{partition}/#{offset}@@"
+              "#{processing_id}@@PROCON EXCEPTION#exception in procon handle_message #{
+                state.processor_consumer_config.name
+              }/#{topic}/#{partition}/#{offset}"
             )
 
             Procon.Helpers.inspect(
               kafka_message_content,
-              "@@kafka_message_content@#{topic}/#{partition}/#{offset}@@"
+              "#{processing_id}@@PROCON EXCEPTION#kafka_message_content in procon handle_message #{
+                state.processor_consumer_config.name
+              }/#{topic}/#{partition}/#{offset}"
             )
 
-            Procon.Helpers.inspect(Process.info(self()), :process_info)
-            Procon.Helpers.inspect(__STACKTRACE__, "__STACKTRACE__")
-            throw(:stop_procon)
+            Procon.Helpers.inspect(
+              Process.info(self()),
+              "#{processing_id}@@PROCON EXCEPTION#Process.info in procon handle_message #{
+                state.processor_consumer_config.name
+              }/#{topic}/#{partition}/#{offset}"
+            )
+
+            Procon.Helpers.inspect(
+              __STACKTRACE__,
+              "#{processing_id}@@PROCON EXCEPTION#__STACKTRACE__ in procon handle_message #{
+                state.processor_consumer_config.name
+              }/#{topic}/#{partition}/#{offset}"
+            )
+
+            throw({:stop_procon, processing_id, offset})
         end
       end
 
       {:ok, :commit, state}
     catch
-      :stop_procon ->
-        case Map.get(state.processor_config, :bypass_exception, false) do
+      {:stop_procon, processing_id, offset} ->
+        case Map.get(state.processor_consumer_config, :bypass_exception, false) do
           true ->
             {:ok, :commit, state}
 
           false ->
-            Procon.Helpers.inspect("procon stopped processor #{state.processor_config.name}")
+            Procon.Helpers.inspect(
+              "#{processing_id}@@PROCON STOPPED PROCESSOR #{state.processor_consumer_config.name}/#{
+                topic
+              }/#{partition}/#{offset}"
+            )
 
             Procon.MessagesControllers.ConsumersStarter.stop_processor(
-              state.processor_config.name
+              state.processor_consumer_config.name
             )
 
             {:ok, state}
@@ -58,45 +154,47 @@ defmodule Procon.MessagesControllers.Consumer do
     end
   end
 
-  def route_message(procon_message, processor_config, topic, partition) do
-    processor_config
-    |> Procon.MessagesControllers.ProcessorConfig.find_entity_for_topic_pattern(topic)
-    |> case do
-      nil ->
-        IO.inspect(processor_config, label: "topic not listened #{topic}")
-        {:error, :topic_not_listened, processor_config}
-
-      entity_config ->
-        procon_message
-        |> Map.get("event", :no_event_name)
-        |> case do
-          :no_event_name ->
-            IO.inspect(procon_message, label: "no routage because no event name")
-
-          event_name ->
-            apply(
-              Map.get(entity_config, :messages_controller, Procon.MessagesControllers.Default),
-              case event_name |> String.to_atom() do
-                :created -> :create
-                :deleted -> :delete
-                :updated -> :update
-              end,
-              [
-                procon_message |> Map.put(:partition, partition),
-                entity_config
-                |> Map.merge(%{
-                  dynamic_topics_autostart_consumers:
-                    Map.get(processor_config, :dynamic_topics_autostart_consumers, false),
-                  dynamic_topics_filters: Map.get(processor_config, :dynamic_topics_filters, []),
-                  datastore: processor_config.datastore,
-                  processor_config: processor_config,
-                  processor_name: processor_config.name,
-                  topic: topic
-                })
-              ]
-            )
-        end
-    end
+  def route_message(
+        procon_message,
+        processor_consumer_config,
+        topic,
+        partition,
+        offset,
+        processing_id,
+        entity_config
+      ) do
+    apply(
+      Map.get(entity_config, :messages_controller, Procon.MessagesControllers.Default),
+      case Map.get(procon_message, :before, nil) do
+        nil -> :create
+        _ ->
+          case Map.get(procon_message, :after, nil) do
+            nil ->
+              :delete
+            _ ->
+              :update
+          end
+      end,
+      [
+        procon_message,
+        entity_config
+        |> Map.merge(%{
+          datastore: processor_consumer_config.datastore,
+          dynamic_topics_autostart_consumers:
+            Map.get(
+              processor_consumer_config,
+              :dynamic_topics_autostart_consumers,
+              false
+            ),
+          dynamic_topics_filters: Map.get(processor_consumer_config, :dynamic_topics_filters, []),
+          offset: offset,
+          partition: partition,
+          processing_id: processing_id,
+          processor_name: processor_consumer_config.name,
+          topic: topic
+        })
+      ]
+    )
   end
 
   def stop(processor_name) do
@@ -114,8 +212,8 @@ defmodule Procon.MessagesControllers.Consumer do
     |> :brod.stop_client()
   end
 
-  def start(processor_config) do
-    client_name = client_name(processor_config.name)
+  def start(processor_consumer_config) do
+    client_name = client_name(processor_consumer_config.name)
 
     :brod.start_client(
       Application.get_env(:procon, :brokers),
@@ -123,18 +221,18 @@ defmodule Procon.MessagesControllers.Consumer do
       Application.get_env(:procon, :brod_client_config)
     )
 
-    start_consumer_for_topic(processor_config, nil, client_name)
+    start_consumer_for_topic(processor_consumer_config, nil, client_name)
 
     {:ok}
   end
 
-  def start_consumer_for_topic(processor_config, group_id \\ nil, client_name \\ nil) do
+  def start_consumer_for_topic(processor_consumer_config, group_id \\ nil, client_name \\ nil) do
     topics =
-      Enum.reduce(processor_config.entities, [], fn entity_config, state ->
+      Enum.reduce(processor_consumer_config.entities, [], fn entity_config, state ->
         case Map.get(entity_config, :dynamic_topic) do
           true ->
             Procon.MessagesController.Datastores.Ecto.find_dynamic_topics(
-              processor_config.datastore,
+              processor_consumer_config.datastore,
               entity_config.topic
             )
 
@@ -147,7 +245,9 @@ defmodule Procon.MessagesControllers.Consumer do
     case topics do
       [] ->
         IO.inspect(
-          "PROCON NOTIFICATION : no topics consumer starter for processor #{processor_config.name}",
+          "PROCON NOTIFICATION : no topics consumer starter for processor #{
+            processor_consumer_config.name
+          }",
           syntax_colors: [
             atom: :red,
             binary: :red,
@@ -165,9 +265,12 @@ defmodule Procon.MessagesControllers.Consumer do
 
       _ ->
         :brod.start_link_group_subscriber_v2(%{
-          client: client_name || client_name(processor_config.name),
+          client: client_name || client_name(processor_consumer_config.name),
           group_id:
-            group_id || "#{processor_config.name}#{Map.get(processor_config, :group_id, "")}",
+            group_id ||
+              "#{processor_consumer_config.name}#{
+                Map.get(processor_consumer_config, :group_id, "")
+              }",
           topics: topics,
           group_config: [
             offset_commit_policy: :commit_to_kafka_v2,
@@ -178,14 +281,42 @@ defmodule Procon.MessagesControllers.Consumer do
             begin_offset: :earliest
           ],
           cb_module: __MODULE__,
-          init_data: %{processor_config: processor_config}
+          init_data: %{processor_consumer_config: processor_consumer_config}
         })
         |> case do
           {:ok, pid} ->
-            :ets.insert(
-              :procon_consumer_group_subscribers,
-              {group_subscriber_name(processor_config.name), pid}
-            )
+            process_register_name = group_subscriber_name(processor_consumer_config.name)
+
+            case Process.alive?(pid) do
+              false ->
+                IO.inspect(
+                  pid,
+                  label:
+                    "trying to register group_subscriber #{process_register_name} but it is not alive.",
+                  syntax_colors: [string: :magenta]
+                )
+
+              true ->
+                case Process.whereis(process_register_name) do
+                  xpid when is_pid(xpid) ->
+                    IO.inspect(
+                      xpid,
+                      label:
+                        "trying to register group_subscriber #{process_register_name} but another process is already registered for this name",
+                      syntax_colors: [string: :magenta]
+                    )
+
+                  nil ->
+                    IO.inspect(
+                      pid,
+                      label:
+                        "registering group_subscriber #{process_register_name}.....................................",
+                      syntax_colors: [string: :blue]
+                    )
+
+                    Process.register(pid, process_register_name)
+                end
+            end
 
           {:error, error} ->
             IO.inspect(error,

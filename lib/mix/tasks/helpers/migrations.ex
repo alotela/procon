@@ -24,23 +24,17 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
           :procon_dynamic_topics ->
             procon_dynamic_topics_template(args)
 
-          :procon_producer_messages ->
-            procon_producer_messages_template(args)
-
           :procon_consumer_indexes ->
             procon_consumer_indexes_template(args)
-
-          :procon_producer_indexes ->
-            procon_producer_indexes_template(args)
 
           :procon_enqueur ->
             procon_enqueur_template(args)
 
-          :procon_producer_balancings ->
-            procon_producer_balancings_template(args)
-
           :processor_entity ->
             processor_entity_template(args)
+
+          :procon_realtimes ->
+            procon_realtimes_template(args)
         end
 
       create_file(file, content)
@@ -63,32 +57,6 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
   defp pad(i) when i < 10, do: <<?0, ?0 + i>>
   defp pad(i), do: to_string(i)
 
-  embed_template(:procon_producer_messages, """
-  defmodule <%= @processor_repo %>.Migrations.ProconProducerMessages do
-    use Ecto.Migration
-
-    def change do
-      create table(:procon_producer_messages) do
-        add(:blob, :text, null: false)
-        add(:index, :int8)
-        add(:is_stopped, :boolean)
-        add(:partition, :integer, null: false)
-        add(:stopped_error, :text)
-        add(:stopped_message_id, :integer)
-        add(:topic, :string, null: false)
-        timestamps()
-      end
-      create index(:procon_producer_messages, [:index])
-      create index(:procon_producer_messages, [:is_stopped])
-      create index(:procon_producer_messages, [:partition])
-      create index(:procon_producer_messages, [:topic])
-      alter table(:procon_producer_messages) do
-        modify :id, :int8
-      end
-    end
-  end
-  """)
-
   embed_template(:procon_consumer_indexes, """
   defmodule <%= @processor_repo %>.Migrations.ProconMessageIndexes do
     use Ecto.Migration
@@ -107,22 +75,6 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
   end
   """)
 
-  embed_template(:procon_producer_indexes, """
-  defmodule <%= @processor_repo %>.Migrations.ProconProducerIndexes do
-    use Ecto.Migration
-
-    def change do
-      create table(:procon_producer_indexes) do
-        add :last_index, :int8, null: false
-        add :partition, :integer, null: false
-        add :topic, :string, null: false
-      end
-      create index(:procon_producer_indexes, [:partition])
-      create index(:procon_producer_indexes, [:topic])
-    end
-  end
-  """)
-
   embed_template(:procon_enqueur, """
   defmodule <%= @app_module %>.Procon.Enqueur do
     # this module is just an 'alias' to the real module
@@ -132,23 +84,6 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
 
   """)
 
-  embed_template(:procon_producer_balancings, """
-  defmodule <%= @processor_repo %>.Migrations.ProconProducerBalancings do
-    use Ecto.Migration
-
-    def change do
-      create table(:procon_producer_balancings) do
-        add :id_producer, :integer
-        add :topic, :string
-        add :partition, :integer
-        add :last_presence_at, :utc_datetime
-      end
-      create index(:procon_producer_balancings, [:partition])
-      create index(:procon_producer_balancings, [:topic])
-    end
-  end
-  """)
-
   embed_template(:processor_entity, """
   defmodule <%= @processor_repo %>.Migrations.Add<%= @processor_short_name %>Table do
     use Ecto.Migration
@@ -156,9 +91,26 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
     def change do
       create table(:<%= @table %>, primary_key: false) do
         add(:id, :uuid, primary_key: true)
-
-        timestamps()
+        add(:metadata, :map, null: false, default: %{})
       end
+
+      execute("ALTER TABLE <%= @table %> REPLICA IDENTITY FULL")
+    end
+  end
+  """)
+
+  embed_template(:procon_realtimes, """
+  defmodule <%= @processor_repo %>.Migrations.AddProconRealtimesTable do
+    use Ecto.Migration
+
+    def change do
+      create table(:procon_realtimes) do
+        add(:session_id, :string)
+        add(:channel, :string)
+        add(:metadata, :map, null: false, default: %{})
+      end
+
+      execute("ALTER TABLE procon_realtimes REPLICA IDENTITY FULL")
     end
   end
   """)
@@ -178,6 +130,8 @@ defmodule Mix.Tasks.Procon.Helpers.Migrations do
       end
 
       create(unique_index(:procon_dynamic_topics, [:topic_name], name: :unique_topic))
+
+      execute("ALTER TABLE procon_dynamic_topics REPLICA IDENTITY FULL")
     end
   end
   """)

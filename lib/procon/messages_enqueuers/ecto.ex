@@ -1,21 +1,25 @@
 defmodule Procon.MessagesEnqueuers.Ecto do
-  @type states() :: :created | :updated | :deleted
   use Bitwise
-  alias Procon.Schemas.Ecto.ProconProducerMessage
-  alias Procon.MessagesProducers.ProducerSequences
 
-  @spec build_message(map(), states() | String.t(), map()) :: %{
-          :index => binary,
-          :body => any,
-          :event => binary,
-          optional(:metadata) => any
-        }
   def build_message(message_body, event_type, message_metadata) do
-    message = %{
-      index: "@@index@@",
-      body: message_body,
-      event: event_type |> to_string()
-    }
+    message =
+      case event_type do
+        :updated ->
+          %{
+            new: Map.get(message_body, "1"),
+            old: Map.get(message_body, "1")
+          }
+
+        :created ->
+          %{
+            new: Map.get(message_body, "1")
+          }
+
+        :deleted ->
+          %{
+            old: Map.get(message_body, "1")
+          }
+      end
 
     case message_metadata do
       nil -> message
@@ -23,7 +27,6 @@ defmodule Procon.MessagesEnqueuers.Ecto do
     end
   end
 
-  @spec build_event_message_versions(map, states(), module) :: map()
   def build_event_message_versions(event_data, event_type, resource_serializer) do
     Enum.reduce(
       resource_serializer.message_versions,
@@ -38,7 +41,6 @@ defmodule Procon.MessagesEnqueuers.Ecto do
     )
   end
 
-  @spec select_partition(binary, integer) :: integer
   def select_partition(partition_key, nb_partitions) when is_binary(partition_key) do
     to_charlist(partition_key)
     |> Enum.reduce(0, fn charcode, hash -> (hash <<< 5) - hash + charcode end)
@@ -46,11 +48,6 @@ defmodule Procon.MessagesEnqueuers.Ecto do
     |> rem(nb_partitions)
   end
 
-  @spec enqueue_rtevent(map, Ecto.Repo.t(), list) ::
-          {:ok, Ecto.Schema.t()}
-          | {:error, Ecto.Changeset.t()}
-          | {:error, term}
-          | {:ok, :no_enqueue}
   def enqueue_rtevent(event_data, event_serializer, options \\ []) do
     key =
       [
@@ -82,11 +79,6 @@ defmodule Procon.MessagesEnqueuers.Ecto do
     end
   end
 
-  @spec enqueue_event(map(), module(), states(), list()) ::
-          {:ok, Ecto.Schema.t()}
-          | {:error, Ecto.Changeset.t()}
-          | {:error, term}
-          | {:error, :unknown_topic, String.t()}
   def enqueue_event(event_data, event_serializer, event_type, options \\ []) do
     Logger.metadata(procon_processor_repo: event_serializer.repo)
 
@@ -120,69 +112,8 @@ defmodule Procon.MessagesEnqueuers.Ecto do
     end
   end
 
-  def enqueue(blob, partition, topic, repo) do
-    ProducerSequences.create_sequence(repo, topic, partition, false)
-
-    Ecto.Adapters.SQL.query(
-      repo,
-      "WITH curr_index
-        AS (SELECT nextval('#{ProducerSequences.get_sequence_name(topic, partition)}'::regclass) AS idx)
-        INSERT INTO procon_producer_messages (blob, index, partition, topic, inserted_at, updated_at)
-      SELECT
-        replace(
-          $1,
-          '\"@@index@@\"',
-          idx::text
-        ),
-        idx,
-        $2,
-        $3,
-        NOW(),
-        NOW()
-      FROM curr_index RETURNING *",
-      [blob, partition, topic]
-    )
-    |> case do
-      {:ok, %Postgrex.Result{columns: columns, num_rows: 1, rows: [inserted_row]}} ->
-        {:ok, repo.load(ProconProducerMessage, {columns, inserted_row})}
-
-      {:error, %DBConnection.ConnectionError{} = err} ->
-        IO.inspect(err,
-          label:
-            "PROCON ALERT : enqueue error on topic #{topic} and partition #{to_string(partition)}",
-          syntax_colors: [
-            atom: :red,
-            binary: :red,
-            boolean: :red,
-            list: :red,
-            map: :red,
-            number: :red,
-            regex: :red,
-            string: :red,
-            tuple: :red
-          ]
-        )
-
-        {:error, err}
-
-      {:error, err} ->
-        IO.inspect(err,
-          label:
-            "PROCON ALERT : enqueue error on topic #{topic} and partition #{to_string(partition)}",
-          syntax_colors: [
-            atom: :red,
-            binary: :red,
-            boolean: :red,
-            list: :red,
-            map: :red,
-            number: :red,
-            regex: :red,
-            string: :red,
-            tuple: :red
-          ]
-        )
-
-        {:error, err}
-    end
+  def enqueue(blob, partition, topic, _repo) do
+    :brod.start_producer(:brod_client, topic, [])
+    :brod.produce_sync(:brod_client, topic, partition, "", blob)
   end
 end

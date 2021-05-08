@@ -2,6 +2,7 @@ defmodule Procon.MessagesControllers.Base do
   defmacro __using__(_options) do
     quote do
       import Procon.MessagesControllers.Base.Helpers
+      import Procon.MessagesControllers.EventDataAccessors
 
       def create(event, options) do
         do_create(__MODULE__, event, options)
@@ -47,477 +48,477 @@ defmodule Procon.MessagesControllers.Base do
   end
 
   defmodule Helpers do
-    import Ecto.Query
     require Logger
     require Record
-    alias Procon.Schemas.Ecto.ProconConsumerIndex
+
+    @pg_epoch DateTime.from_iso8601("2000-01-01T00:00:00Z")
 
     def do_create(controller, event, options) do
-      case message_not_already_processed?(event, options) do
-        true ->
-          options.datastore.transaction(fn ->
-            controller.process_create(event, options)
-            |> case do
-              {:ok, event_data} ->
-                {:ok, final_event_data} = controller.after_create(event_data, options)
+      options.datastore.transaction(fn ->
+        controller.process_create(event, options)
+        |> case do
+          {:ok, event_data} ->
+            {:ok, final_event_data} = controller.after_create(event_data, options)
 
-                {:ok, final_event_data} =
-                  forward_entity(
-                    final_event_data,
-                    if(final_event_data.record_from_db, do: :updated, else: :created),
-                    Map.get(options, :serializer, nil),
-                    Map.get(options, :serializer_validation, nil)
-                  )
+            {:ok, final_event_data} =
+              enqueue_realtime(
+                final_event_data,
+                if(final_event_data.record_from_db, do: :updated, else: :created),
+                options
+              )
 
-                {:ok, final_event_data} =
-                  enqueue_realtime(
-                    final_event_data,
-                    if(final_event_data.record_from_db, do: :updated, else: :created),
-                    Map.get(options, :send_realtime, nil)
-                  )
+            {:ok, final_event_data} =
+              message_processed_hook(
+                final_event_data,
+                if(final_event_data.record_from_db, do: :updated, else: :created),
+                options
+              )
 
-                consumer_message_index = update_consumer_message_index(event, options)
+            :ok =
+              Procon.PartitionOffsetHelpers.update_partition_offset(
+                options.topic,
+                options.partition,
+                options.offset,
+                options.datastore,
+                options.processor_name
+              )
 
-                {final_event_data, consumer_message_index}
+            final_event_data
 
-              {:error, ecto_changeset} ->
-                Logger.warn(
-                  "Unable to create #{inspect(options.model)} with event #{inspect(event)}@@ changeset : #{
-                    inspect(ecto_changeset)
-                  }"
-                )
+          {:error, ecto_changeset} ->
+            Procon.Helpers.inspect(
+              ecto_changeset,
+              "#{options.processing_id}@@PROCON FLOW ERROR : ecto changeset : unable to save entity : #{
+                options.processor_name
+              }/#{options.topic}/#{options.partition}/#{options.offset}"
+            )
 
-                options.datastore.rollback(ecto_changeset)
-            end
-          end)
+            options.datastore.rollback(ecto_changeset)
+        end
+      end)
+      |> case_final_event_data(&controller.after_create_transaction/2, options)
+    end
+
+    def case_final_event_data(transaction_result, after_transaction, options) do
+      transaction_result
+      |> case do
+        {:ok, final_event_data} ->
+          Procon.PartitionOffsetHelpers.update_partition_offset_ets(
+            options.processor_name,
+            options.topic,
+            options.partition,
+            options.offset,
+            options.processing_id
+          )
           |> case do
-            {:ok, {final_event_data, consumer_message_index}} ->
-              update_consumer_message_index_ets(consumer_message_index, options.processor_name)
-              start_forward_production(Map.get(options, :serializer, nil))
+            true ->
+              # start_forward_production(Map.get(options, :serializer, nil))
 
-              start_realtime_production(
-                Map.get(final_event_data, :entity_realtime_event_serializer, nil)
-              )
+              # start_realtime_production(
+              # Map.get(final_event_data, :entity_realtime_event_serializer, nil)
+              # )
 
-              controller.after_create_transaction(final_event_data, options)
+              after_transaction.(final_event_data, options)
 
-            {:error, error} ->
-              IO.inspect(error,
-                label: "PROCON ALERT : error while processing > error",
-                syntax_colors: [
-                  atom: :red,
-                  binary: :red,
-                  boolean: :red,
-                  list: :red,
-                  map: :red,
-                  number: :red,
-                  regex: :red,
-                  string: :red,
-                  tuple: :red
-                ]
-              )
+              :ok
 
-              IO.inspect(options,
-                label:
-                  "PROCON ALERT : #{options.processor_name} : error while processing > options",
-                syntax_colors: [
-                  atom: :red,
-                  binary: :red,
-                  boolean: :red,
-                  list: :red,
-                  map: :red,
-                  number: :red,
-                  regex: :red,
-                  string: :red,
-                  tuple: :red
-                ]
-              )
-
-              IO.inspect(event,
-                label:
-                  "PROCON ALERT : #{options.processor_name} : error while processing > event",
-                syntax_colors: [
-                  atom: :red,
-                  binary: :red,
-                  boolean: :red,
-                  list: :red,
-                  map: :red,
-                  number: :red,
-                  regex: :red,
-                  string: :red,
-                  tuple: :red
-                ]
-              )
+            _ ->
+              {:error, :unable_to_update_offset_in_ets}
           end
 
-        _ ->
-          IO.inspect(event,
-            label: "PROCON ALERT : #{options.processor_name} : message already processed",
-            syntax_colors: [
-              atom: :red,
-              binary: :red,
-              boolean: :red,
-              list: :red,
-              map: :red,
-              number: :red,
-              regex: :red,
-              string: :red,
-              tuple: :red
-            ]
-          )
+        {:error, error} ->
+          {:error, error}
       end
     end
 
     def process_create(controller, event, options) do
       event_data =
-        record_and_body_from_event(event, true, options)
-        |> event_data_with_attributes(options.keys_mapping)
+        record_from_datastore(event, true, options)
+        |> add_new_attributes(options)
         |> controller.before_create(options)
 
-      options.model.messages_create_changeset(event_data.record, event_data.attributes)
-      |> options.datastore.insert_or_update()
+      options.model.messages_create_changeset(
+        event_data.record,
+        Map.get(event_data, :new_attributes, event_data.event.after)
+      )
+      |> options.datastore.insert_or_update(returning: true)
       |> case do
-        {:ok, struct} -> {:ok, Map.put(event_data, :record, struct)}
+        {:ok, struct} -> {:ok, Map.put(event_data, :recorded_struct, struct)}
         {:error, ecto_changeset} -> {:error, ecto_changeset}
       end
     end
 
-    def forward_entity(event_data, _type, nil, nil),
-      do: {:ok, Map.put(event_data, :entity_forwarded, false)}
-
-    def forward_entity(event_data, type, serializer, serializer_validation) do
-      case serializer_validation do
-        nil ->
-          true
-
-        _ ->
-          serializer_validation.(event_data.record, type)
-      end
+    def enqueue_realtime(event_data, type, options = %{realtime_builder: realtime_builder}) do
+      realtime_builder.(type, event_data)
       |> case do
-        true ->
-          Procon.MessagesEnqueuers.Ecto.enqueue_event(
-            event_data.record,
-            serializer,
-            type
+        nil ->
+          {:ok, Map.put(event_data, :entity_realtime_event_enqueued, false)}
+
+        %Procon.Schemas.ProconRealtime{} = realtime ->
+          Procon.MessagesProducers.Realtime.send_rtevent(
+            Map.put(
+              realtime,
+              :metadata,
+              Map.merge(
+                case type do
+                  :deleted ->
+                    Map.get(event_data.event.after, :metadata, %{})
+
+                  _ ->
+                    Map.get(event_data.recorded_struct, :metadata, %{})
+                end ||
+                  %{},
+                Map.get(realtime, :metadata, %{}) || %{}
+              )
+            ),
+            options.datastore,
+            Map.get(options, :rt_threshold, 1000)
           )
 
-          {:ok, Map.put(event_data, :entity_forwarded, true)}
+          {:ok, Map.put(event_data, :entity_realtime_event_enqueued, true)}
 
-        false ->
-          {:ok, Map.put(event_data, :entity_forwarded, false)}
+        [] ->
+          Logger.info("👹🤡 Procon > Base > enqueue_realtime : empty list returned > type : #{type}, event_data: #{inspect event_data}")
+          {:ok, Map.put(event_data, :entity_realtime_event_enqueued, false)}
+
+        [_ | _] = realtime_events ->
+          realtime_events
+          |> Enum.map(fn
+            %Procon.Schemas.ProconRealtime{} = realtime ->
+              Procon.MessagesProducers.Realtime.send_rtevent(
+                Map.put(
+                  realtime,
+                  :metadata,
+                  Map.merge(
+                    Map.get(event_data.recorded_struct, :metadata, %{}) || %{},
+                    Map.get(realtime, :metadata, %{}) || %{}
+                  )
+                ),
+                options.datastore,
+                Map.get(options, :rt_threshold, 1000)
+              )
+
+            _ ->
+              nil
+          end)
+
+          {:ok, Map.put(event_data, :entity_realtime_event_enqueued, true)}
       end
     end
 
-    def enqueue_realtime(event_data, _type, nil),
+    def enqueue_realtime(event_data, _type, _options),
       do:
         {:ok,
          event_data
-         |> Map.put(:entity_realtime_event_enqueued, false)
-         |> Map.put(:entity_realtime_event_serializer, nil)}
+         |> Map.put(:entity_realtime_event_enqueued, false)}
 
-    def enqueue_realtime(event_data, type, realtime_event) do
-      realtime_event.(type, event_data.record)
-      |> case do
-        nil ->
-          {:ok,
-           event_data
-           |> Map.put(:entity_realtime_event_enqueued, false)
-           |> Map.put(:entity_realtime_event_serializer, nil)}
+    def message_processed_hook(
+          event_data,
+          type,
+          %{message_processed_hook: message_processed_hook}
+        ),
+        do: message_processed_hook.(type, event_data)
 
-        %{event: event, channel: channel, serializer: serializer} ->
-          Procon.MessagesEnqueuers.Ecto.enqueue_rtevent(
-            %{channel: channel, event: event},
-            serializer
-          )
-
-          {:ok,
-           event_data
-           |> Map.put(:entity_realtime_event_enqueued, true)
-           |> Map.put(:entity_realtime_event_serializer, serializer)}
-
-        %{event: event, session_id: session_id, serializer: serializer} ->
-          Procon.MessagesEnqueuers.Ecto.enqueue_rtevent(
-            %{session_id: session_id, event: event},
-            serializer
-          )
-
-          {:ok,
-           event_data
-           |> Map.put(:entity_realtime_event_enqueued, true)
-           |> Map.put(:entity_realtime_event_serializer, serializer)}
-      end
-    end
+    def message_processed_hook(event_data, _type, _options), do: {:ok, event_data}
 
     def do_update(controller, event, options) do
-      if message_not_already_processed?(event, options) do
-        {:ok, {final_event_data, consumer_message_index}} =
-          options.datastore.transaction(fn ->
-            controller.process_update(event, options)
-            |> case do
-              {:ok, event_data} ->
-                {:ok, final_event_data} = controller.after_update(event_data, options)
+      options.datastore.transaction(fn ->
+        controller.process_update(event, options)
+        |> case do
+          {:ok, event_data} ->
+            {:ok, final_event_data} = controller.after_update(event_data, options)
 
-                {:ok, final_event_data} =
-                  forward_entity(
-                    final_event_data,
-                    :updated,
-                    Map.get(options, :serializer, nil),
-                    Map.get(options, :serializer_validation, nil)
-                  )
+            {:ok, final_event_data} =
+              enqueue_realtime(
+                final_event_data,
+                :updated,
+                options
+              )
 
-                {:ok, final_event_data} =
-                  enqueue_realtime(
-                    final_event_data,
-                    :updated,
-                    Map.get(options, :send_realtime, nil)
-                  )
+            {:ok, final_event_data} =
+              message_processed_hook(
+                final_event_data,
+                :updated,
+                options
+              )
 
-                consumer_message_index = update_consumer_message_index(event, options)
-                {final_event_data, consumer_message_index}
+            :ok =
+              Procon.PartitionOffsetHelpers.update_partition_offset(
+                options.topic,
+                options.partition,
+                options.offset,
+                options.datastore,
+                options.processor_name
+              )
 
-              {:error, ecto_changeset} ->
-                Logger.warn(
-                  "Unable to update #{inspect(options.model)} with event #{inspect(event)}@@ changeset : #{
-                    inspect(ecto_changeset)
-                  }"
-                )
+            final_event_data
 
-                options.datastore.rollback(ecto_changeset)
-            end
-          end)
+          {:error, ecto_changeset} ->
+            Procon.Helpers.inspect(
+              ecto_changeset,
+              "#{options.processing_id}@@PROCON FLOW ERROR : ecto changeset : unable to save entity : #{
+                options.processor_name
+              }/#{options.topic}/#{options.partition}/#{options.offset}"
+            )
 
-        update_consumer_message_index_ets(consumer_message_index, options.processor_name)
-        start_forward_production(Map.get(options, :serializer, nil))
-
-        start_realtime_production(
-          Map.get(final_event_data, :entity_realtime_event_serializer, nil)
-        )
-
-        controller.after_update_transaction(final_event_data, options)
-      end
-    end
-
-    def start_forward_production(nil), do: nil
-
-    def start_forward_production(serializer) do
-      Procon.MessagesProducers.ProducersStarter.start_topic_production(serializer)
-    end
-
-    def start_realtime_production(nil), do: nil
-
-    def start_realtime_production(serializer) do
-      Procon.MessagesProducers.ProducersStarter.start_topic_production(serializer)
+            options.datastore.rollback(ecto_changeset)
+        end
+      end)
+      |> case_final_event_data(&controller.after_update_transaction/2, options)
     end
 
     def process_update(controller, event, options) do
       event_data =
-        record_and_body_from_event(event, true, options)
-        |> event_data_with_attributes(options.keys_mapping)
+        record_from_datastore(event, true, options)
+        |> add_new_attributes(options)
         |> controller.before_update(options)
 
-      options.model.messages_update_changeset(event_data.record, event_data.attributes)
+      options.model.messages_update_changeset(
+        event_data.record,
+        Map.get(event_data, :new_attributes, event_data.event.after)
+      )
       |> options.datastore.insert_or_update()
       |> case do
-        {:ok, struct} -> {:ok, Map.put(event_data, :record, struct)}
+        {:ok, struct} -> {:ok, Map.put(event_data, :recorded_struct, struct)}
         {:error, ecto_changeset} -> {:error, ecto_changeset}
       end
     end
 
-    def event_data_with_attributes(event_data, atom_changeset) do
+    def add_new_attributes(
+          %{event: %{after: _, before: nil}} = event_data,
+          %{
+            keys_mapping: %{created: created_mapping}
+          } = options
+        ) do
+      add_new_attributes(event_data, %{
+        drop_event_attributes: options.drop_event_attributes,
+        keys_mapping: created_mapping
+      })
+    end
+
+    def add_new_attributes(
+          %{event: %{after: _, before: _}} = event_data,
+          %{
+            keys_mapping: %{updated: updated_mapping}
+          } = options
+        ) do
+      add_new_attributes(event_data, %{
+        drop_event_attributes: options.drop_event_attributes,
+        keys_mapping: updated_mapping
+      })
+    end
+
+    def add_new_attributes(event_data, %{keys_mapping: keys_mapping})
+        when keys_mapping == %{} do
+      event_data
+    end
+
+    def add_new_attributes(event_data, %{keys_mapping: func} = options) when is_function(func) do
+      func.(event_data, options)
+    end
+
+    def add_new_attributes(event_data, options) do
       attributes =
-        for {key, val} <- event_data.body, into: %{} do
-          {Map.get(atom_changeset, key, String.to_atom(key)), val}
+        Enum.reduce(options.keys_mapping, %{}, fn {key_in_event, key_in_new_attributes},
+                                                  reduced_attributes ->
+          case key_in_new_attributes do
+            nil ->
+              reduced_attributes
+
+            new_key ->
+              case key_in_event do
+                :event_timestamp ->
+                  event_data.event.timestamp
+
+                :event_timestamp_datetime ->
+                  event_data.event.timestamp |> ulid_to_datetime()
+
+                :create_event_timestamp_datetime ->
+                  case Map.get(event_data.event, :before, nil) do
+                    nil ->
+                      event_data.event.timestamp |> ulid_to_datetime()
+
+                    _ ->
+                      :procon_bypass
+                  end
+
+                :topic ->
+                  options.topic
+
+                [_ | _] ->
+                  get_in(event_data.event.after, key_in_event)
+
+                _ ->
+                  Map.get(event_data.event.after, key_in_event)
+              end
+              |> case do
+                :procon_bypass ->
+                  reduced_attributes
+
+                value ->
+                  Map.put(
+                    reduced_attributes,
+                    key_in_new_attributes,
+                    case new_key do
+                      f when is_function(f) ->
+                        f.(value)
+
+                      _ ->
+                        value
+                    end
+                  )
+              end
+          end
+        end)
+
+      new_attributes = Map.merge(event_data.event.after, attributes)
+
+      new_attributes =
+        case Map.has_key?(options, :drop_event_attributes) && Kernel.map_size(options.drop_event_attributes) > 0 do
+          true ->
+            Map.drop(
+              new_attributes,
+              [
+                Map.get(options.drop_event_attributes, :always, []) |
+                  Map.get(
+                    options.drop_event_attributes,
+                    (
+                      case event_data.event.before do
+                        nil -> :on_create
+                        _ -> :on_update
+                      end
+                    ),
+                    []
+                  )
+              ]
+            )
+
+          false ->
+            new_attributes
         end
 
-      Map.put(event_data, :attributes, attributes)
+      Map.put(event_data, :new_attributes, new_attributes)
+    end
+
+    def pgtimestamp_to_timestamp(microsecond_offset) do
+      {:ok, epoch, 0} = @pg_epoch
+
+      DateTime.add(epoch, microsecond_offset, :millisecond)
+    end
+
+    def ulid_to_datetime(ulid_timestamp) do
+      <<timestamp_in_ms::unsigned-size(48), _rest::binary>> =
+        ulid_timestamp
+        |> Ecto.ULID.dump()
+        |> elem(1)
+
+      timestamp_in_ms
+      |> pgtimestamp_to_timestamp()
     end
 
     def do_delete(controller, event, options) do
-      if message_not_already_processed?(event, options) do
-        {:ok, {final_event_data, consumer_message_index}} =
-          options.datastore.transaction(fn ->
-            controller.process_delete(event, options)
-            |> case do
-              {:ok, event_data} ->
-                {:ok, final_event_data} = controller.after_delete(event_data, options)
+      options.datastore.transaction(fn ->
+        controller.process_delete(event, options)
+        |> case do
+          {:ok, event_data} ->
+            {:ok, final_event_data} = controller.after_delete(event_data, options)
 
-                {:ok, final_event_data} =
-                  forward_entity(
+            {:ok, final_event_data} =
+              case Map.get(event_data, :record_deleted, true) do
+                true ->
+                  {:ok, final_event_data} =
+                    enqueue_realtime(
+                      final_event_data,
+                      :deleted,
+                      options
+                    )
+
+                  message_processed_hook(
                     final_event_data,
                     :deleted,
-                    Map.get(options, :serializer, nil),
-                    Map.get(options, :serializer_validation, nil)
+                    options
                   )
 
-                {:ok, final_event_data} =
-                  enqueue_realtime(
-                    final_event_data,
-                    :deleted,
-                    Map.get(options, :send_realtime, nil)
-                  )
+                false ->
+                  {:ok, final_event_data}
+              end
 
-                consumer_message_index = update_consumer_message_index(event, options)
-                {final_event_data, consumer_message_index}
+            :ok =
+              Procon.PartitionOffsetHelpers.update_partition_offset(
+                options.topic,
+                options.partition,
+                options.offset,
+                options.datastore,
+                options.processor_name
+              )
 
-              {:error, ecto_changeset} ->
-                Logger.info(
-                  "Unable to delete #{inspect(options.model)} in event #{inspect(event)}@@#{
-                    inspect(ecto_changeset)
-                  }"
-                )
+            final_event_data
 
-                options.datastore.rollback(ecto_changeset)
-            end
-          end)
+          {:error, ecto_changeset} ->
+            Procon.Helpers.inspect(
+              ecto_changeset,
+              "#{options.processing_id}@@PROCON FLOW ERROR : ecto changeset : unable to save entity : #{
+                options.processor_name
+              }/#{options.topic}/#{options.partition}/#{options.offset}"
+            )
 
-        update_consumer_message_index_ets(consumer_message_index, options.processor_name)
-        start_forward_production(Map.get(options, :serializer, nil))
-
-        start_realtime_production(
-          Map.get(final_event_data, :entity_realtime_event_serializer, nil)
-        )
-
-        controller.after_delete_transaction(final_event_data, options)
-      end
+            options.datastore.rollback(ecto_changeset)
+        end
+      end)
+      |> case_final_event_data(&controller.after_delete_transaction/2, options)
     end
 
     def process_delete(controller, event, options) do
       event_data =
-        record_and_body_from_event(event, false, options)
+        record_from_datastore(event, false, options)
         |> controller.before_delete(options)
 
       case event_data.record do
         nil ->
           Logger.warn("No match for deleted #{inspect(options.model)} in event #{inspect(event)}")
 
-          {:ok, event_data}
+          {:ok, Map.put(event_data, :record_deleted, false)}
 
         _ ->
           Logger.info("Deleting #{inspect(options.model)} with id #{event_data.record.id}")
 
           case options.datastore.delete(event_data.record) do
-            {:ok, struct} -> {:ok, Map.put(event_data, :record, struct)}
+            {:ok, struct} -> {:ok, Map.put(event_data, :recorded_struct, struct)}
             {:error, ecto_changeset} -> {:error, ecto_changeset}
           end
       end
     end
 
-    def message_not_already_processed?(event, options) do
-      last_processed_message_id = find_last_processed_message_id(event, options)
-
-      case Map.get(options, :bypass_message_index) do
-        true ->
-          true
-
-        _ ->
-          Map.get(event, "index") > last_processed_message_id
-      end
-    end
-
-    def update_consumer_message_index_ets(consumer_message_index, processor_name) do
-      true =
-        :ets.insert(
-          processor_name,
-          {build_ets_key(consumer_message_index), consumer_message_index}
-        )
-    end
-
-    defp get_consumer_message_index_ets(ets_key, ets_table) do
-      [{^ets_key, struct}] = :ets.lookup(ets_table, ets_key)
-      struct
-    end
-
-    def update_consumer_message_index(event, options) do
-      topic = Map.get(options, :topic)
-      partition = Map.get(event, :partition)
-      ets_key = build_ets_key(topic, partition)
-      message_id = Map.get(event, "index")
-      struct = get_consumer_message_index_ets(ets_key, options.processor_name)
-
-      case Procon.Schemas.Ecto.ProconConsumerIndex.changeset(struct, %{message_id: message_id})
-           |> options.datastore.update() do
-        {:ok, updated_struct} ->
-          updated_struct
-
-        {:error, ecto_changeset} ->
-          Logger.info(
-            "Unable to update message index #{inspect(ecto_changeset)} with id #{struct.id}"
-          )
-
-          options.datastore.rollback(ecto_changeset)
-      end
-    end
-
-    def build_ets_key(topic, partition), do: "#{topic}_#{partition}"
-
-    def build_ets_key(consumer_message_index) do
-      "#{consumer_message_index.topic}_#{consumer_message_index.partition}"
-    end
-
-    defp find_last_processed_message_id(event, options) do
-      topic = Map.get(options, :topic)
-      partition = Map.get(event, :partition)
-      ets_key = build_ets_key(topic, partition)
-
-      last_processed_message_id =
-        case :ets.lookup(options.processor_name, ets_key) do
-          [] ->
-            case from(c in Procon.Schemas.Ecto.ProconConsumerIndex,
-                   where: [topic: ^topic, partition: ^partition]
-                 )
-                 |> options.datastore.one do
-              nil ->
-                struct =
-                  options.datastore.insert!(%ProconConsumerIndex{
-                    message_id: -1,
-                    partition: partition,
-                    topic: topic
-                  })
-
-                update_consumer_message_index_ets(struct, options.processor_name)
-                struct.message_id
-
-              struct ->
-                update_consumer_message_index_ets(struct, options.processor_name)
-                struct.message_id
-            end
-
-          [{^ets_key, struct}] ->
-            struct.message_id
-        end
-
-      last_processed_message_id
-    end
-
-    def record_and_body_from_event(event, return_record, options) do
-      body = extract_versioned_body(event, options)
+    @spec record_from_datastore(
+            any,
+            any,
+            atom | %{master_key: nil | maybe_improper_list | {any, any} | map}
+          ) :: %{record: any, record_from_db: boolean}
+    def record_from_datastore(event, return_record, options) do
       master_keys = normalize_master_key(options.master_key)
+
+      get_new_or_old = fn
+        :get, %{before: nil, after: new}, next ->
+          next.(new)
+
+        :get, %{before: before}, next ->
+          next.(before)
+      end
 
       if length(master_keys) > 0 do
         query =
           master_keys
           |> Enum.map(fn {repo_key, body_key} ->
-            body
-            |> Map.get(body_key, nil)
+            event
+            |> get_in([get_new_or_old, body_key])
             |> case do
               nil ->
-                IO.inspect(event,
-                  label:
-                    "⚠️PROCON ALERT : #{options.processor_name} : the master_key value in event body is nil for key #{
-                      repo_key
-                    } configured",
-                  syntax_colors: [
-                    atom: :red,
-                    binary: :red,
-                    boolean: :red,
-                    list: :red,
-                    map: :red,
-                    number: :red,
-                    regex: :red,
-                    string: :red,
-                    tuple: :red
-                  ]
-                )
+                Procon.Helpers.log([
+                  "⚠️PROCON ALERT : #{options.processor_name} : the master_key value in event body is nil for key #{
+                    repo_key
+                  }. Typo error ?",
+                  event
+                ])
 
                 nil
 
@@ -536,23 +537,12 @@ defmodule Procon.MessagesControllers.Base do
             options.datastore.get_by(options.model, query)
         end
       else
-        case Map.get(body, "id") do
+        case get_in(event, [get_new_or_old, :id]) do
           nil ->
-            IO.inspect(event,
-              label:
-                "⚠️PROCON ALERT : #{options.processor_name} : \"id\" in body is nil to find record in database. Maybe you need to specify master_key in processor config for this entity ?",
-              syntax_colors: [
-                atom: :red,
-                binary: :red,
-                boolean: :red,
-                list: :red,
-                map: :red,
-                number: :red,
-                regex: :red,
-                string: :red,
-                tuple: :red
-              ]
-            )
+            Procon.Helpers.log([
+              "⚠️PROCON ALERT : #{options.processor_name} : \"id\" in body is nil to find record in database. Maybe you need to specify master_key in processor config for this entity ?",
+              event
+            ])
 
           id ->
             options.datastore.get(options.model, id)
@@ -561,13 +551,17 @@ defmodule Procon.MessagesControllers.Base do
       |> case do
         nil ->
           %{
-            body: body,
-            record_from_db: false,
-            record: if(return_record, do: struct(options.model), else: nil)
+            event: event,
+            record: if(return_record, do: struct(options.model), else: nil),
+            record_from_db: false
           }
 
         struct ->
-          %{body: body, record_from_db: true, record: struct}
+          %{
+            event: event,
+            record: struct,
+            record_from_db: true
+          }
       end
     end
 
@@ -585,3 +579,6 @@ defmodule Procon.MessagesControllers.Base do
     end
   end
 end
+
+
+# Procon.MessagesProducers.Realtime.send_rtevent(%Procon.Schemas.ProconRealtime{channel: "coco", metadata: %{key1: "value1"}}, Calions.Processors.Queries.Accounts.Repositories.AccountsPg)

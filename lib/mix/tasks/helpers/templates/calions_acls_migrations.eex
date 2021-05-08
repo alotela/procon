@@ -7,22 +7,21 @@ defmodule <%= @processor_name %>.Migrations.AddAclsTables do
       add(:app_group_id, :uuid, null: false)
       add(:id, :uuid, primary_key: true)
       add(:group_name, :string)
+      add(:metadata, :map, default: %{})
       add(:organization_id, :uuid, null: false)
       add(:type, :string)
-
-      timestamps()
     end
 
     create(index(:group_acls, [:app_group_id]))
     create(index(:group_acls, [:organization_id]))
+
+    execute("ALTER TABLE group_acls REPLICA IDENTITY FULL")
 
     create table(:selected_user_app_groups, primary_key: false) do
       add(:app_group_id, :uuid, null: false)
       add(:id, :uuid, primary_key: true)
       add(:organization_id, :uuid, null: false)
       add(:user_id, :uuid, null: false)
-
-      timestamps()
     end
 
     create(index(:selected_user_app_groups, [:app_group_id]))
