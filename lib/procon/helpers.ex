@@ -1,6 +1,33 @@
 defmodule Procon.Helpers do
   require Logger
 
+  def application_config(value, type) do
+    case value do
+      {:system, env_var_name} ->
+        System.fetch_env!(env_var_name) |> type.()
+
+      value ->
+        value
+    end
+  end
+
+
+  def olog(data, log_type, options \\ []) do
+    Application.fetch_env!(:procon, :logs)
+    |> case do
+      [] ->
+        nil
+      log_types ->
+        Enum.member?(log_types, log_type)
+        |> case do
+          true ->
+            Logger.info(data, options)
+          false ->
+            nil
+        end
+    end
+  end
+
   def log(data, options \\ []) do
     Logger.info(data, options)
   end
@@ -48,10 +75,8 @@ defmodule Procon.Helpers do
       brod_client,
       topic,
       partition,
-      (
-        :brod.resolve_offset(brod_client, topic, partition)
-        |> elem(1)
-      ) - 1
+      (:brod.resolve_offset(brod_client, topic, partition)
+       |> elem(1)) - 1
     )
     |> elem(1)
     |> elem(1)

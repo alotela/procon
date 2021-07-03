@@ -26,8 +26,9 @@ defmodule Procon.Materialize.Starter do
   end
 
   def run_materialize_configs() do
-    Logger.info(
+    Procon.Helpers.olog(
       "🎃 PROCON > MATERIALIZE: starting to configure materialize for activated processors",
+      Procon.Materialize.Starter,
       ansi_color: :blue
     )
 
@@ -41,13 +42,17 @@ defmodule Procon.Materialize.Starter do
   end
 
   def setup_materialize_for_processor(processor_name, nil) do
-    Logger.info("🎃😑 PROCON > MATERIALIZE: no materialize config for processor #{processor_name}.",
+    Procon.Helpers.olog(
+      "🎃😑 PROCON > MATERIALIZE: no materialize config for processor #{processor_name}.",
+      Procon.Materialize.Starter,
       ansi_color: :blue
     )
   end
 
   def setup_materialize_for_processor(processor_name, materialize_processor_config) do
-    Logger.info("🎃❎ PROCON > MATERIALIZE: Configure materialize for processor #{processor_name}",
+    Procon.Helpers.olog(
+      "🎃❎ PROCON > MATERIALIZE: Configure materialize for processor #{processor_name}",
+      Procon.Materialize.Starter,
       ansi_color: :blue
     )
 
@@ -61,19 +66,23 @@ defmodule Procon.Materialize.Starter do
             :epgsql.squery(epgsql_pid, query)
             |> case do
               {:ok, [], []} ->
-                Logger.info(
+                Procon.Helpers.olog(
                   "🎃❎🔧 PROCON > MATERIALIZE > QUERY: #{query} executed for processor #{
                     processor_name
-                  }"
+                  }",
+                  Procon.Materialize.Starter,
+                  ansi_color: :blue
                 )
 
               {:error, {:error, :error, _reference, :internal_error, error_description, []}} ->
-                Logger.info([
-                  "🎃❌🔧 PROCON > MATERIALIZE > QUERY: unable to execute #{query} for processor #{
-                    processor_name
-                  }",
-                  inspect(error_description)
-                ])
+                Procon.Helpers.olog(
+                  [
+                    "🎃❌🔧 PROCON > MATERIALIZE > QUERY: unable to execute #{query} for processor #{processor_name}",
+                    inspect(error_description)
+                  ],
+                  Procon.Materialize.Starter,
+                  ansi_color: :blue
+                )
             end
           end
         )
@@ -83,12 +92,13 @@ defmodule Procon.Materialize.Starter do
         :ok
 
       {:error, reason} ->
-        Logger.warn(
-          "🎃❌ PROCON > MATERIALIZE > epgsql.connect error: Unable to configure materialize for processor #{
+        Procon.Helpers.olog(
+                  "🎃❌ PROCON > MATERIALIZE > epgsql.connect error: Unable to configure materialize for processor #{
             processor_name
           }",
-          ansi_color: :blue
-        )
+                  Procon.Materialize.Starter,
+                  ansi_color: :blue
+                )
 
         {:error, reason}
     end

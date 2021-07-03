@@ -2,7 +2,9 @@ defmodule Procon.Avro.ConfluentSchemaRegistry do
   require Logger
 
   def register_all_avro_schemas() do
-    Logger.info("Registering all avro schema in confluent schema registry")
+    Procon.Helpers.olog("Registering all avro schema in confluent schema registry",
+      Procon.Avro.ConfluentSchemaRegistry
+    )
     copy_procon_avro_schemas_to_priv_dir()
     do_registration()
   end
@@ -32,33 +34,37 @@ defmodule Procon.Avro.ConfluentSchemaRegistry do
   def register_schema(filename) do
     schema_ref = filename |> String.replace(".avsc", "")
 
-    Logger.info(
-      "🎃🍾 Procon.Avro.ConfluentSchemaRegistry > register_schema : schema #{schema_ref} loading from file..."
+    Procon.Helpers.olog(
+      "🎃🍾 Procon.Avro.ConfluentSchemaRegistry > register_schema : schema #{schema_ref} loading from file...",
+      Procon.Avro.ConfluentSchemaRegistry
     )
 
     {:ok, schema} = Avrora.Storage.File.get(schema_ref)
 
-    Logger.info(
-      "🎃🍾🍾 Procon.Avro.ConfluentSchemaRegistry > register_schema : schema #{schema_ref} loaded from file."
+    Procon.Helpers.olog(
+      "🎃🍾🍾 Procon.Avro.ConfluentSchemaRegistry > register_schema : schema #{schema_ref} loaded from file.",
+      Procon.Avro.ConfluentSchemaRegistry
     )
 
     Avrora.Utils.Registrar.register_schema(schema, as: schema_ref)
     |> case do
       {:error, :conflict} ->
-        Logger.info(
+        Procon.Helpers.olog(
           "🎃🍾🍾🍾 Procon.Avro.ConfluentSchemaRegistry > register_schema : schema #{schema_ref} already registered in confluent schema registry as #{
             schema_ref
-          }."
-        )
+          }.",
+      Procon.Avro.ConfluentSchemaRegistry
+    )
 
         :ok
 
       {:ok, _schema_with_id} ->
-        Logger.info(
+        Procon.Helpers.olog(
           "🎃🍾🍾🍾 Procon.Avro.ConfluentSchemaRegistry > register_schema : schema #{schema_ref} registered in confluent schema registry as #{
             schema_ref
-          }."
-        )
+          }.",
+      Procon.Avro.ConfluentSchemaRegistry
+    )
 
         :ok
     end

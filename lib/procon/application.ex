@@ -8,6 +8,7 @@ defmodule Procon.Application do
   use Application
 
   def start(_type, _args) do
+    init_before_app_started()
     Procon.KafkaMetadata.cache_kafka_metadata()
 
     children = [
@@ -23,12 +24,31 @@ defmodule Procon.Application do
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Procon.Supervisor]
     Supervisor.start_link(children, opts)
+    |> case do
+      {:ok, pid} ->
+        init_after_app_started()
+        {:ok, pid}
+      error ->
+        error
+    end
+  end
+
+  def init_before_app_started() do
+    Application.put_env(
+      :procon,
+      :logs,
+      System.get_env("PROCON_LOGS", "") |> String.split(",",  trim: true)
+    )
+  end
+
+  def init_after_app_started() do
   end
 
   def after_start() do
     Application.get_env(:procon, :autostart)
     |> case do
       false ->
+        Logger.warning("🤔🤔🤔 procon autostart == FALSE 🤔🤔🤔")
         nil
       _ ->
         do_start()
@@ -36,7 +56,7 @@ defmodule Procon.Application do
   end
 
   def do_start() do
-    IO.inspect("👁 👁 starting procon")
+    Logger.info("👁 👁 starting procon")
     :procon_enqueuers_thresholds =
       :ets.new(:procon_enqueuers_thresholds, [:named_table, :public, :set])
 
