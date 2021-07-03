@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 config :<%= @app_name%>, <%= @repository %>,
   database: "calions_dev_<%= @database %>",

@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 config :procon, Processors,
   "Elixir.<%= @processor_name %>": [
@@ -50,5 +50,5 @@ config :procon, Processors,
     }
   ]
 
-if [__DIR__, "#{Mix.env}.exs"] |> Path.join() |> File.exists?(),
-  do: import_config("#{Mix.env()}.exs")
+if [__DIR__, "#{config_env()}.exs"] |> Path.join() |> File.exists?(),
+  do: import_config("#{config_env()}.exs")

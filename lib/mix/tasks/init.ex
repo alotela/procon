@@ -196,7 +196,9 @@ defmodule Mix.Tasks.Procon.Init do
           consumers: []
         }
 
-        import_config "processors/**/*/config.exs"
+        for config <- "processors/**/*/config.exs" |> Path.expand(__DIR__) |> Path.wildcard() do
+          import_config config
+        end
         import_config "processors/activated.exs"
 
       * if it is not automatically added, add the processor repository #{

@@ -14,7 +14,7 @@ defmodule Mix.Tasks.Procon.Helpers.Activated do
   embed_template(
     :file,
     """
-    use Mix.Config
+    import Config
 
     config :procon,
       :activated_processors: [
