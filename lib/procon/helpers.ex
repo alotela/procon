@@ -54,16 +54,39 @@ defmodule Procon.Helpers do
     )
   end
 
-  def map_keys_to_atom(map, struct) do
+  def map_keys_to_atom(map, target_map \\ %{})
+
+  def map_keys_to_atom(map, %_{} = target_struct) do
     Enum.reduce(
       map,
-      struct,
+      target_struct,
+      fn {key, value}, atomized_struct ->
+        struct!(
+          atomized_struct,
+          [
+            {
+              String.to_atom(key),
+              case value do
+                %{} -> map_keys_to_atom(value)
+                _ -> value
+              end
+            }
+          ]
+        )
+      end
+    )
+  end
+
+  def map_keys_to_atom(map, target_map) do
+    Enum.reduce(
+      map,
+      target_map,
       fn {key, value}, atomized_map ->
         Map.put(
           atomized_map,
           String.to_atom(key),
           case value do
-            %{} -> map_keys_to_atom(value, %{})
+            %{} -> map_keys_to_atom(value)
             _ -> value
           end
         )

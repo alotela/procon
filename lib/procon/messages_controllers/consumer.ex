@@ -162,22 +162,26 @@ defmodule Procon.MessagesControllers.Consumer do
       end,
       [
         procon_message,
-        entity_config
-        |> Map.merge(%{
-          datastore: processor_consumer_config.datastore,
-          dynamic_topics_autostart_consumers:
-            Map.get(
-              processor_consumer_config,
-              :dynamic_topics_autostart_consumers,
-              false
-            ),
-          dynamic_topics_filters: Map.get(processor_consumer_config, :dynamic_topics_filters, []),
-          offset: offset,
-          partition: partition,
-          processing_id: processing_id,
-          processor_name: processor_consumer_config.name,
-          topic: topic
-        })
+        struct!(
+          Procon.Types.BaseMethodOptions,
+          entity_config
+          |> Map.merge(%{
+            datastore: processor_consumer_config.datastore,
+            dynamic_topics_autostart_consumers:
+              Map.get(
+                processor_consumer_config,
+                :dynamic_topics_autostart_consumers,
+                false
+              ),
+            dynamic_topics_filters:
+              Map.get(processor_consumer_config, :dynamic_topics_filters, []),
+            offset: offset,
+            partition: partition,
+            processing_id: processing_id,
+            processor_name: processor_consumer_config.name,
+            topic: topic
+          })
+        )
       ]
     )
   end

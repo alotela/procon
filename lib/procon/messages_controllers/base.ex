@@ -6,13 +6,13 @@ defmodule Procon.MessagesControllers.Base do
 
       @spec create(
               Procon.Types.DebeziumMessage.t(),
-              Procon.Types.BaseMethodOptions.m()
+              Procon.Types.BaseMethodOptions.t()
             ) :: any
       def create(
             %Procon.Types.DebeziumMessage{} = message,
-            options
+            %Procon.Types.BaseMethodOptions{} = options
           ) do
-        do_create(__MODULE__, message, options)
+        do_create(__MODULE__, message, options |> IO.inspect(label: :totocreate))
       end
 
       def delete(event, options) do
