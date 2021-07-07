@@ -12,7 +12,7 @@ defmodule Procon.MessagesControllers.Base do
             %Procon.Types.DebeziumMessage{} = message,
             %Procon.Types.BaseMethodOptions{} = options
           ) do
-        do_create(__MODULE__, message, options |> IO.inspect(label: :totocreate))
+        do_create(__MODULE__, message, options)
       end
 
       def delete(event, options) do
