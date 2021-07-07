@@ -7,8 +7,8 @@ defmodule Procon.MessagesControllers.EventDataAccessors do
 
   def read_payload(event_data), do: event_data.event.after
 
-  def read_payload_value(event_data, value_path),
-    do: get_in(event_data, [:event, :after | value_path])
+  def read_payload_value(event_data, path),
+    do: get_in(event_data, [:event, Access.key(:after) | path])
 
   def write_record(event_data, record) do
     Map.put(event_data, :record, record)

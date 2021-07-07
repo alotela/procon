@@ -11,17 +11,18 @@ defmodule Procon.Helpers do
     end
   end
 
-
   def olog(data, log_type, options \\ []) do
     Application.fetch_env!(:procon, :logs)
     |> case do
       [] ->
         nil
+
       log_types ->
         Enum.member?(log_types, log_type)
         |> case do
           true ->
             Logger.info(data, options)
+
           false ->
             nil
         end
@@ -53,16 +54,16 @@ defmodule Procon.Helpers do
     )
   end
 
-  def map_keys_to_atom(map) do
+  def map_keys_to_atom(map, struct) do
     Enum.reduce(
       map,
-      %{},
+      struct,
       fn {key, value}, atomized_map ->
         Map.put(
           atomized_map,
           String.to_atom(key),
           case value do
-            %{} -> map_keys_to_atom(value)
+            %{} -> map_keys_to_atom(value, %{})
             _ -> value
           end
         )

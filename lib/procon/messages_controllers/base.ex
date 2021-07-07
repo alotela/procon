@@ -4,8 +4,11 @@ defmodule Procon.MessagesControllers.Base do
       import Procon.MessagesControllers.Base.Helpers
       import Procon.MessagesControllers.EventDataAccessors
 
-      def create(event, options) do
-        do_create(__MODULE__, event, options)
+      def create(
+            %Procon.Types.DebeziumMessage{} = message,
+            options
+          ) do
+        do_create(__MODULE__, message, options)
       end
 
       def delete(event, options) do
@@ -88,9 +91,7 @@ defmodule Procon.MessagesControllers.Base do
           {:error, ecto_changeset} ->
             Procon.Helpers.inspect(
               ecto_changeset,
-              "#{options.processing_id}@@PROCON FLOW ERROR : ecto changeset : unable to save entity : #{
-                options.processor_name
-              }/#{options.topic}/#{options.partition}/#{options.offset}"
+              "#{options.processing_id}@@PROCON FLOW ERROR : ecto changeset : unable to save entity : #{options.processor_name}/#{options.topic}/#{options.partition}/#{options.offset}"
             )
 
             options.datastore.rollback(ecto_changeset)
@@ -134,7 +135,9 @@ defmodule Procon.MessagesControllers.Base do
     def process_create(controller, event, options) do
       event_data =
         record_from_datastore(event, true, options)
+        |> IO.inspect(label: :record_from_datastore)
         |> add_new_attributes(options)
+        |> IO.inspect(label: :before_create)
         |> controller.before_create(options)
 
       options.model.messages_create_changeset(
@@ -178,7 +181,10 @@ defmodule Procon.MessagesControllers.Base do
           {:ok, Map.put(event_data, :entity_realtime_event_enqueued, true)}
 
         [] ->
-          Logger.info("👹🤡 Procon > Base > enqueue_realtime : empty list returned > type : #{type}, event_data: #{inspect event_data}")
+          Logger.info(
+            "👹🤡 Procon > Base > enqueue_realtime : empty list returned > type : #{type}, event_data: #{inspect(event_data)}"
+          )
+
           {:ok, Map.put(event_data, :entity_realtime_event_enqueued, false)}
 
         [_ | _] = realtime_events ->
@@ -256,9 +262,7 @@ defmodule Procon.MessagesControllers.Base do
           {:error, ecto_changeset} ->
             Procon.Helpers.inspect(
               ecto_changeset,
-              "#{options.processing_id}@@PROCON FLOW ERROR : ecto changeset : unable to save entity : #{
-                options.processor_name
-              }/#{options.topic}/#{options.partition}/#{options.offset}"
+              "#{options.processing_id}@@PROCON FLOW ERROR : ecto changeset : unable to save entity : #{options.processor_name}/#{options.topic}/#{options.partition}/#{options.offset}"
             )
 
             options.datastore.rollback(ecto_changeset)
@@ -374,20 +378,19 @@ defmodule Procon.MessagesControllers.Base do
       new_attributes = Map.merge(event_data.event.after, attributes)
 
       new_attributes =
-        case Map.has_key?(options, :drop_event_attributes) && Kernel.map_size(options.drop_event_attributes) > 0 do
+        case Map.has_key?(options, :drop_event_attributes) &&
+               Kernel.map_size(options.drop_event_attributes) > 0 do
           true ->
             Map.drop(
               new_attributes,
               [
-                Map.get(options.drop_event_attributes, :always, []) |
-                  Map.get(
+                Map.get(options.drop_event_attributes, :always, [])
+                | Map.get(
                     options.drop_event_attributes,
-                    (
-                      case event_data.event.before do
-                        nil -> :on_create
-                        _ -> :on_update
-                      end
-                    ),
+                    case event_data.event.before do
+                      nil -> :on_create
+                      _ -> :on_update
+                    end,
                     []
                   )
               ]
@@ -457,9 +460,7 @@ defmodule Procon.MessagesControllers.Base do
           {:error, ecto_changeset} ->
             Procon.Helpers.inspect(
               ecto_changeset,
-              "#{options.processing_id}@@PROCON FLOW ERROR : ecto changeset : unable to save entity : #{
-                options.processor_name
-              }/#{options.topic}/#{options.partition}/#{options.offset}"
+              "#{options.processing_id}@@PROCON FLOW ERROR : ecto changeset : unable to save entity : #{options.processor_name}/#{options.topic}/#{options.partition}/#{options.offset}"
             )
 
             options.datastore.rollback(ecto_changeset)
@@ -490,10 +491,10 @@ defmodule Procon.MessagesControllers.Base do
     end
 
     @spec record_from_datastore(
-            any,
-            any,
+            map,
+            boolean,
             atom | %{master_key: nil | maybe_improper_list | {any, any} | map}
-          ) :: %{record: any, record_from_db: boolean}
+          ) :: %{event: map, record: map | nil, record_from_db: boolean}
     def record_from_datastore(event, return_record, options) do
       master_keys = normalize_master_key(options.master_key)
 
@@ -514,9 +515,7 @@ defmodule Procon.MessagesControllers.Base do
             |> case do
               nil ->
                 Procon.Helpers.log([
-                  "⚠️PROCON ALERT : #{options.processor_name} : the master_key value in event body is nil for key #{
-                    repo_key
-                  }. Typo error ?",
+                  "⚠️PROCON ALERT : #{options.processor_name} : the master_key value in event body is nil for key #{repo_key}. Typo error ?",
                   event
                 ])
 
@@ -579,6 +578,5 @@ defmodule Procon.MessagesControllers.Base do
     end
   end
 end
-
 
 # Procon.MessagesProducers.Realtime.send_rtevent(%Procon.Schemas.ProconRealtime{channel: "coco", metadata: %{key1: "value1"}}, Calions.Processors.Queries.Accounts.Repositories.AccountsPg)

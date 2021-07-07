@@ -19,7 +19,7 @@ defmodule Procon.MessagesProducers.EpgsqlConnector do
 
   def connect(%Config{} = config, tables) do
     Procon.Helpers.olog("#{__MODULE__}#connect > config: #{inspect(config)}", :epgsql)
-    case :epgsql.connect(Map.take(config, [:database, :host, :password, :replication, :username])) |> IO.inspect(label: "popopo")  do
+    case :epgsql.connect(Map.take(config, [:database, :host, :password, :replication, :username]))  do
       {:ok, epgsql_pid} ->
         create_publication(epgsql_pid, config.database, tables)
 
