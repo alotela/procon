@@ -48,9 +48,7 @@ defmodule Mix.Tasks.Procon.Helpers do
   end
 
   def default_controller_module(processor_name, public_controller) do
-    "#{processor_name}.Web.Controllers.#{if public_controller, do: "", else: "Private."}#{
-      processor_name |> processor_to_controller()
-    }"
+    "#{processor_name}.Web.Controllers.#{if public_controller, do: "", else: "Private."}#{processor_name |> processor_to_controller()}"
   end
 
   def info(msg) do
@@ -58,7 +56,7 @@ defmodule Mix.Tasks.Procon.Helpers do
     #{msg}
     """
 
-    Mix.shell().info([msg])
+    Mix.Shell.IO.info([msg])
   end
 
   def default_service_name(processor_name) do

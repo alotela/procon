@@ -16,7 +16,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
     #{msg}
     """
 
-    Mix.shell().info([msg])
+    Mix.Shell.IO.info([msg])
   end
 
   def run([]) do
@@ -39,9 +39,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
       |> Keyword.get(:repo, "#{Helpers.processor_to_controller(processor_name)}Pg")
 
     topic =
-      "calions-int-#{processor_name |> Helpers.processor_type() |> Macro.underscore()}-#{
-        processor_name |> Helpers.short_processor_name()
-      }-group_acls"
+      "calions-int-#{processor_name |> Helpers.processor_type() |> Macro.underscore()}-#{processor_name |> Helpers.short_processor_name()}-group_acls"
 
     config_path = add_topic_config(processor_name, topic)
     Helpers.info("added topics to listen in processor's config file #{config_path}")
@@ -122,14 +120,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
       group_acls_template(
         processor_name: processor_name,
         group_acl_type:
-          "#{
-            processor_name
-            |> Helpers.processor_type()
-            |> Macro.underscore()
-          }_#{
-            processor_name
-            |> Helpers.short_processor_name()
-          }"
+          "#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{processor_name |> Helpers.short_processor_name()}"
       )
     )
 
@@ -231,12 +222,8 @@ defmodule Mix.Tasks.Procon.AddAcls do
         global: false
       )
       |> String.replace(
-        "pipe_through([:#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{
-          processor_atom
-        }_auth_private])",
-        "pipe_through([:#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{
-          processor_atom
-        }_auth_private])\n\n#{forward}",
+        "pipe_through([:#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{processor_atom}_auth_private])",
+        "pipe_through([:#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{processor_atom}_auth_private])\n\n#{forward}",
         global: false
       )
 

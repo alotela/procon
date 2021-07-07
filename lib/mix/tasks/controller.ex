@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Procon.Controller do
       "\ncontroller created. Open the file to check if everything is ok. Modify it to fit your needs.
 \nDon't forget to create a migration and a schema for your resource with mix and ecto.\n\n"
 
-    Mix.shell().info([msg])
+    Mix.Shell.IO.info([msg])
   end
 
   embed_template(:controller, """
