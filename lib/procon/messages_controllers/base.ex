@@ -4,6 +4,10 @@ defmodule Procon.MessagesControllers.Base do
       import Procon.MessagesControllers.Base.Helpers
       import Procon.MessagesControllers.EventDataAccessors
 
+      @spec create(
+              Procon.Types.DebeziumMessage.t(),
+              Procon.Types.BaseMethodOptions.m()
+            ) :: any
       def create(
             %Procon.Types.DebeziumMessage{} = message,
             options
