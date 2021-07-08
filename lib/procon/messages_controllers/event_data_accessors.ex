@@ -5,6 +5,8 @@ defmodule Procon.MessagesControllers.EventDataAccessors do
     Map.put(event_data, :new_attributes, new_attributes_map)
   end
 
+  def read_debezium_after(%Procon.Types.DebeziumMessage{} = event), do: event.after
+
   def read_payload(event_data), do: event_data.event.after
 
   def read_payload_value(event_data, path),
