@@ -589,5 +589,3 @@ defmodule Procon.MessagesControllers.Base do
     end
   end
 end
-
-# Procon.MessagesProducers.Realtime.send_rtevent(%Procon.Schemas.ProconRealtime{channel: "coco", metadata: %{key1: "value1"}}, Calions.Processors.Queries.Accounts.Repositories.AccountsPg)
