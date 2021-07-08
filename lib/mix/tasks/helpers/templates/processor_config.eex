@@ -34,7 +34,7 @@ config :procon, Processors,
           #     :deleted, event_data -> %Procon.Schemas.ProconRealtime{session_id: nil, channel: "<%= @entity_name %>"}
           #   end,
           #   message_processed_hook: fn # optional: if specified, will be called when the message is processed
-          #     action_type, event_data -> {:ok, event_data}
+          #     event_data, action_type, options -> {:ok, event_data}
           #   end,
           #   topic: "the_topic_to_listen" # if "dynamic_topic: true", procon will start all topics in procon_dynamic_topics table starting with this string
           # }

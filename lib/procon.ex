@@ -1,7 +1,12 @@
 defmodule Procon do
   defmodule Types do
+    @type procon_db_actions() :: :created | :updated
+    @type procon_entity() :: struct()
     @type ulid() :: binary()
     @type uuid() :: binary()
+
+    defmodule EventData do
+    end
 
     defmodule BaseMethodOptions do
       @moduledoc """
@@ -22,11 +27,16 @@ defmodule Procon do
         :partition,
         :processing_id,
         :processor_name,
+        :realtime_builder,
         :serialization,
-        :topic
+        :topic,
+        messages_controller: nil,
+        message_processed_hook: nil
       ]
 
       @typep ecto_repo() :: atom()
+      @typep event_key() :: atom()
+      @typep target_key() :: atom()
 
       @typedoc "options passed to a base controller's method."
       @type t() :: %__MODULE__{
@@ -38,12 +48,22 @@ defmodule Procon do
               dynamic_topics_autostart_consumers: boolean,
               dynamic_topics_filters: list(),
               keys_mapping: map(),
-              master_key: nil | atom(),
+              master_key: nil | {event_key(), target_key()},
+              messages_controller: nil | module(),
+              message_processed_hook:
+                nil
+                | (Procon.Types.EventData.t(),
+                   Procon.Types.procon_db_actions(),
+                   Procon.Types.BaseMethodOptions ->
+                     {:ok, Procon.Types.EventData.t()}),
               model: module(),
               offset: non_neg_integer(),
               partition: non_neg_integer(),
               processing_id: non_neg_integer(),
               processor_name: String.t(),
+              realtime_builder:
+                (Procon.Types.EventData.t() ->
+                   nil | Procon.Schemas.ProconRealtime.t()),
               serialization: :avro | :debezium,
               topic: String.t()
             }
@@ -57,12 +77,23 @@ defmodule Procon do
               dynamic_topics_autostart_consumers: boolean,
               dynamic_topics_filters: list(),
               keys_mapping: map(),
-              master_key: nil | atom(),
+              master_key: nil | {event_key(), target_key()},
+              messages_controller: nil | module(),
+              message_processed_hook:
+                nil
+                | (Procon.Types.EventData.t(),
+                   Procon.Types.procon_db_actions(),
+                   Procon.Types.BaseMethodOptions ->
+                     {:ok, Procon.Types.EventData.t()}),
               model: module(),
               offset: non_neg_integer(),
               partition: non_neg_integer(),
               processing_id: non_neg_integer(),
               processor_name: String.t(),
+              realtime_builder:
+                nil
+                | (Procon.Types.EventData.t() ->
+                     nil | Procon.Schemas.ProconRealtime.t()),
               serialization: :avro | :debezium,
               topic: String.t()
             }

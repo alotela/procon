@@ -155,6 +155,14 @@ defmodule Procon.MessagesControllers.Base do
       end
     end
 
+    def enqueue_realtime(event_data, _type, _options = %{realtime_builder: nil}),
+      do:
+        {:ok,
+         event_data
+         |> Map.put(:entity_realtime_event_enqueued, false)}
+
+    @spec enqueue_realtime(map, any, any) ::
+            {:ok, %{:entity_realtime_event_enqueued => boolean, optional(any) => any}}
     def enqueue_realtime(event_data, type, options = %{realtime_builder: realtime_builder}) do
       realtime_builder.(type, event_data)
       |> case do
@@ -216,11 +224,8 @@ defmodule Procon.MessagesControllers.Base do
       end
     end
 
-    def enqueue_realtime(event_data, _type, _options),
-      do:
-        {:ok,
-         event_data
-         |> Map.put(:entity_realtime_event_enqueued, false)}
+    def message_processed_hook(event_data, _type, _options = %{message_processed_hook: nil}),
+      do: {:ok, event_data}
 
     def message_processed_hook(
           event_data,
@@ -228,8 +233,6 @@ defmodule Procon.MessagesControllers.Base do
           %{message_processed_hook: message_processed_hook}
         ),
         do: message_processed_hook.(type, event_data)
-
-    def message_processed_hook(event_data, _type, _options), do: {:ok, event_data}
 
     def do_update(controller, event, options) do
       options.datastore.transaction(fn ->
@@ -495,10 +498,14 @@ defmodule Procon.MessagesControllers.Base do
     end
 
     @spec record_from_datastore(
-            map,
+            Procon.Types.DebeziumMessage.event(),
             boolean,
-            atom | %{master_key: nil | maybe_improper_list | {any, any} | map}
-          ) :: %{event: map, record: map | nil, record_from_db: boolean}
+            Procon.Types.BaseMethodOptions.t()
+          ) :: %{
+            event: Procon.Types.DebeziumMessage.event(),
+            record: Procon.Types.procon_entity() | nil,
+            record_from_db: boolean
+          }
     def record_from_datastore(event, return_record, options) do
       master_keys = normalize_master_key(options.master_key)
 
