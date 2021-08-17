@@ -14,9 +14,7 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
     Logger.metadata(procon_wal_dispatcher_producer: state.name)
 
     Logger.notice(
-      "PROCON : Starting WalDispatcherProducer for topic/partition #{state.topic}/#{
-        state.partition_index
-      }"
+      "PROCON : Starting WalDispatcherProducer for topic/partition #{state.topic}/#{state.partition_index}"
     )
 
     GenServer.cast(self(), :start_producing)
@@ -119,23 +117,6 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
         }
       )
 
-    [serialized_key, serialized_payload] =
-      case state.serialization do
-        :json ->
-          [key, Jason.encode!(payload)]
-
-        :avro ->
-          [
-            AvroEx.encode(AvroEx.parse_schema!("{\"type\":\"string\"}"), key) |> elem(1),
-            payload
-            |> Avrora.encode(
-              schema_name: state.avro_value_schema_name,
-              format: :registry
-            )
-            |> elem(1)
-          ]
-      end
-
-    {<<0::size(8), 4::size(32), serialized_key::binary>>, serialized_payload}
+    Procon.MessagesProducers.Kafka.build_message(key, payload, state.avro_value_schema_name, state.serialization)
   end
 end

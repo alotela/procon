@@ -60,23 +60,6 @@ defmodule Procon.MessagesProducers.Realtime do
     }
     key = Map.get(message, :channel, Map.get(message, :session_id, ""))
 
-    [serialized_key, serialized_payload] =
-      case options.serialization do
-        :json ->
-          [key, Jason.encode!(payload)]
-
-        :avro ->
-          [
-            AvroEx.encode(AvroEx.parse_schema!("{\"type\":\"string\"}"), key) |> elem(1),
-            payload
-            |> Avrora.encode(
-              schema_name: Procon.Avro.ConfluentSchemaRegistry.topic_to_avro_value_schema(@procon_realtime_topic_name),
-              format: :registry
-            )
-            |> elem(1)
-          ]
-      end
-
-    {<<0::size(8), 4::size(32), serialized_key::binary>>, serialized_payload}
+    Procon.MessagesProducers.Kafka.build_message(key, payload, Procon.Avro.ConfluentSchemaRegistry.topic_to_avro_value_schema(@procon_realtime_topic_name), options.serialization)
   end
 end
