@@ -31,7 +31,8 @@ defmodule Procon.MixProject do
       {:epgsql, "~> 4.5"},
       {:jason, "~> 1.2"},
       {:inflex, "~> 2.0.0"},
-      {:postgrex, ">= 0.0.0"}
+      {:postgrex, ">= 0.0.0"},
+      {:dialyxir, "~> 1.0", only: [:dev], runtime: false}
     ]
   end
 end
