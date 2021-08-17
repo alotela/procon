@@ -139,9 +139,7 @@ defmodule Procon.MessagesControllers.Base do
     def process_create(controller, event, options) do
       event_data =
         record_from_datastore(event, true, options)
-        |> IO.inspect(label: :record_from_datastore)
         |> add_new_attributes(options)
-        |> IO.inspect(label: :before_create)
         |> controller.before_create(options)
 
       options.model.messages_create_changeset(
