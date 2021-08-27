@@ -179,6 +179,16 @@ defmodule Procon.MessagesControllers.Consumer do
             partition: partition,
             processing_id: processing_id,
             processor_name: processor_consumer_config.name,
+            processor_type: Map.get(processor_consumer_config, :type,
+                processor_consumer_config.name |> Atom.to_string() |> String.split(".") |> Enum.at(3) |> case do
+                  "Commands" ->
+                    :command
+                  "Operators" ->
+                    :operator
+                  "Queries" ->
+                    :query
+                  end
+            ),
             topic: topic
           })
         )

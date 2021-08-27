@@ -27,6 +27,7 @@ defmodule Procon do
         :partition,
         :processing_id,
         :processor_name,
+        :processor_type,
         :realtime_builder,
         :serialization,
         :topic,
@@ -61,6 +62,7 @@ defmodule Procon do
               partition: non_neg_integer(),
               processing_id: non_neg_integer(),
               processor_name: String.t(),
+              processor_type: :command | :operator | :query,
               realtime_builder:
                 (Procon.Types.EventData.t() ->
                    nil | Procon.Schemas.ProconRealtime.t()),
@@ -90,6 +92,7 @@ defmodule Procon do
               partition: non_neg_integer(),
               processing_id: non_neg_integer(),
               processor_name: String.t(),
+              processor_type: :command | :operator | :query,
               realtime_builder:
                 nil
                 | (Procon.Types.EventData.t() ->
