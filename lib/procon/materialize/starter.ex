@@ -13,19 +13,13 @@ defmodule Procon.Materialize.Starter do
 
   ## GenServer callbacks
   def init(initial_state) do
-    Process.send_after(self(), :start, 1)
+    Process.send(self(), :start, [])
     {:ok, initial_state}
   end
 
   def handle_info(:start, state) do
     Procon.Avro.ConfluentSchemaRegistry.register_all_avro_schemas()
     run_materialize_configs()
-    {:noreply, state}
-  end
-
-  def handle_cast({:start}, state) do
-    run_materialize_configs()
-
     {:noreply, state}
   end
 
@@ -44,7 +38,12 @@ defmodule Procon.Materialize.Starter do
           Keyword.get(processor_config, :materialize, nil)
         )
       end,
-      20000
+      30000
+    )
+
+    Procon.Helpers.log(
+      "🎃❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎",
+      ansi_color: :blue
     )
   end
 
