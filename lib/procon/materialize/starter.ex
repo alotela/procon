@@ -4,8 +4,6 @@ defmodule Procon.Materialize.Starter do
   require Logger
 
   def start_link(options) do
-    Procon.Avro.ConfluentSchemaRegistry.register_all_avro_schemas()
-
     GenServer.start_link(
       __MODULE__,
       Keyword.get(options, :initial_state, []),
@@ -15,8 +13,14 @@ defmodule Procon.Materialize.Starter do
 
   ## GenServer callbacks
   def init(initial_state) do
-    GenServer.cast(__MODULE__, {:start})
+    Process.send_after(self(), :start, 1)
     {:ok, initial_state}
+  end
+
+  def handle_info(:start, state) do
+    Procon.Avro.ConfluentSchemaRegistry.register_all_avro_schemas()
+    run_materialize_configs()
+    {:noreply, state}
   end
 
   def handle_cast({:start}, state) do
@@ -33,12 +37,15 @@ defmodule Procon.Materialize.Starter do
     )
 
     Procon.ProcessorConfigAccessor.activated_processors_config()
-    |> Procon.Parallel.pmap(fn {processor_name, processor_config} ->
-      setup_materialize_for_processor(
-        processor_name,
-        Keyword.get(processor_config, :materialize, nil)
-      )
-    end)
+    |> Procon.Parallel.pmap(
+      fn {processor_name, processor_config} ->
+        setup_materialize_for_processor(
+          processor_name,
+          Keyword.get(processor_config, :materialize, nil)
+        )
+      end,
+      20000
+    )
   end
 
   def setup_materialize_for_processor(processor_name, nil) do
@@ -67,9 +74,7 @@ defmodule Procon.Materialize.Starter do
             |> case do
               {:ok, [], []} ->
                 Procon.Helpers.olog(
-                  "🎃❎🔧 PROCON > MATERIALIZE > QUERY: #{query} executed for processor #{
-                    processor_name
-                  }",
+                  "🎃❎🔧 PROCON > MATERIALIZE > QUERY: #{query} executed for processor #{processor_name}",
                   Procon.Materialize.Starter,
                   ansi_color: :blue
                 )
@@ -93,12 +98,10 @@ defmodule Procon.Materialize.Starter do
 
       {:error, reason} ->
         Procon.Helpers.olog(
-                  "🎃❌ PROCON > MATERIALIZE > epgsql.connect error: Unable to configure materialize for processor #{
-            processor_name
-          }",
-                  Procon.Materialize.Starter,
-                  ansi_color: :blue
-                )
+          "🎃❌ PROCON > MATERIALIZE > epgsql.connect error: Unable to configure materialize for processor #{processor_name}",
+          Procon.Materialize.Starter,
+          ansi_color: :blue
+        )
 
         {:error, reason}
     end
