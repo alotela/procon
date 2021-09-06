@@ -112,6 +112,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
            after:
              Enum.zip(Map.get(column_names_and_types, relation_id, []), column_values)
              |> Enum.reduce(%{}, &map_value_with_type/2),
+           before: nil,
            source: %{}
          },
          timestamp: timestamp,
@@ -245,6 +246,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
        %{
          end_lsn: end_lsn,
          payload: %{
+           after: nil,
            # add by hand metadata for http_request_id etc etc... since no record in new when deleting
            before:
              Enum.zip(Map.get(column_names_and_types, relation_id, []), old_column_values)

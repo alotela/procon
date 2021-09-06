@@ -1,64 +1,75 @@
 defmodule Procon.Materialize.Starter do
-  use GenServer
-
   require Logger
 
-  def start_link(options) do
-    GenServer.start_link(
-      __MODULE__,
-      Keyword.get(options, :initial_state, []),
-      name: __MODULE__
-    )
-  end
-
-  ## GenServer callbacks
-  def init(initial_state) do
-    Process.send(self(), :start, [])
-    {:ok, initial_state}
-  end
-
-  def handle_info(:start, state) do
-    Procon.Avro.ConfluentSchemaRegistry.register_all_avro_schemas()
-    run_materialize_configs()
-    {:noreply, state}
-  end
-
-  def run_materialize_configs() do
+  def run_materialize_configs(processors) do
     Procon.Helpers.olog(
-      "🎃 PROCON > MATERIALIZE: starting to configure materialize for activated processors",
-      Procon.Materialize.Starter,
+      "🎃 PROCON > MATERIALIZE: starting to configure materialize for activated processors (#{inspect(processors)})",
+      Procon.Materialize.StarterRun,
       ansi_color: :blue
     )
 
-    Procon.ProcessorConfigAccessor.activated_processors_config()
+    Application.get_env(:procon, Processors)
     |> Procon.Parallel.pmap(
       fn {processor_name, processor_config} ->
-        setup_materialize_for_processor(
-          processor_name,
-          Keyword.get(processor_config, :materialize, nil)
-        )
+        case Enum.empty?(processors) || Enum.any?(processors, &(&1 == processor_name)) do
+          true ->
+            setup_materialize_for_processor(
+              processor_name,
+              Keyword.get(processor_config, :materialize, nil)
+            )
+            |> case do
+              :ok ->
+                nil
+
+              unregistered_proc_name ->
+                unregistered_proc_name
+            end
+
+          false ->
+            nil
+        end
       end,
       30000
     )
+    |> Enum.reject(&is_nil/1)
+    |> Procon.Helpers.olog(Procon.Materialize.Starter, ansi_color: :blue)
+    |> case do
+      [] ->
+        Procon.Helpers.log(
+          "👍 done : all processors registered!",
+          ansi_color: :blue
+        )
 
-    Procon.Helpers.log(
-      "🎃❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎❎",
-      ansi_color: :blue
-    )
+      unregistered_procs ->
+        Procon.Helpers.log("All processors not yet registered.", ansi_color: :blue)
+        Procon.Helpers.log(unregistered_procs, ansi_color: :blue)
+
+        Procon.Helpers.log("starting another registration with unregistered processors only",
+          ansi_color: :blue
+        )
+
+        run_materialize_configs(unregistered_procs)
+    end
   end
 
+  @spec setup_materialize_for_processor(any, nil | map) ::
+          nil
+          | :ok
+          | atom()
   def setup_materialize_for_processor(processor_name, nil) do
     Procon.Helpers.olog(
-      "🎃😑 PROCON > MATERIALIZE: no materialize config for processor #{processor_name}.",
+      "🎃😑 PROCON > MATERIALIZE: no materialize config for processor #{inspect(processor_name)}.",
       Procon.Materialize.Starter,
       ansi_color: :blue
     )
+
+    :ok
   end
 
   def setup_materialize_for_processor(processor_name, materialize_processor_config) do
     Procon.Helpers.olog(
-      "🎃❎ PROCON > MATERIALIZE: Configure materialize for processor #{processor_name}",
-      Procon.Materialize.Starter,
+      "🎃❎ PROCON > MATERIALIZE: Configure materialize for processor #{inspect(processor_name)}",
+      Procon.Materialize.StarterResult,
       ansi_color: :blue
     )
 
@@ -66,34 +77,47 @@ defmodule Procon.Materialize.Starter do
            Map.take(materialize_processor_config, [:database, :host, :port, :username])
          ) do
       {:ok, epgsql_pid} ->
-        Enum.map(
-          materialize_processor_config.queries,
-          fn query ->
-            :epgsql.squery(epgsql_pid, query)
-            |> case do
-              {:ok, [], []} ->
-                Procon.Helpers.olog(
-                  "🎃❎🔧 PROCON > MATERIALIZE > QUERY: #{query} executed for processor #{processor_name}",
-                  Procon.Materialize.Starter,
-                  ansi_color: :blue
-                )
+        result =
+          Enum.map(
+            materialize_processor_config.queries,
+            fn query ->
+              :epgsql.squery(epgsql_pid, query)
+              |> case do
+                {:ok, [], []} ->
+                  Procon.Helpers.olog(
+                    "🎃❎🔧 PROCON > MATERIALIZE > QUERY: executed for processor #{processor_name}",
+                    Procon.Materialize.StarterResultOk,
+                    ansi_color: :blue
+                  )
 
-              {:error, {:error, :error, _reference, :internal_error, error_description, []}} ->
-                Procon.Helpers.olog(
-                  [
-                    "🎃❌🔧 PROCON > MATERIALIZE > QUERY: unable to execute #{query} for processor #{processor_name}",
-                    inspect(error_description)
-                  ],
-                  Procon.Materialize.Starter,
-                  ansi_color: :blue
-                )
+                  :ok
+
+                {:error, {:error, :error, _reference, :internal_error, error_description, []}} ->
+                  Procon.Helpers.olog(
+                    [
+                      "🎃❌🔧 PROCON > MATERIALIZE > QUERY: unable to execute for processor #{processor_name}",
+                      inspect(error_description)
+                    ],
+                    Procon.Materialize.StarterResultError,
+                    ansi_color: :blue
+                  )
+
+                  nil
+              end
             end
-          end
-        )
+          )
 
         :ok = :epgsql.close(epgsql_pid)
 
-        :ok
+        result
+        |> Enum.any?(&is_nil/1)
+        |> case do
+          true ->
+            processor_name
+
+          _ ->
+            :ok
+        end
 
       {:error, reason} ->
         Procon.Helpers.olog(

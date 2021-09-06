@@ -113,10 +113,15 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
       |> Map.put(
         :transaction,
         %{
-          id: timestamp_in_ms
+          id: timestamp_in_ms |> Integer.to_string()
         }
       )
 
-    Procon.MessagesProducers.Kafka.build_message(key, payload, state.avro_value_schema_name, state.serialization)
+    Procon.MessagesProducers.Kafka.build_message(
+      key,
+      payload,
+      state.avro_value_schema_name,
+      state.serialization
+    )
   end
 end

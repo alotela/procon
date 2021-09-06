@@ -58,11 +58,13 @@ defmodule Procon.MessagesProducers.WalDispatcher do
   @spec register_name(atom()) :: atom()
   def register_name(datastore), do: :"wal_dispatcher_#{datastore}"
 
-  def broker_client_name(processor_producers_config), do: Map.get(
-    processor_producers_config,
-    :broker_client_name,
-    :"#{processor_producers_config.datastore |> register_name()}_brod_client"
-  )
+  def broker_client_name(processor_producers_config),
+    do:
+      Map.get(
+        processor_producers_config,
+        :broker_client_name,
+        :"#{processor_producers_config.datastore |> register_name()}_brod_client"
+      )
 
   def start_wal_dispatcher_for_processor(processor_producers_config) do
     register_name = register_name(processor_producers_config.datastore)
@@ -93,9 +95,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
                    Map.get(
                      processor_producers_config,
                      :publications,
-                     :"procon_#{
-                       processor_producers_config.datastore.config() |> Keyword.get(:database)
-                     }"
+                     :"procon_#{processor_producers_config.datastore.config() |> Keyword.get(:database)}"
                    ),
                  realtime: Map.get(processor_producers_config, :procon_realtime, false),
                  register_name: register_name,
@@ -204,7 +204,9 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     }
   end
 
-  def handle_info({:start_wal_stream}, %State{relation_configs: relation_configs} = state) when relation_configs == %{}, do: {:noreply, state}
+  def handle_info({:start_wal_stream}, %State{relation_configs: relation_configs} = state)
+      when relation_configs == %{},
+      do: {:noreply, state}
 
   def handle_info({:start_wal_stream}, %State{} = state) do
     config = state.datastore.config()
@@ -240,9 +242,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
 
       {:error, reason} ->
         Logger.error(
-          "Procon.MessagesProducers.WalDispatcher.handle_info : EpgsqlConnector.connect : error : #{
-            reason
-          }"
+          "Procon.MessagesProducers.WalDispatcher.handle_info : EpgsqlConnector.connect : error : #{reason}"
         )
 
         Process.send_after(self(), {:start_wal_stream}, 1000)
@@ -251,9 +251,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
 
       error ->
         Logger.error(
-          "Procon.MessagesProducers.WalDispatcher.handle_info : EpgsqlConnector.connect : error : #{
-            inspect(error)
-          }"
+          "Procon.MessagesProducers.WalDispatcher.handle_info : EpgsqlConnector.connect : error : #{inspect(error)}"
         )
 
         Process.send_after(self(), {:start_wal_stream}, 1000)
@@ -335,7 +333,12 @@ defmodule Procon.MessagesProducers.WalDispatcher do
   def start_realtime_producer(state) do
     case state.realtime do
       true ->
-        :ok = start_topic_production(state.broker_client_name, Procon.MessagesProducers.Realtime.realtime_topic())
+        :ok =
+          start_topic_production(
+            state.broker_client_name,
+            Procon.MessagesProducers.Realtime.realtime_topic()
+          )
+
       false ->
         nil
     end
@@ -347,8 +350,12 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     |> case do
       :ok ->
         :ok
+
       {:error, {{:badmatch, {:error, :unknown_topic_or_partition}}, _}} = error ->
-        Logger.warn("unable to start wal dispatcher for #{broker_client_name} : topic #{topic} does not exist.")
+        Logger.warn(
+          "unable to start wal dispatcher for #{broker_client_name} : topic #{topic} does not exist."
+        )
+
         error
     end
   end

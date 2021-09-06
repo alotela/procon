@@ -21,16 +21,19 @@ defmodule Procon.Helpers do
         Enum.member?(log_types, log_type)
         |> case do
           true ->
-            Logger.info(data, options)
+            Logger.info(Kernel.inspect(data), options)
 
           false ->
             nil
         end
     end
+
+    data
   end
 
-  def log(data, options \\ []) do
-    Logger.info(data, options)
+  def log(data, options \\ [limit: :infinity]) do
+    Logger.info(Kernel.inspect(data), options)
+    data
   end
 
   def inspect(data, label \\ "", color \\ :red) do
