@@ -95,8 +95,21 @@ defmodule Procon.MessagesControllers.Consumer do
 
             Procon.Helpers.inspect(
               kafka_message_content,
-              "#{processing_id}@@PROCON EXCEPTION#kafka_message_content in procon handle_message #{state.processor_consumer_config.name}/#{topic}/#{partition}/#{offset}"
+              "#{processing_id}@@PROCON EXCEPTION#kafka_message_content (not deserialized) in procon handle_message #{state.processor_consumer_config.name}/#{topic}/#{partition}/#{offset}"
             )
+
+            case Avrora.decode(kafka_message_content) do
+              {:error, _} ->
+                nil
+
+              deserialized_message ->
+                Procon.Helpers.inspect(
+                  deserialized_message
+                  |> elem(1)
+                  |> Procon.Helpers.map_keys_to_atom(%Procon.Types.DebeziumMessage{}),
+                  "#{processing_id}@@PROCON EXCEPTION#kafka_message_content deserialized"
+                )
+            end
 
             Procon.Helpers.inspect(
               Process.info(self()),
