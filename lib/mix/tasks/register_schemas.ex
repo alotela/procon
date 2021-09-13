@@ -70,28 +70,24 @@ defmodule Mix.Tasks.Procon.Reg.Schema do
         |> Path.join()
         |> Path.wildcard()
         |> Enum.each(fn file_path ->
-          schema_name =
-            file_path
-            |> Path.relative_to(config.self().schemas_path())
-            |> Path.rootname()
-            |> String.replace("/", ".")
-
-          register_schema_by_name(schema_name, registrar,
-            as: String.replace(schema_name, ".", "-")
-          )
-
-          register_schema_by_name("procon-generic-key", registrar,
-            as: String.replace(schema_name, ".", "-") |> String.replace_suffix("value", "key")
-          )
+          file_path
+          |> Path.relative_to(config.self().schemas_path())
+          |> Path.rootname()
+          |> String.replace("/", ".")
+          |> register_schema(registrar)
         end)
 
       [:name] ->
-        opts[:name] |> String.trim() |> register_schema_by_name(registrar)
+        opts[:name]
+        |> String.trim()
+        |> String.replace(".", "_")
+        |> register_schema(registrar)
 
       [:as, :name] ->
         opts[:name]
         |> String.trim()
-        |> register_schema_by_name(registrar, as: String.trim(opts[:as]))
+        |> String.replace(".", "_")
+        |> register_schema(registrar)
 
       _ ->
         message = """
@@ -109,7 +105,15 @@ defmodule Mix.Tasks.Procon.Reg.Schema do
     |> File.cp_r!(Path.join([File.cwd!(), "priv", "schemas"]))
   end
 
-  defp register_schema_by_name(name, registrar, opts \\ []) do
+  defp register_schema(schema_name, registrar) do
+    register_schema_by_name(schema_name, registrar, as: String.replace(schema_name, ".", "-"))
+
+    register_schema_by_name("procon-generic-key", registrar,
+      as: String.replace(schema_name, ".", "-") |> String.replace_suffix("value", "key")
+    )
+  end
+
+  defp register_schema_by_name(name, registrar, opts) do
     opts = Keyword.merge(opts, force: true)
 
     case registrar.register_schema_by_name(name, opts) do
