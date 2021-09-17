@@ -99,7 +99,7 @@ defmodule Procon.Materialize.Starter do
                       inspect(error_description)
                     ],
                     Procon.Materialize.StarterResultError,
-                    ansi_color: :blue
+                    ansi_color: :red
                   )
 
                   nil
