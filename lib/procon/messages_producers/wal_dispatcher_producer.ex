@@ -77,11 +77,14 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
     last_timestamp_in_ms = Process.put(:timestamp_in_ms, timestamp_in_ms)
 
     key =
-      Map.get(
-        message.payload,
-        :after,
-        Map.get(message.payload, :before)
-      )
+      Map.get(message.payload, :after)
+      |> case do
+        nil ->
+          Map.get(message.payload, :before)
+
+        payload ->
+          payload
+      end
       |> Map.get(state.pkey_column)
 
     monothonic_sequence =
