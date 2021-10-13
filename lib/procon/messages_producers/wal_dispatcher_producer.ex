@@ -35,11 +35,11 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
         nil
 
       messages ->
-        Logger.debug("PROCON > #{__MODULE__} > handle_cast(:start_producing) > received messages",
-          metadata: [state: state]
-        )
-
-        Logger.debug(messages, metadata: [state: state])
+        # Logger.debug("PROCON > #{__MODULE__} > handle_cast(:start_producing) > received messages",
+        #  metadata: [state: state]
+        # )
+        #
+        # Logger.debug(messages, metadata: [state: state])
 
         :brod.produce_sync(
           state.broker_client_name,
