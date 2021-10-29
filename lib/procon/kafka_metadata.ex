@@ -36,8 +36,14 @@ defmodule Procon.KafkaMetadata do
         nil
     end
 
-    {:ok, %{brokers: _, cluster_id: _, controller_id: _, topic_metadata: topic_metadata}} =
-      :brod.get_metadata(Application.get_env(:procon, :brokers))
+    topic_metadata =
+      case :brod.get_metadata(Application.get_env(:procon, :brokers)) do
+        {:ok, %{brokers: _, cluster_id: _, controller_id: _, topic_metadata: topic_metadata}} ->
+          topic_metadata
+
+        {:ok, %{brokers: _, cluster_id: _, controller_id: _, topics: topic_metadata}} ->
+          topic_metadata
+      end
 
     true =
       :ets.insert(
@@ -99,9 +105,10 @@ defmodule Procon.KafkaMetadata do
   def extract_topic_partitions(topic_metadata, topics_acc) do
     Map.put(
       topics_acc,
-      topic_metadata.topic,
-      topic_metadata.partition_metadata
-      |> Enum.reduce([], &[&1.partition | &2])
+      Map.get(topic_metadata, :topic) || Map.get(topic_metadata, :name),
+      Map.get(topic_metadata, :partition_metadata) ||
+        Map.get(topic_metadata, :partitions)
+        |> Enum.reduce([], &[Map.get(&1, :partition) || Map.get(&1, :partition_index) | &2])
     )
   end
 end
