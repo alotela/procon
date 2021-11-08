@@ -24,6 +24,7 @@ defmodule Procon.MessagesProducers.Realtime do
     case new_sent_time - last_sent_time > threshold do
       true ->
         :ets.insert(:procon_enqueuers_thresholds, {key, new_sent_time})
+
         spawn(fn ->
           send_to_broker(repository, event_data)
         end)
@@ -47,19 +48,30 @@ defmodule Procon.MessagesProducers.Realtime do
       0,
       "",
       [
-        build_message(payload, %{avro_value_schema_name: @procon_realtime_topic_name, serialization: :avro})
+        build_message(payload, %{
+          avro_value_schema_name: @procon_realtime_topic_name,
+          serialization: :avro
+        })
       ]
     )
   end
 
   def build_message(message, options) do
     timestamp_in_ms = :os.system_time(:millisecond) |> div(1000)
-    payload =  %{
+
+    payload = %{
       after: message,
       transaction: %{id: timestamp_in_ms}
     }
+
     key = Map.get(message, :channel, Map.get(message, :session_id, ""))
 
-    Procon.MessagesProducers.Kafka.build_message(key, payload, Procon.Avro.ConfluentSchemaRegistry.topic_to_avro_value_schema(@procon_realtime_topic_name), options.serialization)
+    Procon.MessagesProducers.Kafka.build_message(
+      key,
+      payload,
+      Procon.Avro.ConfluentSchemaRegistry.topic_to_avro_value_schema(@procon_realtime_topic_name),
+      options.serialization,
+      %{}
+    )
   end
 end
