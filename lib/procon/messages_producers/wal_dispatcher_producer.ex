@@ -41,12 +41,14 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
         #
         # Logger.debug(messages, metadata: [state: state])
 
+        messages_list = Enum.map(messages, &build_message(&1, state))
+
         :brod.produce_sync(
           state.broker_client_name,
           state.topic,
           state.partition_index,
           "",
-          Enum.map(messages, &build_message(&1, state))
+          messages_list
         )
         |> case do
           :ok ->
@@ -124,7 +126,8 @@ defmodule Procon.MessagesProducers.WalDispatcherProducer do
       key,
       payload,
       state.avro_value_schema_name,
-      state.serialization
+      state.serialization,
+      state
     )
   end
 end

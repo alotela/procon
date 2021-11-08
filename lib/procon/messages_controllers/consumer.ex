@@ -43,7 +43,10 @@ defmodule Procon.MessagesControllers.Consumer do
                       :avro ->
                         Avrora.decode(kafka_message_content)
                         |> elem(1)
-                        |> Procon.Helpers.map_keys_to_atom(%Procon.Types.DebeziumMessage{})
+                        |> Procon.Helpers.map_keys_to_atom(
+                          %Procon.Types.DebeziumMessage{},
+                          Map.get(entity_config, :materialize_json_attributes, [])
+                        )
 
                       :json ->
                         Jason.decode!(kafka_message_content, keys: :atoms)

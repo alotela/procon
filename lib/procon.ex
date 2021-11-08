@@ -22,6 +22,7 @@ defmodule Procon do
         :dynamic_topics_filters,
         :keys_mapping,
         :master_key,
+        :materialize_json_attributes,
         :model,
         :offset,
         :partition,
@@ -50,6 +51,7 @@ defmodule Procon do
               dynamic_topics_filters: list(),
               keys_mapping: map(),
               master_key: nil | {event_key(), target_key()},
+              materialize_json_attributes: list(),
               messages_controller: nil | module(),
               message_processed_hook:
                 nil
@@ -80,6 +82,7 @@ defmodule Procon do
               dynamic_topics_filters: list(),
               keys_mapping: map(),
               master_key: nil | {event_key(), target_key()},
+              materialize_json_attributes: list(),
               messages_controller: nil | module(),
               message_processed_hook:
                 nil

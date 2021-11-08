@@ -8,6 +8,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
   defmodule State do
     @enforce_keys [:datastore, :publications, :register_name]
     defstruct [
+      :config,
       :datastore,
       :ets_messages_queue_ref,
       :publications,
@@ -32,6 +33,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
             broker_client_name: atom(),
             brod_client_config: keyword({atom(), any()}),
             column_names_and_types: map(),
+            config: map(),
             datastore: atom(),
             delete_metadata: map(),
             epgsql_pid: pid() | nil,
@@ -90,6 +92,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
                      :brod_client_config,
                      Application.get_env(:procon, :brod_client_config)
                    ),
+                 config: processor_producers_config,
                  datastore: processor_producers_config.datastore,
                  publications:
                    Map.get(
@@ -107,6 +110,8 @@ defmodule Procon.MessagesProducers.WalDispatcher do
       )
   end
 
+  @spec init(Procon.MessagesProducers.WalDispatcher.State.t()) ::
+          {:ok, Procon.MessagesProducers.WalDispatcher.State.t()}
   def init(%State{} = state) do
     Logger.metadata(procon_wal_dispatcher: state.datastore)
 
@@ -390,6 +395,8 @@ defmodule Procon.MessagesProducers.WalDispatcher do
                   broker_client_name: state.broker_client_name,
                   ets_key: :"#{topic}_#{partition_index}",
                   ets_messages_queue_ref: state.ets_messages_queue_ref,
+                  materialize_json_attributes:
+                    Map.get(state.config, :materialize_json_attributes, []),
                   name: register_name,
                   partition_index: partition_index,
                   pkey_column:

@@ -57,21 +57,29 @@ defmodule Procon.Helpers do
     )
   end
 
-  def map_keys_to_atom(map, target_map \\ %{})
+  def map_keys_to_atom(map, target_map \\ %{}, materialize_json_attributes \\ [])
 
-  def map_keys_to_atom(map, %_{} = target_struct) do
+  def map_keys_to_atom(map, %_{} = target_struct, materialize_json_attributes) do
     Enum.reduce(
       map,
       target_struct,
       fn {key, value}, atomized_struct ->
+        Enum.member?(materialize_json_attributes, String.to_atom(key))
+
         struct!(
           atomized_struct,
           [
             {
               String.to_atom(key),
               case value do
-                %{} -> map_keys_to_atom(value)
-                _ -> value
+                %{} ->
+                  map_keys_to_atom(value, %{}, materialize_json_attributes)
+
+                tmp_value ->
+                  case Enum.member?(materialize_json_attributes, String.to_atom(key)) do
+                    true -> Jason.decode!(tmp_value)
+                    false -> tmp_value
+                  end
               end
             }
           ]
@@ -80,17 +88,25 @@ defmodule Procon.Helpers do
     )
   end
 
-  def map_keys_to_atom(map, target_map) do
+  def map_keys_to_atom(map, target_map, materialize_json_attributes) do
     Enum.reduce(
       map,
       target_map,
       fn {key, value}, atomized_map ->
+        Enum.member?(materialize_json_attributes, String.to_atom(key))
+
         Map.put(
           atomized_map,
           String.to_atom(key),
           case value do
-            %{} -> map_keys_to_atom(value)
-            _ -> value
+            %{} ->
+              map_keys_to_atom(value, %{}, materialize_json_attributes)
+
+            tmp_value ->
+              case Enum.member?(materialize_json_attributes, String.to_atom(key)) do
+                true -> Jason.decode!(tmp_value)
+                false -> tmp_value
+              end
           end
         )
       end
@@ -115,5 +131,19 @@ defmodule Procon.Helpers do
 
   def is_debezium_create(message) do
     Map.get(message, "before") == nil && is_map(Map.get(message, "after"))
+  end
+
+  def remap_materialize_json_attributes(
+        message,
+        materialize_json_attributes
+      ) do
+    materialize_json_attributes
+    |> Enum.reduce(message, fn materialize_json_attribute, new_message ->
+      Kernel.update_in(
+        new_message,
+        [:after, materialize_json_attribute],
+        &(&1 |> get_in([:after, materialize_json_attribute]) |> Jason.decode!())
+      )
+    end)
   end
 end

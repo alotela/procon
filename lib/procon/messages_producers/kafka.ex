@@ -1,5 +1,5 @@
 defmodule Procon.MessagesProducers.Kafka do
-  def build_message(pa_key, pa_payload, pa_schema_name, pa_serialization) do
+  def build_message(pa_key, pa_payload, pa_schema_name, pa_serialization, state) do
     [serialized_key, serialized_payload] =
       case pa_serialization do
         :json ->
@@ -13,7 +13,15 @@ defmodule Procon.MessagesProducers.Kafka do
               format: :registry
             )
             |> elem(1),
-            pa_payload
+            Map.get(state, :materialize_json_attributes, [])
+            |> Enum.reduce(pa_payload, fn materialize_json_attribute, new_payload ->
+              Kernel.update_in(
+                new_payload,
+                [:after, materialize_json_attribute],
+                &(&1 |> get_in([:after, materialize_json_attribute]) |> Jason.encode!())
+              )
+            end)
+            |> Kernel.update_in([:after, :metadata], &Jason.encode!(&1))
             |> Avrora.encode(
               schema_name: pa_schema_name,
               format: :registry
