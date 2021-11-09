@@ -18,10 +18,9 @@ defmodule Procon.MessagesProducers.Kafka do
               Kernel.update_in(
                 new_payload,
                 [:after, materialize_json_attribute],
-                &(&1 |> get_in([:after, materialize_json_attribute]) |> Jason.encode!())
+                &(&1 |> Jason.encode!())
               )
             end)
-            |> Kernel.update_in([:after, :metadata], &Jason.encode!(&1))
             |> Avrora.encode(
               schema_name: pa_schema_name,
               format: :registry

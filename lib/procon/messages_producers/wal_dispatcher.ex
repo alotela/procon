@@ -396,7 +396,9 @@ defmodule Procon.MessagesProducers.WalDispatcher do
                   ets_key: :"#{topic}_#{partition_index}",
                   ets_messages_queue_ref: state.ets_messages_queue_ref,
                   materialize_json_attributes:
-                    Map.get(state.config, :materialize_json_attributes, []),
+                    relation_configs
+                    |> Map.get(relation)
+                    |> Map.get(:materialize_json_attributes, []),
                   name: register_name,
                   partition_index: partition_index,
                   pkey_column:
