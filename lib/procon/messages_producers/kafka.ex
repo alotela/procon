@@ -15,11 +15,34 @@ defmodule Procon.MessagesProducers.Kafka do
             |> elem(1),
             Map.get(state, :materialize_json_attributes, [])
             |> Enum.reduce(pa_payload, fn materialize_json_attribute, new_payload ->
-              Kernel.update_in(
-                new_payload,
-                [:after, materialize_json_attribute],
-                &(&1 |> Jason.encode!())
-              )
+              new_payload
+              |> case do
+                %{after: after_, before: before_}
+                when not is_nil(after_) and not is_nil(before_) ->
+                  new_payload
+                  |> Kernel.update_in(
+                    [:after, materialize_json_attribute],
+                    &(&1 |> Jason.encode!())
+                  )
+                  |> Kernel.update_in(
+                    [:before, materialize_json_attribute],
+                    &(&1 |> Jason.encode!())
+                  )
+
+                %{after: after_} when not is_nil(after_) ->
+                  new_payload
+                  |> Kernel.update_in(
+                    [:after, materialize_json_attribute],
+                    &(&1 |> Jason.encode!())
+                  )
+
+                %{before: before_} when not is_nil(before_) ->
+                  new_payload
+                  |> Kernel.update_in(
+                    [:before, materialize_json_attribute],
+                    &(&1 |> Jason.encode!())
+                  )
+              end
             end)
             |> Avrora.encode(
               schema_name: pa_schema_name,
