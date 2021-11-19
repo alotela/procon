@@ -29,7 +29,7 @@ defmodule Procon.Materialize.Starter do
             nil
         end
       end,
-      30000
+      60000
     )
     |> Enum.reject(&is_nil/1)
     |> Procon.Helpers.olog(Procon.Materialize.Starter, ansi_color: :blue)
