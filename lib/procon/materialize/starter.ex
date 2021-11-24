@@ -15,7 +15,7 @@ defmodule Procon.Materialize.Starter do
           true ->
             setup_materialize_for_processor(
               processor_name,
-              Keyword.get(processor_config, :materialize, nil)
+              Keyword.get(processor_config, :is_materialize_operator, false)
             )
             |> case do
               :ok ->
@@ -56,7 +56,7 @@ defmodule Procon.Materialize.Starter do
           nil
           | :ok
           | atom()
-  def setup_materialize_for_processor(processor_name, nil) do
+  def setup_materialize_for_processor(processor_name, false) do
     Procon.Helpers.olog(
       "🎃😑 PROCON > MATERIALIZE: no materialize config for processor #{inspect(processor_name)}.",
       Procon.Materialize.Starter,
@@ -66,12 +66,20 @@ defmodule Procon.Materialize.Starter do
     :ok
   end
 
-  def setup_materialize_for_processor(processor_name, materialize_processor_config) do
+  def setup_materialize_for_processor(processor_name, true) do
     Procon.Helpers.olog(
       "🎃❎ PROCON > MATERIALIZE: Configure materialize for processor #{inspect(processor_name)}",
       Procon.Materialize.StarterResult,
       ansi_color: :blue
     )
+
+    materialize_processor_config =
+      apply(
+        processor_name
+        |> Module.concat(MaterializeQueryView),
+        :configuration,
+        []
+      )
 
     case :epgsql.connect(
            Map.take(materialize_processor_config, [:database, :host, :port, :username])
