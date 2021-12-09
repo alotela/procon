@@ -22,25 +22,25 @@ defmodule Procon.MessagesProducers.Kafka do
                   new_payload
                   |> Kernel.update_in(
                     [:after, materialize_json_attribute],
-                    &(&1 |> Jason.encode!())
+                    &json_encode_attribute/1
                   )
                   |> Kernel.update_in(
                     [:before, materialize_json_attribute],
-                    &(&1 |> Jason.encode!())
+                    &json_encode_attribute/1
                   )
 
                 %{after: after_} when not is_nil(after_) ->
                   new_payload
                   |> Kernel.update_in(
                     [:after, materialize_json_attribute],
-                    &(&1 |> Jason.encode!())
+                    &json_encode_attribute/1
                   )
 
                 %{before: before_} when not is_nil(before_) ->
                   new_payload
                   |> Kernel.update_in(
                     [:before, materialize_json_attribute],
-                    &(&1 |> Jason.encode!())
+                    &json_encode_attribute/1
                   )
               end
             end)
@@ -54,4 +54,7 @@ defmodule Procon.MessagesProducers.Kafka do
 
     {serialized_key, serialized_payload}
   end
+
+  defp json_encode_attribute(attr_value) when is_list(attr_value), do: attr_value |> Enum.map(&(&1 |> Jason.encode!()))
+  defp json_encode_attribute(attr_value), do: Jason.encode!(attr_value)
 end

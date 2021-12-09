@@ -64,8 +64,6 @@ defmodule Procon.Helpers do
       map,
       target_struct,
       fn {key, value}, atomized_struct ->
-        Enum.member?(materialize_json_attributes, String.to_atom(key))
-
         struct!(
           atomized_struct,
           [
@@ -77,7 +75,7 @@ defmodule Procon.Helpers do
 
                 tmp_value ->
                   case Enum.member?(materialize_json_attributes, String.to_atom(key)) do
-                    true -> Jason.decode!(tmp_value)
+                    true -> decode_json_attribute(tmp_value)
                     false -> tmp_value
                   end
               end
@@ -93,8 +91,6 @@ defmodule Procon.Helpers do
       map,
       target_map,
       fn {key, value}, atomized_map ->
-        Enum.member?(materialize_json_attributes, String.to_atom(key))
-
         Map.put(
           atomized_map,
           String.to_atom(key),
@@ -104,7 +100,7 @@ defmodule Procon.Helpers do
 
             tmp_value ->
               case Enum.member?(materialize_json_attributes, String.to_atom(key)) do
-                true -> Jason.decode!(tmp_value)
+                true -> decode_json_attribute(tmp_value)
                 false -> tmp_value
               end
           end
@@ -112,6 +108,9 @@ defmodule Procon.Helpers do
       end
     )
   end
+
+  defp decode_json_attribute(value) when is_list(value), do: value |> Enum.map(&(Jason.decode!(&1)))
+  defp decode_json_attribute(value), do: Jason.decode!(value)
 
   def fetch_last_message(brod_client, topic, partition) do
     :brod.fetch(
