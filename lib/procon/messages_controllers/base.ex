@@ -481,7 +481,9 @@ defmodule Procon.MessagesControllers.Base do
 
       case event_data.record do
         nil ->
-          Logger.warn("No match for deleted #{inspect(options.model)} in event #{inspect(event)}")
+          Logger.warning(
+            "No match for deleted #{inspect(options.model)} in event #{inspect(event)}"
+          )
 
           {:ok, Map.put(event_data, :record_deleted, false)}
 

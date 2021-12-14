@@ -166,7 +166,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
         {:ok, :ets.whereis(register_name)}
 
       reference ->
-        Logger.warn(
+        Logger.warning(
           "Procon.MessagesProducers.WalDispatcher.create_ets_table : #{register_name} : ets table already exists."
         )
 
@@ -357,7 +357,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
         :ok
 
       {:error, {{:badmatch, {:error, :unknown_topic_or_partition}}, _}} = error ->
-        Logger.warn(
+        Logger.warning(
           "unable to start wal dispatcher for #{broker_client_name} : topic #{topic} does not exist."
         )
 
