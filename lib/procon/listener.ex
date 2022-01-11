@@ -13,7 +13,7 @@ defmodule Procon.Listener do
 
   @impl true
   def init(_opts) do
-    {:ok, pid} = Postgrex.Notifications.start_link(database: "calions_accounts_dev")
+    {:ok, pid} = Postgrex.Notifications.start_link(database: "allium_accounts_dev")
     {:ok, reference} = Postgrex.Notifications.listen(pid, "accounts_changed")
     {:ok, %{reference: reference, pid: pid}}
   end
