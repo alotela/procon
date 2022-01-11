@@ -201,9 +201,7 @@ defmodule Mix.Tasks.Procon.Init do
         end
         import_config "processors/activated.exs"
 
-      * if it is not automatically added, add the processor repository #{
-      processor_name |> Helpers.repo_name_to_module(processor_repo)
-    } to "lib/#{app_name}/application.ex" in children array to start the repo when the application starts.
+      * if it is not automatically added, add the processor repository #{processor_name |> Helpers.repo_name_to_module(processor_repo)} to "lib/#{app_name}/application.ex" in children array to start the repo when the application starts.
 
       * configure your processor in #{generated_config_files |> tl()}. This is where you add your kafka listeners.
 
@@ -299,10 +297,8 @@ defmodule Mix.Tasks.Procon.Init do
     new_content =
       String.replace(
         config_file_content,
-        "use CalionsWeb, :router\n\n",
-        "use CalionsWeb, :router\n\n  forward \"/#{
-          Helpers.processor_type(processor_name) |> Macro.underscore()
-        }/#{processor_name |> Helpers.short_processor_name()}\", #{processor_name}.Web.Router\n"
+        "use AlliumWeb, :router\n\n",
+        "use AlliumWeb, :router\n\n  forward \"/#{Helpers.processor_type(processor_name) |> Macro.underscore()}/#{processor_name |> Helpers.short_processor_name()}\", #{processor_name}.Web.Router\n"
       )
 
     :ok = File.write(main_config_path, new_content)

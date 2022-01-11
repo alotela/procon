@@ -3,7 +3,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
   import Mix.Generator
   alias Mix.Tasks.Procon.Helpers
 
-  @shortdoc "Add Calions acls to a command or view processor"
+  @shortdoc "Add Allium acls to a command or view processor"
   @moduledoc ~S"""
   #Usage
   ```
@@ -39,7 +39,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
       |> Keyword.get(:repo, "#{Helpers.processor_to_controller(processor_name)}Pg")
 
     topic =
-      "calions-int-#{processor_name |> Helpers.processor_type() |> Macro.underscore()}-#{processor_name |> Helpers.short_processor_name()}-group_acls"
+      "allium-int-#{processor_name |> Helpers.processor_type() |> Macro.underscore()}-#{processor_name |> Helpers.short_processor_name()}-group_acls"
 
     config_path = add_topic_config(processor_name, topic)
     Helpers.info("added topics to listen in processor's config file #{config_path}")
@@ -79,7 +79,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
         __ENV__.file |> Path.dirname(),
         "helpers",
         "templates",
-        "calions_group_acls_value_object.eex"
+        "allium_group_acls_value_object.eex"
       ])
   )
 
@@ -153,15 +153,15 @@ defmodule Mix.Tasks.Procon.AddAcls do
                     keys_mapping: %{id: :app_group_id, name: :group_name},
                     master_key: {:app_group_id, :id},
                     messages_controller: #{processor_name}.MessageControllers.GroupAcls,
-                    model: Calions.GroupAcls.Schemas.GroupAcl,
-                    topic: "calions-int-operators-app_groups"
+                    model: Allium.GroupAcls.Schemas.GroupAcl,
+                    topic: "allium-int-operators-app_groups"
                   },
                   %{
                     event_version: 1,
                     keys_mapping: %{},
                     master_key: nil,
-                    model: Calions.GroupAcls.Schemas.SelectedUserAppGroup,
-                    topic: "calions-int-operators-selected_user_app_groups"
+                    model: Allium.GroupAcls.Schemas.SelectedUserAppGroup,
+                    topic: "allium-int-operators-selected_user_app_groups"
                   },
         """
       )
@@ -181,20 +181,20 @@ defmodule Mix.Tasks.Procon.AddAcls do
 
     create_file(
       Path.join(migrations_path, "#{migration_time}_add_acls_tables.exs"),
-      calions_authentications_migrations_template(processor_name: processor_name)
+      allium_authentications_migrations_template(processor_name: processor_name)
     )
 
     migrations_path
   end
 
   embed_template(
-    :calions_authentications_migrations,
+    :allium_authentications_migrations,
     from_file:
       Path.join([
         __ENV__.file |> Path.dirname(),
         "helpers",
         "templates",
-        "calions_acls_migrations.eex"
+        "allium_acls_migrations.eex"
       ])
   )
 
@@ -202,10 +202,10 @@ defmodule Mix.Tasks.Procon.AddAcls do
     processor_atom = Helpers.short_processor_name(processor_name)
 
     forward = """
-          Calions.GroupAcls.Web.Router.forward_acls(
+          Allium.GroupAcls.Web.Router.forward_acls(
             "/group_acls",
             #{processor_name}.Repositories.#{processor_repo},
-            Calions.GroupAcls.Schemas.GroupAcl,
+            Allium.GroupAcls.Schemas.GroupAcl,
             #{processor_name}.Repositories.GroupAcls,
             #{processor_name}.ValueObjects.GroupAcls
           )
@@ -218,7 +218,7 @@ defmodule Mix.Tasks.Procon.AddAcls do
       String.replace(
         router_file_content,
         ", :router",
-        ", :router\n  require Calions.GroupAcls.Web.Router",
+        ", :router\n  require Allium.GroupAcls.Web.Router",
         global: false
       )
       |> String.replace(

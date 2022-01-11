@@ -62,8 +62,8 @@ improve this readme
 
 ```
   producers: %{
-    datastore: Calions.Processors.Accounts.Repositories.AccountsPg,
-    topics: ["calions-int-evt-accounts"]
+    datastore: MyApp.Processors.Accounts.Repositories.AccountsPg,
+    topics: ["myapp-int-evt-accounts"]
   }
 ```
 
@@ -71,9 +71,9 @@ devient:
 
 ```
   producers: %{
-    datastore: Calions.Processors.Accounts.Repositories.AccountsPg,
+    datastore: MyApp.Processors.Accounts.Repositories.AccountsPg,
     relation_topics: %{
-      :accounts => {:id, :"calions-int-evt-accounts"},
+      :accounts => {:id, :"myapp-int-evt-accounts"},
       :procon_realtimes => {:id, :"procon-realtime"}
     }
   }
@@ -127,7 +127,7 @@ voici un exemple d'un schema avro :
 ```
 {
   "name": "AccountEmailCreationRequest", # nom du schema
-  "namespace": "io.calions", # namespace du schema
+  "namespace": "io.myapp", # namespace du schema
   "type": "record", # c'est un record (pourrait etre aussi un type simple genre string, mais ce n'est pas notre cas ici)
   "fields": [ # liste des champs du record, c'est un tableau
     {
@@ -225,3 +225,54 @@ you can now go to `http://127.0.0.1:3030/` and manage the cluster.
 You need to download confluent platform archive (it's free). If you download kafka archive, it won't contain schema registry binary.
 
 You also need confluent archive to have avro producer/consuler binaries.
+
+# architecture
+
+## consumer
+
+On start, the server starts `Procon.MessagesControllers.ConsumersDynamicSupervisor`
+It starts a brod client for all consumers named:
+`Procon.MessagesControllers.ConsumersDynamicSupervisor.consumers_brod_client_name(brod_client_name_for_consumers)` default to `:procon_consumers_brod_client` or `Application.get_env(:procon, :brod_client_name_for_consumers)`
+
+It gets all activated processors "consumers" config part (map):
+
+```
+config :procon, Processors,
+  "Elixir.Allium.Processors.Queries.PasswordResetLinks": [
+    deps: [],
+    children: [],
+    consumers: [
+    <******************** this part *************************>
+      %{
+        datastore:
+          Allium.Processors.Queries.PasswordResetLinks.Repositories.PasswordResetLinksPg,
+        name: Allium.Processors.Queries.PasswordResetLinks,
+        entities: [%{avro_key_schema_version: 1,
+        avro_value_schema_version: 1,
+        bypass_exception: true,
+        drop_event_attributes: %{},
+        keys_mapping: %{},
+        master_key: nil,
+        materialize_json_attributes: [:metadata],
+        model: Allium.Processors.Queries.PasswordResetLinks.Schemas.PasswordResetLink,
+        serialization: :avro,
+        topic: "allium-int-operators-password_reset_links"}],
+        type: :query
+      }
+    <******************** this part *************************>
+    ],
+    producers: %{
+      datastore:
+        Allium.Processors.Queries.PasswordResetLinks.Repositories.PasswordResetLinksPg,
+      relation_configs: %{},
+      procon_realtime: false
+    }
+  ]
+```
+
+and start one dynamic child per consumer config:
+dynamic child id : Procon.GenServer.Consumers.[Allium.Processors.Queries.PasswordResetLinks].DynamicChildId
+child process register name: Allium.Processors.Queries.PasswordResetLinks
+
+Then it creates an ets table with the name in the config (here : `Allium.Processors.Queries.PasswordResetLinks`) named:
+`Procon.Ets.Consumers.[Allium.Processors.Queries.PasswordResetLinks]`

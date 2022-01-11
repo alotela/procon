@@ -1,7 +1,7 @@
 import Config
 
 config :<%= @app_name%>, <%= @repository %>,
-  database: "calions_dev_<%= @database %>",
+  database: "allium_dev_<%= @database %>",
   hostname: "localhost",
   pool_size: 10,
   priv: "<%= @repo_path %>",

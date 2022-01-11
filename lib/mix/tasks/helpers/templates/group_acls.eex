@@ -2,7 +2,7 @@ defmodule <%= @processor_name %>.MessageControllers.GroupAcls do
   alias <%= @processor_name %>, as: Processor
   alias Processor.ValueObjects.GroupAcls
 
-  use Calions.GroupAcls.MessageControllers.GroupAcls,
+  use Allium.GroupAcls.MessageControllers.GroupAcls,
     admin_acls: GroupAcls.all(),
     teammate_acls: [
       GroupAcls.can_index(),

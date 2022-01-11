@@ -3,7 +3,7 @@ defmodule Mix.Tasks.Procon.AddAuthentication do
   import Mix.Generator
   alias Mix.Tasks.Procon.Helpers
 
-  @shortdoc "Add Calions authentication to a command or view processor"
+  @shortdoc "Add Allium authentication to a command or view processor"
   @moduledoc ~S"""
   #Usage
   ```
@@ -54,7 +54,7 @@ defmodule Mix.Tasks.Procon.AddAuthentication do
       String.replace(
         config_file_content,
         "entities: [\n          ",
-        "entities: [\n          %{\n            event_version: 1,\n            keys_mapping: %{},\n            master_key: nil,\n            model: Calions.AuthenticatedClients.Schemas.AuthenticatedClient,\n            topic: \"calions-int-operators-authenticated_clients\"\n          },\n          "
+        "entities: [\n          %{\n            event_version: 1,\n            keys_mapping: %{},\n            master_key: nil,\n            model: Allium.AuthenticatedClients.Schemas.AuthenticatedClient,\n            topic: \"allium-int-operators-authenticated_clients\"\n          },\n          "
       )
 
     :ok = File.write(config_file_path, new_content)
@@ -68,7 +68,7 @@ defmodule Mix.Tasks.Procon.AddAuthentication do
 
     create_file(
       Path.join(migrations_path, "#{migration_time}_add_authenticated_clients_table.exs"),
-      calions_authentications_migrations_template(
+      allium_authentications_migrations_template(
         processor_name: processor_name,
         table: Helpers.processor_to_resource(processor_name)
       )
@@ -78,13 +78,13 @@ defmodule Mix.Tasks.Procon.AddAuthentication do
   end
 
   embed_template(
-    :calions_authentications_migrations,
+    :allium_authentications_migrations,
     from_file:
       Path.join([
         __ENV__.file |> Path.dirname(),
         "helpers",
         "templates",
-        "calions_authentications_migrations.eex"
+        "allium_authentications_migrations.eex"
       ])
   )
 
@@ -93,15 +93,15 @@ defmodule Mix.Tasks.Procon.AddAuthentication do
 
     pipelines = """
     pipeline :#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{processor_atom}_auth do
-        plug(Calions.Plugs.AuthenticatedAccountPlug,
+        plug(Allium.Plugs.AuthenticatedAccountPlug,
           repo: #{processor_name}.Repositories.#{processor_repo},
-          schema: Calions.AuthenticatedClients.Schemas.AuthenticatedClient
+          schema: Allium.AuthenticatedClients.Schemas.AuthenticatedClient
         )
       end
 
       pipeline :#{processor_name |> Helpers.processor_type() |> Macro.underscore()}_#{processor_atom}_auth_private do
-        plug(Calions.Plugs.EnsureAuthenticatedPlug)
-        plug(Calions.Plugs.EnsureAuthenticatedUserPlug)
+        plug(Allium.Plugs.EnsureAuthenticatedPlug)
+        plug(Allium.Plugs.EnsureAuthenticatedUserPlug)
       end
     """
 
@@ -111,8 +111,8 @@ defmodule Mix.Tasks.Procon.AddAuthentication do
     new_content =
       String.replace(
         router_file_content,
-        "scope \"/api\", Calions.Processors",
-        "#{pipelines}\n  scope \"/api\", Calions.Processors",
+        "scope \"/api\", Allium.Processors",
+        "#{pipelines}\n  scope \"/api\", Allium.Processors",
         global: false
       )
       |> String.replace(
