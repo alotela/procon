@@ -109,7 +109,7 @@ defmodule Procon.MessagesControllers.Base do
       |> case do
         {:ok, final_event_data} ->
           Procon.PartitionOffsetHelpers.update_partition_offset_ets(
-            options.processor_name,
+            options.ets_table_name,
             options.topic,
             options.partition,
             options.offset,

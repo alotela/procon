@@ -30,4 +30,9 @@ defmodule Procon.ProcessorConfigAccessor do
       end
     end)
   end
+
+  def activated_consumers_configs() do
+    activated_processors_config()
+    |> Enum.reduce([], &(Keyword.get(elem(&1, 1), :consumers, []) ++ &2))
+  end
 end

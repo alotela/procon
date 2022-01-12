@@ -109,7 +109,7 @@ defmodule Procon.Helpers do
     )
   end
 
-  defp decode_json_attribute(value) when is_list(value), do: value |> Enum.map(&(Jason.decode!(&1)))
+  defp decode_json_attribute(value) when is_list(value), do: value |> Enum.map(&Jason.decode!(&1))
   defp decode_json_attribute(value), do: Jason.decode!(value)
 
   def fetch_last_message(brod_client, topic, partition) do

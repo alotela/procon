@@ -19,7 +19,7 @@ defmodule Procon.Application do
             Avrora,
             {DynamicSupervisor,
              name: Procon.MessagesProducers.ProducersSupervisor, strategy: :one_for_one},
-            Procon.MessagesControllers.ConsumersStarter,
+            Procon.MessagesControllers.ConsumersDynamicSupervisor,
             Procon.MessagesProducers.WalDispatcherSupervisor
           ]
 
@@ -34,7 +34,6 @@ defmodule Procon.Application do
     Supervisor.start_link(children, opts)
     |> case do
       {:ok, pid} ->
-        init_after_app_started()
         {:ok, pid}
 
       error ->
@@ -50,9 +49,6 @@ defmodule Procon.Application do
       |> String.split(",", trim: true)
       |> Enum.map(&String.to_atom/1)
     )
-  end
-
-  def init_after_app_started() do
   end
 
   def after_start() do
@@ -73,14 +69,7 @@ defmodule Procon.Application do
     :procon_enqueuers_thresholds =
       :ets.new(:procon_enqueuers_thresholds, [:named_table, :public, :set])
 
-    Procon.MessagesControllers.ConsumersStarter.start_activated_processors()
+    Procon.MessagesControllers.ConsumersDynamicSupervisor.start_activated_processor_consumers()
     Procon.MessagesProducers.WalDispatcherSupervisor.start_activated_processors_producers()
-
-    # a virer apres migration
-    :brod.start_client(
-      Application.get_env(:procon, :brokers),
-      :brod_client,
-      Application.get_env(:procon, :brod_client_config)
-    )
   end
 end

@@ -27,7 +27,7 @@ defmodule Procon.MessagesProducers.WalDispatcherSupervisor do
     end)
     # [
     #    %{
-    #      datastore: Calions.Processors.ProcessorName.Repositories.ProcessorNamePg,
+    #      datastore: MyApp.Processors.ProcessorName.Repositories.ProcessorNamePg,
     #      relation_topics: %{
     #        "table/relation" => "topic"
     #      }

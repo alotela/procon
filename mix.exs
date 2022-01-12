@@ -25,7 +25,7 @@ defmodule Procon.MixProject do
       {:avro_ex, "~> 1.0"},
       {:avrora, "~> 0.16"},
       {:benchee, "~> 1.0", only: :dev},
-      {:brod, "~> 3.15"},
+      {:brod, "~> 3.16.1"},
       {:ecto_sql, "~> 3.0"},
       {:ecto_ulid, git: "https://github.com/sztosz/ecto-ulid.git"},
       {:epgsql, "~> 4.5"},
