@@ -1,8 +1,8 @@
 Definitions.
 
 TXT                     = [^\s\t\n\r"',\{\}]+
-DOUBLE_QUOTED_TXT       = "([^"\\]|(\\"))+"
-SINGLE_QUOTED_TXT       = '([^'\\]|(\\'))+'
+DOUBLE_QUOTED_TXT       = "((\\")|[^"])+"
+SINGLE_QUOTED_TXT       = "((\\')|[^'])+'
 ARG_INT                 = (\+|-)?[0-9]+
 ARG_FLOAT               = (\+|-)?[0-9]+\.[0-9]+((E|e)(\+|-)?[0-9]+)?
 ARG_BOOL                = t|f
