@@ -330,7 +330,7 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
             %{}
 
           false ->
-            Jason.decode!(value)
+            value |> unescape_json_string() |> Jason.decode!()
         end
       )
 
@@ -418,7 +418,9 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
   def parse_array_values(array) when is_list(array), do: Enum.map(array, &parse_array_values/1)
 
   def parse_array_values(value) when is_binary(value) do
-    Jason.decode(value)
+    value
+    |> unescape_json_string()
+    |> Jason.decode()
     |> case do
       {:ok, map} -> map
       _ -> value
@@ -426,4 +428,13 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
   end
 
   def parse_array_values(value) when is_binary(value), do: value
+
+  @escape_chars %{
+    "\\\\n" => "\\n",
+    "\\\\t" => "\\t",
+    "\\\\r" => "\\r"
+  }
+  def unescape_json_string(value) do
+    String.replace(value, Map.keys(@escape_chars), fn s -> Map.get(@escape_chars, s) end)
+  end
 end
