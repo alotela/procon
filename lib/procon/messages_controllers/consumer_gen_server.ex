@@ -15,22 +15,45 @@ defmodule Procon.MessagesControllers.ConsumerGenServer do
     )
 
     Procon.Helpers.olog(
-      "Procon.MessagesControllers.ConsumerGenServer : starting #{initial_state.consumer_process_register_name}",
-      Procon.MessagesControllers.ConsumerGenServer
+      "🦑❎ PROCON: #{__MODULE__} : starting #{initial_state.consumer_process_register_name}",
+      __MODULE__
     )
 
     create_ets_table(initial_state)
-    start_brod_client_for_consumers(initial_state, nil, nil)
-    start_consumer_for_topic(initial_state)
 
-    {:ok, initial_state}
+    start_consumer_for_topic(initial_state)
+    |> case do
+      {:ok, pid} ->
+        new_state = Map.put_new(initial_state, :link_group_subscriber_pid, pid)
+
+        Procon.Helpers.olog(
+          "🦑❎❎❎ PROCON: #{__MODULE__} : #{initial_state.consumer_process_register_name} started!",
+          __MODULE__
+        )
+
+        {:ok, new_state}
+
+      {:error, error} ->
+        Procon.Helpers.olog(
+          "🦑❌❌❌ PROCON: #{__MODULE__} : #{initial_state.consumer_process_register_name} not started!",
+          __MODULE__
+        )
+
+        {:stop, error}
+    end
+  end
+
+  @spec do_terminate(atom | pid | {atom, any} | {:via, atom, any}) :: :ok
+  def do_terminate(pid_or_name) do
+    GenServer.cast(pid_or_name, :do_terminate)
   end
 
   def delete_ets_table(ets_table_name) do
     :ets.delete(ets_table_name)
-    |> Procon.Helpers.olog(
-      "Procon.MessagesControllers.ConsumerGenServer : deleted ets table #{ets_table_name}",
-      Procon.MessagesControllers.ConsumerGenServer
+
+    Procon.Helpers.olog(
+      "🦑❎ PROCON: #{__MODULE__} : deleted ets table #{ets_table_name}",
+      __MODULE__
     )
   end
 
@@ -40,63 +63,52 @@ defmodule Procon.MessagesControllers.ConsumerGenServer do
     |> case do
       :undefined ->
         :ets.new(state.ets_table_name, [:set, :public, :named_table])
-        |> Procon.Helpers.olog(
-          "Procon.MessagesControllers.ConsumerGenServer : created ets table #{state.ets_table_name}",
-          Procon.MessagesControllers.ConsumerGenServer
+
+        Procon.Helpers.olog(
+          "🦑❎ PROCON: #{__MODULE__} : created ets table #{state.ets_table_name}",
+          __MODULE__
         )
 
       _ ->
         Procon.Helpers.olog(
-          "Procon.MessagesControllers.ConsumerGenServer : ets table #{state.ets_table_name} already exists, creation not executed",
-          Procon.MessagesControllers.ConsumerGenServer
+          "🦑⚠️ PROCON: #{__MODULE__} : ets table #{state.ets_table_name} already exists, creation not executed",
+          __MODULE__
         )
     end
   end
 
-  # def terminate(reason, state) do
-  #  IO.inspect(state, label: "genserver terminating... #{Kernel.inspect(reason)}")
-  #
-  #  stop_client(state.brod_client_name_for_consumers)
-  #
-  #  :normal
-  # end
-
-  def stop_client(client_name) do
-    :brod.stop_client(client_name)
-    |> Procon.Helpers.olog(
-      "Procon.MessagesControllers.ConsumerGenServer : stop_client #{client_name}",
-      Procon.MessagesControllers.ConsumerGenServer
+  def handle_cast(:do_terminate, _from, state) do
+    Procon.Helpers.olog(
+      "🦑❎ PROCON: #{__MODULE__} : consumer #{state.register_name} terminating (do_terminate cast)...",
+      __MODULE__
     )
-  end
 
-  def stop_consumer(state) do
-    stop_client(state.client_name)
+    :ok = :brod_group_subscriber_v2.stop(state.link_group_subscriber_pid)
     delete_ets_table(state.ets_table_name)
+
+    Procon.Helpers.olog(
+      "🦑❎ PROCON: #{__MODULE__} : consumer #{state.register_name} terminated (do_terminate cast)!",
+      __MODULE__
+    )
+
+    {:stop, :normal, :ok, nil}
   end
 
-  def start_brod_client_for_consumers(
-        state,
-        brokers,
-        brod_client_config
-      ) do
-    :brod.start_client(
-      brokers || Application.get_env(:procon, :brokers),
-      state.brod_client_name_for_consumers,
-      brod_client_config || Application.get_env(:procon, :brod_client_config)
-    )
-    |> case do
-      :ok ->
-        Procon.Helpers.olog(
-          "❎❎❎❎❎❎❎❎❎❎❎❎ [client] Procon.MessagesControllers.ConsumerGenServer > start_brod_client_for_consumers: client started as #{state.brod_client_name_for_consumers} for #{state.consumer_process_register_name}.",
-          Procon.MessagesControllers.ConsumerGenServer
-        )
+  def handle_info(msg, state) do
+    IO.inspect(msg, label: "🦑❎❌ PROCON: handle_info msg #{state.consumer_process_register_name}")
+    {:noreply, state}
+  end
 
-      error ->
-        Procon.Helpers.olog(
-          "❌❌❌❌❌❌❌❌❌❌❌❌[client] Procon.MessagesControllers.ConsumerGenServer > start_brod_client_for_consumers: unable to start a client for #{state.consumer_process_register_name} > #{Kernel.inspect(error)}",
-          Procon.MessagesControllers.ConsumerGenServer
-        )
-    end
+  def terminate(reason, state) do
+    IO.inspect(state,
+      label:
+        "🦑❎❌ PROCON: #{state.consumer_process_register_name} terminating\n#{Kernel.inspect(reason)}"
+    )
+
+    :ok = :brod_group_subscriber_v2.stop(state.link_group_subscriber_pid)
+    delete_ets_table(state.ets_table_name)
+
+    :normal
   end
 
   def start_consumer_for_topic(state) do
@@ -118,15 +130,19 @@ defmodule Procon.MessagesControllers.ConsumerGenServer do
     |> case do
       {:ok, pid} ->
         Procon.Helpers.olog(
-          "❎❎❎❎❎❎❎❎❎❎❎❎ [consumer] Procon.MessagesControllers.ConsumerGenServer > start_consumer_for_topic: registered group_subscriber #{state.consumer_process_register_name}. pid : #{Kernel.inspect(pid)}",
-          Procon.MessagesControllers.ConsumerGenServer
+          "🦑❎ PROCON: #{__MODULE__}.start_consumer_for_topic: registered group_subscriber #{state.brod_kafka_group_id}. pid : #{Kernel.inspect(pid)}",
+          __MODULE__
         )
+
+        {:ok, pid}
 
       {:error, error} ->
         Procon.Helpers.olog(
-          "❌❌❌❌❌❌❌❌❌❌❌❌ [consumer] Procon.MessagesControllers.ConsumerGenServer > start_consumer_for_topic: unable to start a consumer#{state.consumer_process_register_name} > #{Kernel.inspect(error)}",
-          Procon.MessagesControllers.ConsumerGenServer
+          "🦑❌ PROCON: #{__MODULE__}.start_consumer_for_topic: unable to start a consumer #{state.brod_kafka_group_id} > #{Kernel.inspect(error)}",
+          __MODULE__
         )
+
+        {:error, error}
     end
   end
 end

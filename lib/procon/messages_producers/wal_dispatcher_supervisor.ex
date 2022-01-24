@@ -19,32 +19,4 @@ defmodule Procon.MessagesProducers.WalDispatcherSupervisor do
   def init(_state) do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
-
-  def start_activated_processors_producers() do
-    Procon.ProcessorConfigAccessor.activated_processors_config()
-    |> Enum.map(fn {_processor_name, processor_config} ->
-      Keyword.get(processor_config, :producers)
-    end)
-    # [
-    #    %{
-    #      datastore: MyApp.Processors.ProcessorName.Repositories.ProcessorNamePg,
-    #      relation_topics: %{
-    #        "table/relation" => "topic"
-    #      }
-    #   }
-    # ]
-    |> Enum.map(fn
-      %{datastore: _datastore, procon_realtime: true} = producer_config ->
-        Procon.MessagesProducers.WalDispatcher.start_wal_dispatcher_for_processor(producer_config)
-
-      %{datastore: _datastore, relation_configs: relation_configs} when relation_configs == %{} ->
-        nil
-
-      %{datastore: _datastore, relation_configs: _relation_configs} = producer_config ->
-        Procon.MessagesProducers.WalDispatcher.start_wal_dispatcher_for_processor(producer_config)
-
-      nil ->
-        nil
-    end)
-  end
 end

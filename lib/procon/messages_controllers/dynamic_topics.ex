@@ -35,7 +35,8 @@ defmodule Procon.MessagesController.DynamicTopics do
                   |> Enum.find(&(&1.name == options.processor_name)),
                   Map.get(event_data, "topic_name")
                 )
-                |> PMC.ConsumersStarter.start_consumer_for_topic()
+
+              # |> PMC.ConsumersStarter.start_consumer_for_topic()
 
               _ ->
                 nil

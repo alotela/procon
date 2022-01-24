@@ -3,9 +3,13 @@ defmodule Procon.MessagesProducers.Realtime do
 
   def realtime_topic(), do: @procon_realtime_topic_name
 
-  def send_rtevent(%Procon.Schemas.ProconRealtime{} = event_data, repository, threshold \\ 1000) do
+  def send_rtevent(
+        %Procon.Schemas.ProconRealtime{} = event_data,
+        processor_name,
+        threshold \\ 1000
+      ) do
     key = {
-      repository,
+      processor_name,
       Map.get(event_data, :channel, Map.get(event_data, :session_id, ""))
     }
 
@@ -26,7 +30,7 @@ defmodule Procon.MessagesProducers.Realtime do
         :ets.insert(:procon_enqueuers_thresholds, {key, new_sent_time})
 
         spawn(fn ->
-          send_to_broker(repository, event_data)
+          send_to_broker(processor_name, event_data)
         end)
 
       false ->
@@ -36,14 +40,14 @@ defmodule Procon.MessagesProducers.Realtime do
 
         spawn(fn ->
           Process.sleep(programmed_sent_time - new_sent_time)
-          send_to_broker(repository, event_data)
+          send_to_broker(processor_name, event_data)
         end)
     end
   end
 
-  def send_to_broker(datastore, payload) do
+  def send_to_broker(processor_name, payload) do
     :brod.produce_sync(
-      Procon.MessagesProducers.WalDispatcher.broker_client_name(%{datastore: datastore}),
+      Procon.Processors.ProcessorsDynamicSupervisor.processor_brod_client_name(processor_name),
       @procon_realtime_topic_name,
       0,
       "",

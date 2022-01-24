@@ -11,6 +11,9 @@ defmodule Procon.MessagesProducers.WalDispatcher do
       :config,
       :datastore,
       :ets_messages_queue_ref,
+      :processor_name,
+      :producer_ets_state_table_name,
+      :producer_ets_table_name,
       :publications,
       :realtime,
       :register_name,
@@ -38,6 +41,9 @@ defmodule Procon.MessagesProducers.WalDispatcher do
             delete_metadata: map(),
             epgsql_pid: pid() | nil,
             ets_messages_queue_ref: reference(),
+            processor_name: atom(),
+            producer_ets_state_table_name: atom(),
+            producer_ets_table_name: atom(),
             publications: list(),
             realtime: boolean(),
             register_name: atom(),
@@ -54,74 +60,28 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     GenServer.start_link(__MODULE__, state, name: state.register_name)
   end
 
-  def add_delete_metadata(repo, entity_primary_key, metadata),
-    do: GenServer.call(register_name(repo), {:add_delete_metadata, entity_primary_key, metadata})
-
-  @spec register_name(atom()) :: atom()
-  def register_name(datastore), do: :"wal_dispatcher_#{datastore}"
-
-  def broker_client_name(processor_producers_config),
-    do:
-      Map.get(
-        processor_producers_config,
-        :broker_client_name,
-        :"#{processor_producers_config.datastore |> register_name()}_brod_client"
-      )
-
-  def start_wal_dispatcher_for_processor(processor_producers_config) do
-    register_name = register_name(processor_producers_config.datastore)
-
-    {:ok, _child_pid} =
-      DynamicSupervisor.start_child(
-        Procon.MessagesProducers.ProducersSupervisor,
-        %{
-          start:
-            {__MODULE__, :start_link,
-             [
-               %State{
-                 brokers:
-                   Map.get(
-                     processor_producers_config,
-                     :brokers,
-                     Application.get_env(:procon, :brokers)
-                   ),
-                 broker_client_name: broker_client_name(processor_producers_config),
-                 brod_client_config:
-                   Map.get(
-                     processor_producers_config,
-                     :brod_client_config,
-                     Application.get_env(:procon, :brod_client_config)
-                   ),
-                 config: processor_producers_config,
-                 datastore: processor_producers_config.datastore,
-                 publications:
-                   Map.get(
-                     processor_producers_config,
-                     :publications,
-                     :"procon_#{processor_producers_config.datastore.config() |> Keyword.get(:database)}"
-                   ),
-                 realtime: Map.get(processor_producers_config, :procon_realtime, false),
-                 register_name: register_name,
-                 relation_configs: Map.get(processor_producers_config, :relation_configs, %{})
-               }
-             ]},
-          id: register_name
-        }
-      )
+  def do_terminate(pid_or_name) do
+    GenServer.cast(pid_or_name, :do_terminate)
   end
 
-  @spec init(Procon.MessagesProducers.WalDispatcher.State.t()) ::
-          {:ok, Procon.MessagesProducers.WalDispatcher.State.t()}
+  def add_delete_metadata(process_name, entity_primary_key, metadata),
+    do: GenServer.call(process_name, {:add_delete_metadata, entity_primary_key, metadata})
+
   def init(%State{} = state) do
     Logger.metadata(procon_wal_dispatcher: state.datastore)
 
-    Logger.notice(["PROCON : Starting WalDispatcher for datastore #{state.datastore}", state])
+    Procon.Helpers.olog(
+      "🦑❎ PROCON: #{__MODULE__} : Starting WalDispatcher for processor #{state.register_name}",
+      __MODULE__
+    )
 
-    {:ok, ets_table_identifier} = create_ets_table(state.register_name)
+    {:ok, producer_ets_table_name} = create_ets_table(state.producer_ets_table_name)
 
-    ets_table_state_ref = :ets.new(:ets_state, write_concurrency: true, read_concurrency: true)
-
-    start_brod_client(state.brokers, state.broker_client_name, state.brod_client_config)
+    producer_ets_state_table_name =
+      :ets.new(state.producer_ets_state_table_name,
+        write_concurrency: true,
+        read_concurrency: true
+      )
 
     start_realtime_producer(state)
 
@@ -132,8 +92,8 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     {:ok,
      %State{
        state
-       | ets_messages_queue_ref: ets_table_identifier,
-         ets_table_state_ref: ets_table_state_ref
+       | ets_messages_queue_ref: producer_ets_table_name,
+         ets_table_state_ref: producer_ets_state_table_name
      }}
   end
 
@@ -146,10 +106,6 @@ defmodule Procon.MessagesProducers.WalDispatcher do
 
   defp relation_config_avro_key_schema(relation_config),
     do: Map.get(relation_config, :avro_key_schema, "#{relation_config.topic}-key")
-
-  def start_brod_client(brokers, broker_client_name, brod_client_config) do
-    :ok = :brod.start_client(brokers, broker_client_name, brod_client_config)
-  end
 
   def create_ets_table(register_name) do
     case :ets.whereis(register_name) do
@@ -166,9 +122,7 @@ defmodule Procon.MessagesProducers.WalDispatcher do
         {:ok, :ets.whereis(register_name)}
 
       reference ->
-        Logger.warning(
-          "Procon.MessagesProducers.WalDispatcher.create_ets_table : #{register_name} : ets table already exists."
-        )
+        Logger.warning("🦑⚠️ PROCON: #{__MODULE__} : #{register_name} : ets table already exists.")
 
         {:ok, reference}
     end
@@ -215,53 +169,76 @@ defmodule Procon.MessagesProducers.WalDispatcher do
 
   def handle_info({:start_wal_stream}, %State{} = state) do
     config = state.datastore.config()
+    sleep_time = Enum.random(1..100)
 
-    %Procon.MessagesProducers.EpgsqlConnector.Config{
-      database: config |> Keyword.get(:database),
-      host: config |> Keyword.get(:hostname) |> String.to_charlist(),
-      password: config |> Keyword.get(:password),
-      replication: "database",
-      slot: state.datastore,
-      username: config |> Keyword.get(:username)
-    }
-    |> EpgsqlConnector.connect(state.relation_configs |> Map.keys())
-    |> case do
-      {:ok, %{epgsql_pid: epgsql_pid, replication_slot_name: slot_name}} ->
-        Process.monitor(epgsql_pid)
+    IO.inspect(
+      label:
+        "start_wal_stream for database  #{config |> Keyword.get(:database)} with sleeptime = #{sleep_time}"
+    )
 
-        start_queue_cleaner(epgsql_pid, state.ets_messages_queue_ref, state.register_name)
+    try do
+      %Procon.MessagesProducers.EpgsqlConnector.Config{
+        database: config |> Keyword.get(:database),
+        host: config |> Keyword.get(:hostname) |> String.to_charlist(),
+        password: config |> Keyword.get(:password),
+        replication: "database",
+        slot: state.datastore,
+        username: config |> Keyword.get(:username)
+      }
+      |> EpgsqlConnector.connect(state.relation_configs |> Map.keys())
+      |> IO.inspect(
+        label: "EpgsqlConnector.connect for database #{config |> Keyword.get(:database)}"
+      )
+      |> case do
+        {:ok, %{epgsql_pid: epgsql_pid, replication_slot_name: slot_name}} ->
+          Process.monitor(epgsql_pid)
 
-        start_replication(
-          state.wal_position,
-          epgsql_pid,
-          slot_name,
-          state.publications
-        )
+          start_queue_cleaner(epgsql_pid, state.ets_messages_queue_ref, state.register_name)
 
-        {:noreply,
-         %State{
-           state
-           | epgsql_pid: epgsql_pid,
-             replication_slot_name: slot_name
-         }}
+          start_replication(
+            state.wal_position,
+            epgsql_pid,
+            slot_name,
+            state.publications
+          )
 
-      {:error, reason} ->
-        Logger.error(
-          "Procon.MessagesProducers.WalDispatcher.handle_info : EpgsqlConnector.connect : error : #{reason}"
-        )
+          {:noreply,
+           %State{
+             state
+             | epgsql_pid: epgsql_pid,
+               replication_slot_name: slot_name
+           }}
 
-        Process.send_after(self(), {:start_wal_stream}, 1000)
+        {:error, :econnrefused} ->
+          Logger.error(
+            "Procon.MessagesProducers.WalDispatcher.handle_info : EpgsqlConnector.connect : error : :econnrefused -> retrying"
+          )
 
-        {:noreply, state}
+          Process.send_after(self(), {:start_wal_stream}, 1000)
 
-      error ->
-        Logger.error(
-          "Procon.MessagesProducers.WalDispatcher.handle_info : EpgsqlConnector.connect : error : #{inspect(error)}"
-        )
+          {:noreply, state}
 
-        Process.send_after(self(), {:start_wal_stream}, 1000)
+        {:error, reason} ->
+          Logger.error(
+            "Procon.MessagesProducers.WalDispatcher.handle_info : EpgsqlConnector.connect : error : #{reason}"
+          )
 
-        {:noreply, state}
+          Process.send_after(self(), {:start_wal_stream}, 1000)
+
+          {:noreply, state}
+
+        error ->
+          Logger.error(
+            "Procon.MessagesProducers.WalDispatcher.handle_info : EpgsqlConnector.connect : error : #{inspect(error)}"
+          )
+
+          Process.send_after(self(), {:start_wal_stream}, 1000)
+
+          {:noreply, state}
+      end
+    rescue
+      e ->
+        IO.inspect(e, label: "exception catchée....")
     end
   end
 
@@ -298,6 +275,11 @@ defmodule Procon.MessagesProducers.WalDispatcher do
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
     case pid == state.epgsql_pid do
       true ->
+        Procon.Helpers.olog(
+          "🦑⚠️ PROCON: epgsql process for processor #{state.processor_name} down. restarting...",
+          __MODULE__
+        )
+
         Process.send_after(self(), {:start_wal_stream}, 1000)
 
       false ->
@@ -305,6 +287,11 @@ defmodule Procon.MessagesProducers.WalDispatcher do
     end
 
     {:noreply, %{state | epgsql_pid: nil}}
+  end
+
+  def handle_info(msg, state) do
+    IO.inspect(msg, label: "🦑❎❌ PROCON: handle_info msg #{state.register_name}")
+    {:noreply, state}
   end
 
   def handle_cast(:start_broker_producers, state) do
@@ -438,5 +425,42 @@ defmodule Procon.MessagesProducers.WalDispatcher do
           id: :"#{register_name}_queue_cleaner"
         }
       )
+  end
+
+  def handle_cast(:do_terminate, _from, state) do
+    Procon.Helpers.olog(
+      "🦑❎ PROCON: #{__MODULE__} : producer #{state.register_name} terminating (do_terminate cast)...",
+      __MODULE__
+    )
+
+    delete_ets_table(state.ets_table_identifier)
+    delete_ets_table(state.ets_messages_queue_ref)
+
+    Procon.Helpers.olog(
+      "🦑❎ PROCON: #{__MODULE__} : producer #{state.register_name} terminated (do_terminate cast)!",
+      __MODULE__
+    )
+
+    {:stop, :normal, :ok, nil}
+  end
+
+  def terminate(reason, state) do
+    IO.inspect(state,
+      label: "🦑❎❌ PROCON: #{state.register_name} terminating\n#{Kernel.inspect(reason)}"
+    )
+
+    delete_ets_table(state.ets_table_identifier)
+    delete_ets_table(state.ets_messages_queue_ref)
+
+    :normal
+  end
+
+  def delete_ets_table(ets_table_name) do
+    :ets.delete(ets_table_name)
+
+    Procon.Helpers.olog(
+      "🦑❎ PROCON: #{__MODULE__} : deleted ets table #{ets_table_name}",
+      __MODULE__
+    )
   end
 end

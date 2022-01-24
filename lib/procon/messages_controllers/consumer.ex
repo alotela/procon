@@ -202,7 +202,7 @@ defmodule Procon.MessagesControllers.Consumer do
         kafka_message_content,
         :avro,
         entity_config,
-        processing_id
+        _processing_id
       ) do
     Avrora.decode(kafka_message_content)
     |> case do

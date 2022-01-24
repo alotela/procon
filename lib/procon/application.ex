@@ -19,7 +19,7 @@ defmodule Procon.Application do
             Avrora,
             {DynamicSupervisor,
              name: Procon.MessagesProducers.ProducersSupervisor, strategy: :one_for_one},
-            Procon.MessagesControllers.ConsumersDynamicSupervisor,
+            Procon.Processors.ProcessorsDynamicSupervisor,
             Procon.MessagesProducers.WalDispatcherSupervisor
           ]
 
@@ -69,7 +69,6 @@ defmodule Procon.Application do
     :procon_enqueuers_thresholds =
       :ets.new(:procon_enqueuers_thresholds, [:named_table, :public, :set])
 
-    Procon.MessagesControllers.ConsumersDynamicSupervisor.start_activated_processor_consumers()
-    Procon.MessagesProducers.WalDispatcherSupervisor.start_activated_processors_producers()
+    Procon.Processors.ProcessorsDynamicSupervisor.start_activated_processors()
   end
 end
