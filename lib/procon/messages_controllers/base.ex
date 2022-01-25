@@ -184,7 +184,7 @@ defmodule Procon.MessagesControllers.Base do
                 Map.get(realtime, :metadata, %{}) || %{}
               )
             ),
-            options.datastore,
+            options.processor_name,
             Map.get(options, :rt_threshold, 1000)
           )
 
@@ -210,7 +210,7 @@ defmodule Procon.MessagesControllers.Base do
                     Map.get(realtime, :metadata, %{}) || %{}
                   )
                 ),
-                options.datastore,
+                options.processor_name,
                 Map.get(options, :rt_threshold, 1000)
               )
 
