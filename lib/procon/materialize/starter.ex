@@ -1,6 +1,23 @@
 defmodule Procon.Materialize.Starter do
   require Logger
 
+  def get_runtime_config_brokers_hosts() do
+    Application.fetch_env!(:procon, :brokers)
+    |> Enum.map(fn {url, port} ->
+      "#{url}:#{port}"
+    end)
+    |> Enum.join(", ")
+  end
+
+  def get_runtime_config_materialize() do
+    Application.fetch_env!(:procon, :materialize)
+    |> Enum.into(%{})
+  end
+
+  def get_runtime_config_registry_url() do
+    Application.fetch_env!(:procon, :registry_url)
+  end
+
   def run_materialize_configs(processors) do
     Procon.Helpers.olog(
       "🎃 PROCON > MATERIALIZE: starting to configure materialize for activated processors (#{inspect(processors)})",
@@ -81,9 +98,7 @@ defmodule Procon.Materialize.Starter do
         []
       )
 
-    case :epgsql.connect(
-           Map.take(materialize_processor_config, [:database, :host, :port, :username])
-         ) do
+    case :epgsql.connect(get_runtime_config_materialize()) do
       {:ok, epgsql_pid} ->
         result =
           Enum.map(
