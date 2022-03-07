@@ -21,5 +21,21 @@ defmodule Procon.ProcessorConfigAccessor do
           true
       end
     end)
+    |> Enum.filter(fn {_processor_name, processor_config} ->
+      case {Keyword.get(options, :is_materialize_operator),
+            Keyword.get(processor_config, :is_materialize_operator)} do
+        {true, true} ->
+          true
+
+        {true, _} ->
+          false
+
+        {false, true} ->
+          false
+
+        _ ->
+          true
+      end
+    end)
   end
 end
