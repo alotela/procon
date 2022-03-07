@@ -12,10 +12,23 @@ defmodule Procon.Materialize.Starter do
   def get_runtime_config_materialize() do
     Application.fetch_env!(:procon, :materialize)
     |> Enum.map(fn {key, value} ->
-      if key == :host && is_binary(value) do
-        {key, to_charlist(value)}
-      else
-        {key, value}
+      case key do
+        :host ->
+          if is_binary(value) do
+            {key, to_charlist(value)}
+          else
+            {key, value}
+          end
+
+        :port ->
+          if is_binary(value) do
+            {key, Integer.parse(value) |> elem(0)}
+          else
+            {key, value}
+          end
+
+        _ ->
+          {key, value}
       end
     end)
     |> Enum.into(%{})
