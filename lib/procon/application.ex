@@ -49,6 +49,9 @@ defmodule Procon.Application do
       |> String.split(",", trim: true)
       |> Enum.map(&String.to_atom/1)
     )
+
+    Application.app_dir(:procon, ["priv", "schemas"])
+    |> File.cp_r!(Path.join([File.cwd!(), "priv", "schemas"]))
   end
 
   def after_start() do
