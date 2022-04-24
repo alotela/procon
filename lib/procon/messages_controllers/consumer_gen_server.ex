@@ -94,6 +94,15 @@ defmodule Procon.MessagesControllers.ConsumerGenServer do
     {:stop, :normal, :ok, nil}
   end
 
+  def handle_info({:DOWN, ref, :process, _, _}, state) do
+    Procon.Helpers.olog(
+      "🦑❌ PROCON: #{__MODULE__} : brod consumer #{state.register_name} DOWN! (ref: #{inspect(ref)})",
+      __MODULE__
+    )
+
+    {:noreply, state}
+  end
+
   def handle_info(msg, state) do
     IO.inspect(msg, label: "🦑❎❌ PROCON: handle_info msg #{state.consumer_process_register_name}")
     {:noreply, state}
@@ -133,6 +142,8 @@ defmodule Procon.MessagesControllers.ConsumerGenServer do
           "🦑❎ PROCON: #{__MODULE__}.start_consumer_for_topic: registered group_subscriber #{state.brod_kafka_group_id}. pid : #{Kernel.inspect(pid)}",
           __MODULE__
         )
+
+        Process.monitor(pid)
 
         {:ok, pid}
 
