@@ -146,6 +146,37 @@ defmodule Procon.Materialize.Starter do
                   )
 
                   nil
+
+                {:error,
+                 {:error, :error, _reference, :syntax_error, error_description,
+                  [position: pos_str]}} ->
+                  {pos, _e} = Integer.parse(pos_str)
+                  margin = 15
+
+                  sample =
+                    query
+                    |> String.slice(
+                      Range.new(max(0, pos - margin), min(String.length(query) - 1, pos + margin))
+                    )
+
+                  {line_number, col_number} =
+                    query
+                    |> String.slice(Range.new(0, pos))
+                    |> String.graphemes()
+                    |> Enum.reduce({1, 1}, fn
+                      "\n", {line, _col} -> {line + 1, 1}
+                      _, {line, col} -> {line, col + 1}
+                    end)
+
+                  Procon.Helpers.olog(
+                    [
+                      "🎃❌🔧 PROCON > MATERIALIZE > QUERY: unable to execute for processor #{processor_name}. Syntax error : #{error_description}. At position: #{pos_str}. Line: #{line_number}, column #{col_number}. Near : #{sample}"
+                    ],
+                    Procon.Materialize.StarterResultError,
+                    ansi_color: :red
+                  )
+
+                  nil
               end
             end
           )
