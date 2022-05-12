@@ -109,6 +109,7 @@ defmodule Procon.Helpers do
     )
   end
 
+  defp decode_json_attribute(nil), do: nil
   defp decode_json_attribute(value) when is_list(value), do: value |> Enum.map(&Jason.decode!(&1))
   defp decode_json_attribute(value), do: Jason.decode!(value)
 
