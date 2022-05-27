@@ -351,6 +351,12 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
   def map_value_with_type({{name, 23}, value}, payload),
     do: Map.put(payload, name, value |> String.to_integer())
 
+  def map_value_with_type({{name, 700}, value}, payload),
+    do: Map.put(payload, name, value |> String.to_float())
+
+  def map_value_with_type({{name, 701}, value}, payload),
+    do: Map.put(payload, name, value |> String.to_float())
+
   def map_value_with_type({{name, data_type_id}, value}, payload) do
     if not is_list_type(data_type_id) do
       Map.put(payload, name, value)
