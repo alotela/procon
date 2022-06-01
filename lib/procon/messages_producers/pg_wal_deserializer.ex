@@ -319,6 +319,9 @@ defmodule Procon.MessagesProducers.PgWalDeserializer do
     |> rem(nb_partitions)
   end
 
+  def map_value_with_type({{name, _type}, nil}, payload),
+    do: Map.put(payload, name, nil)
+
   # data type 3802 = jsonb (https://github.com/epgsql/epgsql/blob/devel/src/epgsql_binary.erl#L350)
   def map_value_with_type({{name, 3802}, value}, payload),
     do:
