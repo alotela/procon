@@ -139,11 +139,17 @@ defmodule Procon.Materialize.Starter do
 
     case :epgsql.connect(get_runtime_config_materialize()) do
       {:ok, epgsql_pid} ->
+        Procon.Helpers.log("Registering sources...", ansi_color: :green)
+
         sources
         |> run_materialize_registers(epgsql_pid)
 
+        Procon.Helpers.log("Registering views...", ansi_color: :green)
+
         views
         |> run_materialize_registers(epgsql_pid)
+
+        Procon.Helpers.log("Registering sinks...", ansi_color: :green)
 
         sinks
         |> run_materialize_registers(epgsql_pid)
@@ -158,10 +164,10 @@ defmodule Procon.Materialize.Starter do
       {:error, reason} ->
         Procon.Helpers.olog(
           reason,
-          Procon.Materialize.Starter,
+          Procon.Materialize.StarterResultError,
           label:
             "🎃❌ PROCON > MATERIALIZE > epgsql.connect error: Unable to configure materialize",
-          ansi_color: :blue
+          ansi_color: :red
         )
     end
   end
