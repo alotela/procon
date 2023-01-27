@@ -28,7 +28,7 @@ defmodule Procon.MixProject do
       {:brod, "~> 3.16.1"},
       {:ecto_sql, "~> 3.0"},
       {:ecto_ulid, git: "https://github.com/sztosz/ecto-ulid.git"},
-      {:epgsql, "~> 4.5"},
+      {:epgsql, "~> 4.7"},
       {:jason, "~> 1.2"},
       {:inflex, "~> 2.0.0"},
       {:postgrex, ">= 0.0.0"},
