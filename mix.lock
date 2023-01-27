@@ -27,7 +27,7 @@
   "ecto_ulid": {:git, "https://github.com/sztosz/ecto-ulid.git", "d025f9a1b642d1108bd0b0a1484c0c6d1f03c9dc", []},
   "elixir_make": {:hex, :elixir_make, "0.6.2", "7dffacd77dec4c37b39af867cedaabb0b59f6a871f89722c25b28fcd4bd70530", [:mix], [], "hexpm", "03e49eadda22526a7e5279d53321d1cced6552f344ba4e03e619063de75348d9"},
   "elixir_uuid": {:hex, :elixir_uuid, "1.2.1", "dce506597acb7e6b0daeaff52ff6a9043f5919a4c3315abb4143f0b00378c097", [:mix], [], "hexpm", "f7eba2ea6c3555cea09706492716b0d87397b88946e6380898c2889d68585752"},
-  "epgsql": {:hex, :epgsql, "4.6.0", "a403534d03811c867e79405bb18d6061a5fcef92acf0236a9150ac93748ce143", [:rebar3], [], "hexpm", "6be4910a02551f21eab6f6f27d97b0d4b1dffc617f1a64c8c95fdd45652fa9e1"},
+  "epgsql": {:hex, :epgsql, "4.7.0", "98361a63e49ae14df57cbda8495058d42abd3a316f822d1f990a40259026fe5e", [:rebar3], [], "hexpm", "90b0145d302ab133d957ea46a884e6e37e847e6e47deaf93104314d2ad8cb5bb"},
   "erlavro": {:hex, :erlavro, "2.9.3", "673fd6c131cc39de36858648efd544e7958c5aea8ba18e278fc682502aae39e2", [:make, :rebar, :rebar3], [{:jsone, "1.4.6", [hex: :jsone, repo: "hexpm", optional: false]}], "hexpm", "4b02a8ddfa4ef84a23c0d216cfb60c54b6a7f0d1040ac9c92dff3f6485a7fb9f"},
   "erlex": {:hex, :erlex, "0.2.6", "c7987d15e899c7a2f34f5420d2a2ea0d659682c06ac607572df55a43753aa12e", [:mix], [], "hexpm", "2ed2e25711feb44d52b17d2780eabf998452f6efda104877a3881c2f8c0c0c75"},
   "erlkaf": {:git, "https://github.com/silviucpp/erlkaf.git", "0ef1609b682fc7d7a53250951206fba7dd15d77b", [branch: :master]},
